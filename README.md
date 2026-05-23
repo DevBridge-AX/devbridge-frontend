@@ -11,6 +11,8 @@
 * 📝 [DevBridge AX 공식 Notion 워크스페이스 바로가기](https://notion-link-here.notion.site)
 * 🎨 [Figma 와이어프레임 및 디자인 시스템](https://figma-link-here.com)
 
+---
+
 ## 1. 🎯 프로젝트 기획 및 서비스 개요
 
 ### 💡 기획 배경 및 문제 정의
@@ -30,7 +32,7 @@
 
 ---
 
-## 🛠 Tech Stack
+## 2. 🛠 Tech Stack
 *현재 프론트엔드 아키텍처는 유연한 확장과 유저 피드백 수렴을 위해 지속적으로 고도화 중입니다.*
 
 | :--- | :--- | :--- |
@@ -45,7 +47,7 @@
 
 ---
 
-## 📂 Project Structure
+## 3. 📂 Project Structure
 *컴포넌트의 재사용성과 도메인 확장을 고려하여 설계된 구조입니다. 프로젝트 진행 상황에 따라 유연하게 변경될 수 있습니다.*
 
 ```text
