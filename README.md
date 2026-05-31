@@ -35,11 +35,12 @@
 ## 2. 🛠 Tech Stack
 *현재 프론트엔드 아키텍처는 유연한 확장과 유저 피드백 수렴을 위해 지속적으로 고도화 중입니다.*
 
+| Classification | Technology | Status / Details |
 | :--- | :--- | :--- |
 | **Framework** | **Vue.js 3** (Composition API) | **[확정]** 높은 생산성과 반응형 UI 구현 |
-| **Build Tool** | Vite | [논의 중] 빠른 로컬 개발 환경 고려 |
-| **State** | Pinia / Vuex | [논의 중] 유저 세션 및 챗 히스토리 관리용 |
-| **Styling** | Tailwind CSS / SCSS | [논의 중] 브랜드 컬러 융합 가이드라인 반영 예정 |
+| **Build Tool** | **Vite** | **[확정]** 초고속 로컬 개발 및 빌드 환경 제공 |
+| **State** | **Pinia** | **[확정]** 유저 세션, 권한(RBAC) 및 챗 히스토리 관리 |
+| **Styling** | **Tailwind CSS** | **[확정]** 라벤더 보라/블루 브랜드 identity 가이드라인 반영 |
 
 ### 🎨 Brand Identity Colors
 * **Main Color (Lavender)**: `#8E77F6` (AI의 지능적인 느낌과 부드러운 사용성)
