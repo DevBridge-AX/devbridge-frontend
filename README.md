@@ -42,26 +42,47 @@
 | **Styling** | Tailwind CSS / SCSS | [논의 중] 브랜드 컬러 융합 가이드라인 반영 예정 |
 
 ### 🎨 Brand Identity Colors
-* **Main Color (Lavender)**: `#8E77F6` (AI의 지능적인 느낌과 부드러운 사용성)
-* **Sub Color (Intelli Blue)**: `#4B73FF` (라벤더와 세련되게 어우러지는 스마트한 신뢰감)
+* **Main Color (Lavender)**: `#8E77F6`
+* **Sub Color (Intelli Blue)**: `#4B73FF` 
 
 ---
 
 ## 3. 📂 Project Structure
 *컴포넌트의 재사용성과 도메인 확장을 고려하여 설계된 구조입니다. 프로젝트 진행 상황에 따라 유연하게 변경될 수 있습니다.*
 
+## 3. 📂 Project Structure
+*DevBridge AI의 프론트엔드는 AI 에이전트와의 협업 효율 및 유지보수성을 극대화하기 위해 설계된 **5계층 단방향 아키텍처(5-Layer Architecture)**를 따릅니다. 의존성은 반드시 상위에서 하위로만 흐릅니다.*
+
 ```text
-src/
-├── assets/          # 이미지, 아이콘, 전역 스타일시트
-├── components/      # 재사용 가능한 공통 UI 컴포넌트 (Button, Modal 등)
-│   ├── chat/        # 1.0 직무별 챗 인터페이스 관련 컴포넌트
-│   ├── dashboard/   # 3.1 변경 이력 대시보드 (Diff Viewer)
-│   └── common/      # 공통 레이아웃
-├── router/          # Vue Router 설정
-├── stores/          # Pinia 상태 관리 (사용자 세션, 채팅 상태 등)
-├── views/           # 페이지 단위 컴포넌트
-│   ├── Main.vue     # 메인 대시보드 및 랜딩
-│   ├── ChatRoom.vue # AI 채팅 화면
-│   └── Admin.vue    # 3.0 관리자 페이지 (공지사항/댓글 관리)
-├── App.vue
-└── main.js
+frontend/
+├── public/                  # 정적 리소스
+├── src/
+│   ├── api/                 # [Layer 1] 외부 통신 계층 (Axios 인스턴스 및 엔드포인트)
+│   ├── state/               # [Layer 2] 전역 상태 계층 (Pinia 캐싱 및 상태 유지)
+│   ├── service/             # [Layer 3] 비즈니스 로직 계층 (API 호출 + State 업데이트)
+│   ├── components/          # [Layer 4] 프레젠테이션 계층 (재사용 가능한 UI 부품)
+│   │   ├── layout/          # 앱 전체 뼈대 (Header, Sidebar 등)
+│   │   ├── ui/              # 순수 공통 부품 (Button, Modal 등)
+│   │   └── domain/          # 도메인 전용 복합 컴포넌트 (chat, schedule 등)
+│   ├── views/               # [Layer 5] 페이지 계층 (Vue Router와 1:1 매칭)
+│   │   ├── auth/            # 인증 및 로그인 화면
+│   │   ├── workspace/       # 대시보드 및 프로젝트 목록 화면
+│   │   ├── chat/            # AI 실시간 채팅 화면
+│   │   ├── knowledge/       # RAG 데이터 업로드 및 산출물 화면
+│   │   ├── schedule/        # 지능형 일정 조율 화면
+│   │   └── governance/      # 전사 표준 용어 관리 화면
+│   ├── assets/              # 전역 스타일시트(CSS), 이미지, 아이콘 등
+│   ├── router/              # Vue Router 설정 및 접근 제어(가드)
+│   ├── types/               # 전역(Global) TypeScript 인터페이스 및 타입 정의
+│   ├── App.vue              # 최상위 루트 컴포넌트
+│   └── main.ts              # Vue 앱 진입점 (Pinia/Router 주입)
+├── index.html               # Vite 프로젝트의 메인 HTML 진입점
+├── package.json             # 프로젝트 의존성(npm) 및 실행 스크립트 명세서
+├── vite.config.ts           # Vite 빌드 및 로컬 서버 설정
+└── .gitignore               
+
+---
+
+## > 화면 디자인
+
+[img]{blank}
