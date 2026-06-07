@@ -80,9 +80,9 @@ frontend/
 ├── package.json             # 프로젝트 의존성(npm) 및 실행 스크립트 명세서
 ├── vite.config.ts           # Vite 빌드 및 로컬 서버 설정
 └── .gitignore               
-
+```
 ---
 
-## > 화면 디자인
+## > 🎨 화면 디자인
 
 [img]{blank}
