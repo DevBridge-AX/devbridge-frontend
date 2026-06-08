@@ -1,5 +1,5 @@
 import { authApi } from '@/api/authApi'
-import type { SigninResponse } from '@/api/authApi'
+import { useAuthStore } from '@/state/authStore'
 
 // ─── Layer 3: 비즈니스 로직 (Service) ─────────────────────────────────────
 // authApi를 조합하여 View가 복잡한 흐름을 신경 쓰지 않도록 추상화합니다.
@@ -47,21 +47,30 @@ async function registerUser(
 }
 
 /**
- * 로그인 처리 및 accessToken을 localStorage에 저장합니다.
- * @returns 로그인 응답 (accessToken, tokenType)
+ * 로그인 처리: API 호출 후 authStore를 통해 토큰을 저장합니다.
+ * @returns 로그인 성공 여부 (true / false)
  */
-async function login(employeeId: string, password: string): Promise<SigninResponse> {
-  const response = await authApi.signin({ employeeId, password })
-  localStorage.setItem('accessToken', response.accessToken)
-  return response
+async function executeLogin(employeeId: string, password: string): Promise<boolean> {
+  try {
+    const response = await authApi.signin({ employeeId, password })
+    const authStore = useAuthStore()
+    authStore.setToken(response.accessToken)
+    return true
+  } catch {
+    return false
+  }
 }
 
 /**
- * 로그아웃 처리 및 localStorage의 accessToken을 제거합니다.
+ * 로그아웃: 서버 세션 무효화 후 authStore를 통해 토큰을 제거합니다.
  */
-async function logout(): Promise<void> {
-  await authApi.logout()
-  localStorage.removeItem('accessToken')
+async function executeLogout(): Promise<void> {
+  try {
+    await authApi.logout()
+  } finally {
+    const authStore = useAuthStore()
+    authStore.logout()
+  }
 }
 
 export const authService = {
@@ -69,6 +78,6 @@ export const authService = {
   sendAuthEmail,
   verifyAuthEmail,
   registerUser,
-  login,
-  logout,
+  executeLogin,
+  executeLogout,
 }
