@@ -24,6 +24,7 @@ export interface SigninResponse {
 }
 
 export interface SendEmailAuthCodeRequest {
+  employeeId: string
   email: string
 }
 

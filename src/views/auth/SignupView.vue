@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { isAxiosError } from 'axios'
 import { authService } from '@/services/authService'
 
 const router = useRouter()
@@ -17,10 +18,14 @@ const passwordConfirm = ref('')
 const isHrVerified = ref(false)
 const isEmailVerified = ref(false)
 
+// HR 검증 완료 후 확정된 사번 (이메일 발송 payload에 재사용)
+const verifiedEmployeeId = ref('')
+
 const hrStatus = ref<'idle' | 'success' | 'error'>('idle')
 const hrMessage = ref('')
 
-const emailSendStatus = ref<'idle' | 'sent' | 'error'>('error') // 이메일 발송 상태
+const emailSendStatus = ref<'idle' | 'sent' | 'error'>('idle') // 이메일 발송 상태
+const emailSendMessage = ref('')
 const emailCodeStatus = ref<'idle' | 'success' | 'error'>('idle')
 const emailCodeMessage = ref('')
 
@@ -58,6 +63,7 @@ async function handleVerifyEmployee(): Promise<void> {
       hrStatus.value = 'success'
       hrMessage.value = '✓ HR 검증이 완료되었습니다.'
       isHrVerified.value = true
+      verifiedEmployeeId.value = employeeId.value.trim()
     } else {
       hrStatus.value = 'error'
       hrMessage.value = '✗ 등록된 직원 정보를 찾을 수 없습니다.'
@@ -74,17 +80,23 @@ async function handleVerifyEmployee(): Promise<void> {
 
 // ─── Step 4: 이메일 인증 코드 발송 ──────────────────────────────────────
 async function handleSendEmail(): Promise<void> {
-  if (!email.value.trim()) return
+  if (!email.value.trim() || !verifiedEmployeeId.value) return
   isEmailSending.value = true
-  emailSendStatus.value = 'error'
+  emailSendStatus.value = 'idle'
+  emailSendMessage.value = ''
   try {
-    await authService.sendAuthEmail(email.value.trim())
+    await authService.sendAuthEmail(verifiedEmployeeId.value, email.value.trim())
     emailSendStatus.value = 'sent'
     emailCodeStatus.value = 'idle'
     emailCodeMessage.value = ''
     isEmailVerified.value = false
-  } catch {
+  } catch (err: unknown) {
     emailSendStatus.value = 'error'
+    if (isAxiosError(err) && err.response?.status === 400) {
+      emailSendMessage.value = '✗ 인사 DB에 등록된 이메일과 일치하지 않습니다. 다시 확인해주세요.'
+    } else {
+      emailSendMessage.value = '✗ 이메일 발송 중 오류가 발생했습니다. 다시 시도해 주세요.'
+    }
   } finally {
     isEmailSending.value = false
   }
@@ -235,6 +247,11 @@ async function handleSubmit(): Promise<void> {
           <!-- 코드 발송 완료 안내 -->
           <p v-if="emailSendStatus === 'sent'" class="hint-msg">
             📧 인증 코드가 발송되었습니다. 이메일을 확인해 주세요.
+          </p>
+
+          <!-- 코드 발송 에러 안내 -->
+          <p v-if="emailSendStatus === 'error' && emailSendMessage" class="status-msg msg--error">
+            {{ emailSendMessage }}
           </p>
 
           <!-- Step 5: 인증 코드 입력 -->
