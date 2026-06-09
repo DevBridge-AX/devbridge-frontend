@@ -18,6 +18,9 @@ const passwordConfirm = ref('')
 const isHrVerified = ref(false)
 const isEmailVerified = ref(false)
 
+// HR 검증 완료 후 확정된 사번 (이메일 발송 payload에 재사용)
+const verifiedEmployeeId = ref('')
+
 const hrStatus = ref<'idle' | 'success' | 'error'>('idle')
 const hrMessage = ref('')
 
@@ -60,6 +63,7 @@ async function handleVerifyEmployee(): Promise<void> {
       hrStatus.value = 'success'
       hrMessage.value = '✓ HR 검증이 완료되었습니다.'
       isHrVerified.value = true
+      verifiedEmployeeId.value = employeeId.value.trim()
     } else {
       hrStatus.value = 'error'
       hrMessage.value = '✗ 등록된 직원 정보를 찾을 수 없습니다.'
@@ -76,12 +80,12 @@ async function handleVerifyEmployee(): Promise<void> {
 
 // ─── Step 4: 이메일 인증 코드 발송 ──────────────────────────────────────
 async function handleSendEmail(): Promise<void> {
-  if (!email.value.trim()) return
+  if (!email.value.trim() || !verifiedEmployeeId.value) return
   isEmailSending.value = true
   emailSendStatus.value = 'idle'
   emailSendMessage.value = ''
   try {
-    await authService.sendAuthEmail(email.value.trim())
+    await authService.sendAuthEmail(verifiedEmployeeId.value, email.value.trim())
     emailSendStatus.value = 'sent'
     emailCodeStatus.value = 'idle'
     emailCodeMessage.value = ''
@@ -89,7 +93,7 @@ async function handleSendEmail(): Promise<void> {
   } catch (err: unknown) {
     emailSendStatus.value = 'error'
     if (isAxiosError(err) && err.response?.status === 400) {
-      emailSendMessage.value = '✗ 등록된 이메일을 확인해주세요.'
+      emailSendMessage.value = '✗ 인사 DB에 등록된 이메일과 일치하지 않습니다. 다시 확인해주세요.'
     } else {
       emailSendMessage.value = '✗ 이메일 발송 중 오류가 발생했습니다. 다시 시도해 주세요.'
     }

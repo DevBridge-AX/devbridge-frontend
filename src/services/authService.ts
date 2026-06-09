@@ -20,10 +20,10 @@ async function verifyEmployee(employeeId: string, name: string): Promise<boolean
 
 /**
  * [Step 2] 이메일 인증 코드 발송
- * 입력된 이메일로 인증 코드를 발송합니다.
+ * HR 검증된 사번과 이메일을 함께 전달하여 매칭 여부를 서버에서 검증합니다.
  */
-async function sendAuthEmail(email: string): Promise<void> {
-  await authApi.sendEmailAuthCode({ email })
+async function sendAuthEmail(employeeId: string, email: string): Promise<void> {
+  await authApi.sendEmailAuthCode({ employeeId, email })
 }
 
 /**
