@@ -1,9 +1,9 @@
 import axiosClient from './axiosClient'
-import type { AxiosError } from 'axios'
 
 // ─── Request / Response 타입 정의 (Co-location) ───────────────────────────
 
 export interface UserProfile {
+  employeeId: string
   name: string
   email: string
   department: string
@@ -42,5 +42,3 @@ export const settingApi = {
       .then(() => undefined)
   },
 }
-
-export type { AxiosError }
