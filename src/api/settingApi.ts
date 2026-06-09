@@ -28,7 +28,7 @@ export const settingApi = {
    */
   fetchProfile(): Promise<UserProfile> {
     return axiosClient
-      .get<UserProfile>('/api/v1/settings/profile')
+      .get<UserProfile>('/api/settings/profile')
       .then((res) => res.data)
   },
 
@@ -38,7 +38,7 @@ export const settingApi = {
    */
   updateProfile(payload: UpdateProfilePayload): Promise<void> {
     return axiosClient
-      .patch<void>('/api/v1/settings/profile', payload)
+      .patch<void>('/api/settings/profile', payload)
       .then(() => undefined)
   },
 }
