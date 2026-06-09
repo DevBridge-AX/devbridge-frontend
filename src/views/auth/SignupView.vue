@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { isAxiosError } from 'axios'
 import { authService } from '@/services/authService'
 
 const router = useRouter()
@@ -20,7 +21,8 @@ const isEmailVerified = ref(false)
 const hrStatus = ref<'idle' | 'success' | 'error'>('idle')
 const hrMessage = ref('')
 
-const emailSendStatus = ref<'idle' | 'sent' | 'error'>('error') // 이메일 발송 상태
+const emailSendStatus = ref<'idle' | 'sent' | 'error'>('idle') // 이메일 발송 상태
+const emailSendMessage = ref('')
 const emailCodeStatus = ref<'idle' | 'success' | 'error'>('idle')
 const emailCodeMessage = ref('')
 
@@ -76,15 +78,21 @@ async function handleVerifyEmployee(): Promise<void> {
 async function handleSendEmail(): Promise<void> {
   if (!email.value.trim()) return
   isEmailSending.value = true
-  emailSendStatus.value = 'error'
+  emailSendStatus.value = 'idle'
+  emailSendMessage.value = ''
   try {
     await authService.sendAuthEmail(email.value.trim())
     emailSendStatus.value = 'sent'
     emailCodeStatus.value = 'idle'
     emailCodeMessage.value = ''
     isEmailVerified.value = false
-  } catch {
+  } catch (err: unknown) {
     emailSendStatus.value = 'error'
+    if (isAxiosError(err) && err.response?.status === 400) {
+      emailSendMessage.value = '✗ 등록된 이메일을 확인해주세요.'
+    } else {
+      emailSendMessage.value = '✗ 이메일 발송 중 오류가 발생했습니다. 다시 시도해 주세요.'
+    }
   } finally {
     isEmailSending.value = false
   }
@@ -235,6 +243,11 @@ async function handleSubmit(): Promise<void> {
           <!-- 코드 발송 완료 안내 -->
           <p v-if="emailSendStatus === 'sent'" class="hint-msg">
             📧 인증 코드가 발송되었습니다. 이메일을 확인해 주세요.
+          </p>
+
+          <!-- 코드 발송 에러 안내 -->
+          <p v-if="emailSendStatus === 'error' && emailSendMessage" class="status-msg msg--error">
+            {{ emailSendMessage }}
           </p>
 
           <!-- Step 5: 인증 코드 입력 -->
