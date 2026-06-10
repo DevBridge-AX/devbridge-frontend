@@ -37,6 +37,12 @@ const router = createRouter({
       component: () => import('@/views/workspace/WorkspaceListView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/settings/profile',
+      name: 'settings-profile',
+      component: () => import('@/views/settings/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
