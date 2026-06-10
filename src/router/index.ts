@@ -37,6 +37,12 @@ const router = createRouter({
       component: () => import('@/views/workspace/WorkspaceListView.vue'),
       meta: { requiresAuth: true },
     },
+
+    {
+      path: '/workspace/dashboard',
+      name: 'workspace-dashboard',
+      component: () => import('@/views/workspace/WorkspaceDashboardView.vue'),
+    },
   ],
 })
 
