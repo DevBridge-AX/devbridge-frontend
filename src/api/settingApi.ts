@@ -3,6 +3,7 @@ import axiosClient from './axiosClient'
 // ─── Request / Response 타입 정의 (Co-location) ───────────────────────────
 
 export interface UserProfile {
+  id: string
   employeeId: string
   name: string
   email: string
@@ -12,6 +13,11 @@ export interface UserProfile {
 
 export interface UpdateProfilePayload {
   name?: string
+  department?: string
+  position?: string
+}
+
+export interface UpdatePasswordPayload {
   currentPassword?: string
   newPassword?: string
 }
@@ -33,12 +39,30 @@ export const settingApi = {
   },
 
   /**
-   * 프로필 정보(이름 / 비밀번호)를 수정합니다.
-   * @throws AxiosError (400: 현재 비밀번호 불일치 등)
+   * 프로필 정보(이름, 부서, 직급 등)를 부분 수정합니다.
    */
-  updateProfile(payload: UpdateProfilePayload): Promise<void> {
+  updateProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
     return axiosClient
-      .patch<void>('/api/settings/profile', payload)
+      .patch<void>(`/api/users/${userId}/profile`, payload)
+      .then(() => undefined)
+  },
+
+  /**
+   * 비밀번호를 변경합니다.
+   * @throws AxiosError (400: 현재 비밀번호 불일치 혹은 입력 유효성 검증 실패 등)
+   */
+  updatePassword(userId: string, payload: UpdatePasswordPayload): Promise<void> {
+    return axiosClient
+      .put<void>(`/api/users/${userId}/password`, payload)
+      .then(() => undefined)
+  },
+
+  /**
+   * 현재 비밀번호를 검증합니다.
+   */
+  verifyPassword(userId: string, password: string): Promise<void> {
+    return axiosClient
+      .post<void>(`/api/users/${userId}/password/verify`, { password })
       .then(() => undefined)
   },
 }
