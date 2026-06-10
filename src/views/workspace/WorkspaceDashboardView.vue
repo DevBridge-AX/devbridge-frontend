@@ -1,124 +1,112 @@
 <script setup lang="ts">
+import { computed, onMounted, ref } from 'vue'
+import { dashboardService } from '@/services/dashboardService'
+import type {
+  WorkspaceDashboardSummary,
+  WorkspaceDashboardDetail,
+  DashboardTaskItem,
+  DashboardGitCommitItem,
+  DashboardDocumentItem,
+} from '@/api/dashboardApi'
+
 type SummaryItem = {
   label: string
   value: string | number
   description: string
 }
 
-type TaskItem = {
-  taskId: string
-  title: string
-  status: string
-  assigneeName: string
-  dueDate: string
+const TEMP_WORKSPACE_ID = 'ws001'
+
+const isLoading = ref(false)
+const errorMessage = ref('')
+const summary = ref<WorkspaceDashboardSummary | null>(null)
+const detail = ref<WorkspaceDashboardDetail | null>(null)
+
+const summaryItems = computed<SummaryItem[]>(() => {
+  if (!summary.value) {
+    return []
+  }
+
+  return [
+    {
+      label: '전체 업무',
+      value: summary.value.totalTaskCount,
+      description: '등록된 전체 업무 수',
+    },
+    {
+      label: '배정 업무',
+      value: summary.value.assignedTaskCount,
+      description: '담당자에게 배정된 업무',
+    },
+    {
+      label: '진행 중',
+      value: summary.value.inProgressTaskCount,
+      description: '현재 진행 중인 업무',
+    },
+    {
+      label: '완료',
+      value: summary.value.doneTaskCount,
+      description: '완료된 업무',
+    },
+    {
+      label: '지연',
+      value: summary.value.delayedTaskCount,
+      description: '마감일 기준 지연된 업무',
+    },
+    {
+      label: '완료율',
+      value: `${summary.value.progressRate}%`,
+      description: '전체 업무 대비 완료 비율',
+    },
+    {
+      label: '멤버',
+      value: summary.value.memberCount,
+      description: '워크스페이스 참여 인원',
+    },
+  ]
+})
+
+const recentTasks = computed<DashboardTaskItem[]>(() => {
+  return detail.value?.recentTasks ?? []
+})
+
+const delayedTasks = computed<DashboardTaskItem[]>(() => {
+  return detail.value?.delayedTasks ?? []
+})
+
+const recentGitCommits = computed<DashboardGitCommitItem[]>(() => {
+  return detail.value?.recentGitCommits ?? []
+})
+
+const recentDocuments = computed<DashboardDocumentItem[]>(() => {
+  return detail.value?.recentDocuments ?? []
+})
+
+const hasDashboardData = computed(() => {
+  return summary.value !== null && detail.value !== null
+})
+
+const fetchDashboardData = async () => {
+  isLoading.value = true
+  errorMessage.value = ''
+
+  try {
+    const dashboardData =
+      await dashboardService.getDashboardData(TEMP_WORKSPACE_ID)
+
+    summary.value = dashboardData.summary
+    detail.value = dashboardData.detail
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      errorMessage.value = error.message
+      return
+    }
+
+    errorMessage.value = '대시보드 데이터를 불러오지 못했습니다.'
+  } finally {
+    isLoading.value = false
+  }
 }
-
-type GitCommitItem = {
-  commitId: string
-  commitHash: string
-  commitMessage: string
-  authorName: string
-  pushedAt: string
-}
-
-type DocumentItem = {
-  documentId: string
-  title: string
-  sourceName: string
-  createdAt: string
-}
-
-const summaryItems: SummaryItem[] = [
-  {
-    label: '전체 업무',
-    value: 4,
-    description: '등록된 전체 업무 수',
-  },
-  {
-    label: '진행 중',
-    value: 1,
-    description: '현재 진행 중인 업무',
-  },
-  {
-    label: '완료',
-    value: 1,
-    description: '완료된 업무',
-  },
-  {
-    label: '지연',
-    value: 1,
-    description: '마감일 기준 지연 업무',
-  },
-  {
-    label: '완료율',
-    value: '25%',
-    description: '전체 업무 대비 완료 비율',
-  },
-  {
-    label: '멤버',
-    value: 2,
-    description: '워크스페이스 참여 인원',
-  },
-]
-
-const recentTasks: TaskItem[] = [
-  {
-    taskId: 'task-001',
-    title: 'Workspace Dashboard Summary API 구현',
-    status: 'DONE',
-    assigneeName: '김은정',
-    dueDate: '2026-06-08',
-  },
-  {
-    taskId: 'task-002',
-    title: 'Workspace Dashboard Detail API 구현',
-    status: 'IN_PROGRESS',
-    assigneeName: '김은정',
-    dueDate: '2026-06-09',
-  },
-]
-
-const delayedTasks: TaskItem[] = [
-  {
-    taskId: 'task-003',
-    title: '프론트 대시보드 API 연결 준비',
-    status: 'DELAYED',
-    assigneeName: '미지정',
-    dueDate: '2026-06-10',
-  },
-]
-
-const recentGitCommits: GitCommitItem[] = [
-  {
-    commitId: 'commit-001',
-    commitHash: 'a1b2c3d',
-    commitMessage: 'feat: add workspace dashboard detail API',
-    authorName: '김은정',
-    pushedAt: '2026-06-09 23:10',
-  },
-  {
-    commitId: 'commit-002',
-    commitHash: 'e4f5g6h',
-    commitMessage: 'feat: implement workspace dashboard summary service',
-    authorName: '김은정',
-    pushedAt: '2026-06-08 23:20',
-  },
-]
-
-const recentDocuments: DocumentItem[] = [
-  {
-    documentId: 'doc-001',
-    title: '대시보드 API 명세',
-    sourceName: 'DevBridge 기획 문서',
-    createdAt: '2026-06-09',
-  },
-  {
-    documentId: 'doc-002',
-    title: 'AI 데이터 파이프라인 정리',
-    sourceName: '프로젝트 기술 문서',
-    createdAt: '2026-06-09',
-  },
-]
 
 const getStatusLabel = (status: string) => {
   const statusMap: Record<string, string> = {
@@ -130,6 +118,18 @@ const getStatusLabel = (status: string) => {
 
   return statusMap[status] ?? status
 }
+
+const formatDate = (value: string | null) => {
+  if (!value) {
+    return '미정'
+  }
+
+  return value.replace('T', ' ').slice(0, 16)
+}
+
+onMounted(() => {
+  void fetchDashboardData()
+})
 </script>
 
 <template>
@@ -137,7 +137,7 @@ const getStatusLabel = (status: string) => {
     <section class="dashboard-hero">
       <div>
         <p class="eyebrow">Workspace Dashboard</p>
-        <h1>DevBridge AX 대시보드</h1>
+        <h1>{{ summary?.workspaceName ?? 'DevBridge AX 대시보드' }}</h1>
         <p class="hero-description">
           워크스페이스의 업무 진행 현황, 지연 업무, Git 변경사항, 문서
           업데이트를 한눈에 확인합니다.
@@ -149,93 +149,145 @@ const getStatusLabel = (status: string) => {
       </button>
     </section>
 
-    <section class="summary-grid" aria-label="dashboard summary">
-      <article
-        v-for="item in summaryItems"
-        :key="item.label"
-        class="summary-card"
-      >
-        <p class="summary-label">{{ item.label }}</p>
-        <strong class="summary-value">{{ item.value }}</strong>
-        <span class="summary-description">{{ item.description }}</span>
-      </article>
+    <section v-if="isLoading" class="state-box">
+      대시보드 데이터를 불러오는 중입니다.
     </section>
 
-    <section class="dashboard-content">
-      <article class="panel">
-        <div class="panel-header">
-          <h2>최근 업무</h2>
-          <span>{{ recentTasks.length }}건</span>
-        </div>
+    <section v-else-if="errorMessage" class="state-box error">
+      <strong>데이터 조회 실패</strong>
+      <p>{{ errorMessage }}</p>
+      <button class="retry-button" type="button" @click="fetchDashboardData">
+        다시 시도
+      </button>
+    </section>
 
-        <ul class="item-list">
-          <li v-for="task in recentTasks" :key="task.taskId" class="item-card">
-            <div>
-              <strong>{{ task.title }}</strong>
-              <p>담당자 {{ task.assigneeName }} · 마감 {{ task.dueDate }}</p>
-            </div>
-            <span class="status-badge">{{ getStatusLabel(task.status) }}</span>
-          </li>
-        </ul>
-      </article>
+    <template v-else-if="hasDashboardData">
+      <section class="summary-grid" aria-label="dashboard summary">
+        <article
+          v-for="item in summaryItems"
+          :key="item.label"
+          class="summary-card"
+        >
+          <p class="summary-label">{{ item.label }}</p>
+          <strong class="summary-value">{{ item.value }}</strong>
+          <span class="summary-description">{{ item.description }}</span>
+        </article>
+      </section>
 
-      <article class="panel danger-panel">
-        <div class="panel-header">
-          <h2>지연 업무</h2>
-          <span>{{ delayedTasks.length }}건</span>
-        </div>
+      <section class="dashboard-content">
+        <article class="panel">
+          <div class="panel-header">
+            <h2>최근 업무</h2>
+            <span>{{ recentTasks.length }}건</span>
+          </div>
 
-        <ul class="item-list">
-          <li v-for="task in delayedTasks" :key="task.taskId" class="item-card">
-            <div>
-              <strong>{{ task.title }}</strong>
-              <p>담당자 {{ task.assigneeName }} · 마감 {{ task.dueDate }}</p>
-            </div>
-            <span class="status-badge danger">{{
-              getStatusLabel(task.status)
-            }}</span>
-          </li>
-        </ul>
-      </article>
+          <p v-if="recentTasks.length === 0" class="empty-text">
+            표시할 최근 업무가 없습니다.
+          </p>
 
-      <article class="panel">
-        <div class="panel-header">
-          <h2>최근 Git Commit</h2>
-          <span>{{ recentGitCommits.length }}건</span>
-        </div>
+          <ul v-else class="item-list">
+            <li
+              v-for="task in recentTasks"
+              :key="task.taskId"
+              class="item-card"
+            >
+              <div>
+                <strong>{{ task.title }}</strong>
+                <p>
+                  담당자 {{ task.assigneeName }} · 마감
+                  {{ formatDate(task.dueDate) }}
+                </p>
+              </div>
+              <span class="status-badge">{{
+                getStatusLabel(task.status)
+              }}</span>
+            </li>
+          </ul>
+        </article>
 
-        <ul class="item-list">
-          <li
-            v-for="commit in recentGitCommits"
-            :key="commit.commitId"
-            class="item-card vertical"
-          >
-            <strong>{{ commit.commitMessage }}</strong>
-            <p>
-              {{ commit.commitHash }} · {{ commit.authorName }} ·
-              {{ commit.pushedAt }}
-            </p>
-          </li>
-        </ul>
-      </article>
+        <article class="panel danger-panel">
+          <div class="panel-header">
+            <h2>지연 업무</h2>
+            <span>{{ delayedTasks.length }}건</span>
+          </div>
 
-      <article class="panel">
-        <div class="panel-header">
-          <h2>최근 문서</h2>
-          <span>{{ recentDocuments.length }}건</span>
-        </div>
+          <p v-if="delayedTasks.length === 0" class="empty-text">
+            지연된 업무가 없습니다.
+          </p>
 
-        <ul class="item-list">
-          <li
-            v-for="document in recentDocuments"
-            :key="document.documentId"
-            class="item-card vertical"
-          >
-            <strong>{{ document.title }}</strong>
-            <p>{{ document.sourceName }} · {{ document.createdAt }}</p>
-          </li>
-        </ul>
-      </article>
+          <ul v-else class="item-list">
+            <li
+              v-for="task in delayedTasks"
+              :key="task.taskId"
+              class="item-card"
+            >
+              <div>
+                <strong>{{ task.title }}</strong>
+                <p>
+                  담당자 {{ task.assigneeName }} · 마감
+                  {{ formatDate(task.dueDate) }}
+                </p>
+              </div>
+              <span class="status-badge danger">
+                {{ getStatusLabel(task.status) }}
+              </span>
+            </li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>최근 Git Commit</h2>
+            <span>{{ recentGitCommits.length }}건</span>
+          </div>
+
+          <p v-if="recentGitCommits.length === 0" class="empty-text">
+            표시할 Git Commit이 없습니다.
+          </p>
+
+          <ul v-else class="item-list">
+            <li
+              v-for="commit in recentGitCommits"
+              :key="commit.commitId"
+              class="item-card vertical"
+            >
+              <strong>{{ commit.commitMessage }}</strong>
+              <p>
+                {{ commit.commitHash }} · {{ commit.authorName }} ·
+                {{ formatDate(commit.pushedAt) }}
+              </p>
+            </li>
+          </ul>
+        </article>
+
+        <article class="panel">
+          <div class="panel-header">
+            <h2>최근 문서</h2>
+            <span>{{ recentDocuments.length }}건</span>
+          </div>
+
+          <p v-if="recentDocuments.length === 0" class="empty-text">
+            표시할 문서가 없습니다.
+          </p>
+
+          <ul v-else class="item-list">
+            <li
+              v-for="document in recentDocuments"
+              :key="document.documentId"
+              class="item-card vertical"
+            >
+              <strong>{{ document.title }}</strong>
+              <p>
+                {{ document.sourceName }} · {{ formatDate(document.createdAt) }}
+              </p>
+            </li>
+          </ul>
+        </article>
+      </section>
+    </template>
+
+    <section v-else class="state-box">
+      표시할 대시보드 데이터가 없습니다.
     </section>
   </main>
 </template>
@@ -292,9 +344,38 @@ const getStatusLabel = (status: string) => {
   cursor: pointer;
 }
 
+.state-box {
+  margin-top: 24px;
+  padding: 24px;
+  border-radius: 18px;
+  background: white;
+  color: #667085;
+  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
+}
+
+.state-box.error {
+  color: #d92d20;
+  border: 1px solid #ffd6d6;
+}
+
+.state-box p {
+  margin: 8px 0 0;
+}
+
+.retry-button {
+  margin-top: 16px;
+  border: 0;
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: #d92d20;
+  color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 16px;
   margin-top: 24px;
 }
@@ -362,6 +443,12 @@ const getStatusLabel = (status: string) => {
   font-size: 14px;
 }
 
+.empty-text {
+  margin: 0;
+  color: #8a94a6;
+  font-size: 14px;
+}
+
 .item-list {
   display: flex;
   flex-direction: column;
@@ -411,6 +498,12 @@ const getStatusLabel = (status: string) => {
 .status-badge.danger {
   background: #fff0f0;
   color: #d92d20;
+}
+
+@media (max-width: 1400px) {
+  .summary-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 1200px) {
