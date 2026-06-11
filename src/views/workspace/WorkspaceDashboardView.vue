@@ -23,6 +23,9 @@ const errorMessage = ref('')
 const summary = ref<WorkspaceDashboardSummary | null>(null)
 const detail = ref<WorkspaceDashboardDetail | null>(null)
 
+const isAiSummaryVisible = ref(false)
+const aiSummaryText = ref('')
+
 const summaryItems = computed<SummaryItem[]>(() => {
   if (!summary.value) {
     return []
@@ -90,6 +93,8 @@ const hasDashboardData = computed(() => {
 const fetchDashboardData = async () => {
   isLoading.value = true
   errorMessage.value = ''
+  isAiSummaryVisible.value = false
+  aiSummaryText.value = ''
 
   try {
     const dashboardData =
@@ -128,6 +133,44 @@ const formatDate = (value: string | null) => {
   return value.replace('T', ' ').slice(0, 16)
 }
 
+const buildAiSummary = () => {
+  if (!summary.value || !detail.value) {
+    return '아직 요약할 대시보드 데이터가 없습니다.'
+  }
+
+  const workspaceName = summary.value.workspaceName
+  const totalTaskCount = summary.value.totalTaskCount
+  const doneTaskCount = summary.value.doneTaskCount
+  const delayedTaskCount = summary.value.delayedTaskCount
+  const inProgressTaskCount = summary.value.inProgressTaskCount
+  const progressRate = summary.value.progressRate
+  const recentCommitCount = detail.value.recentGitCommits.length
+  const recentDocumentCount = detail.value.recentDocuments.length
+
+  const riskMessage =
+    delayedTaskCount > 0
+      ? `현재 지연 업무가 ${delayedTaskCount}건 존재하므로, 지연 업무를 우선 확인할 필요가 있습니다.`
+      : '현재 지연 업무가 없어 일정 리스크는 낮은 상태입니다.'
+
+  const progressMessage =
+    progressRate >= 70
+      ? '전체 완료율이 높은 편이므로 마무리 작업과 품질 검토 중심으로 관리하면 좋습니다.'
+      : progressRate >= 40
+        ? '전체 완료율은 중간 수준이므로 진행 중 업무의 병목 여부를 확인하는 것이 좋습니다.'
+        : '전체 완료율이 낮은 편이므로 핵심 업무의 우선순위 재정리가 필요합니다.'
+
+  return `${workspaceName} 워크스페이스에는 총 ${totalTaskCount}개의 업무가 등록되어 있으며, 이 중 ${doneTaskCount}건이 완료되고 ${inProgressTaskCount}건이 진행 중입니다. 현재 완료율은 ${progressRate}%입니다. ${riskMessage} 최근 Git Commit은 ${recentCommitCount}건, 최근 문서는 ${recentDocumentCount}건 확인되었습니다. ${progressMessage}`
+}
+
+const handleAiSummaryRequest = () => {
+  aiSummaryText.value = buildAiSummary()
+  isAiSummaryVisible.value = true
+}
+
+const closeAiSummary = () => {
+  isAiSummaryVisible.value = false
+}
+
 onMounted(() => {
   void fetchDashboardData()
 })
@@ -146,7 +189,12 @@ onMounted(() => {
           </p>
         </div>
 
-        <button class="primary-button" type="button">
+        <button
+          class="primary-button"
+          type="button"
+          :disabled="!hasDashboardData"
+          @click="handleAiSummaryRequest"
+        >
           AI에게 현재 상태 요약 요청
         </button>
       </section>
@@ -164,6 +212,31 @@ onMounted(() => {
       </section>
 
       <template v-else-if="hasDashboardData">
+        <section
+          v-if="isAiSummaryVisible"
+          class="ai-summary-panel"
+          aria-label="AI dashboard summary"
+        >
+          <div class="ai-summary-header">
+            <div>
+              <p class="eyebrow dark">AI Summary</p>
+              <h2>현재 워크스페이스 상태 요약</h2>
+            </div>
+
+            <button class="close-button" type="button" @click="closeAiSummary">
+              닫기
+            </button>
+          </div>
+
+          <p class="ai-summary-text">{{ aiSummaryText }}</p>
+
+          <p class="ai-summary-note">
+            현재 요약은 실제 Dashboard API 데이터를 기반으로 프론트에서 생성한
+            1차 rule-based 요약입니다. 추후 AI Engine API와 연결하면 동일한
+            영역에서 실제 AI 응답을 표시할 수 있습니다.
+          </p>
+        </section>
+
         <section class="summary-grid" aria-label="dashboard summary">
           <article
             v-for="item in summaryItems"
@@ -200,9 +273,9 @@ onMounted(() => {
                     {{ formatDate(task.dueDate) }}
                   </p>
                 </div>
-                <span class="status-badge">{{
-                  getStatusLabel(task.status)
-                }}</span>
+                <span class="status-badge">
+                  {{ getStatusLabel(task.status) }}
+                </span>
               </li>
             </ul>
           </article>
@@ -323,6 +396,11 @@ onMounted(() => {
   opacity: 0.78;
 }
 
+.eyebrow.dark {
+  color: #667085;
+  opacity: 1;
+}
+
 .dashboard-hero h1 {
   margin: 0;
   font-size: 32px;
@@ -345,6 +423,11 @@ onMounted(() => {
   color: #263b70;
   font-weight: 700;
   cursor: pointer;
+}
+
+.primary-button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .state-box {
@@ -372,6 +455,51 @@ onMounted(() => {
   padding: 10px 14px;
   background: #d92d20;
   color: white;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ai-summary-panel {
+  margin-top: 24px;
+  padding: 24px;
+  border: 1px solid #d7e3ff;
+  border-radius: 22px;
+  background: #ffffff;
+  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
+}
+
+.ai-summary-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ai-summary-header h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 20px;
+}
+
+.ai-summary-text {
+  margin: 18px 0 0;
+  color: #344054;
+  line-height: 1.7;
+}
+
+.ai-summary-note {
+  margin: 14px 0 0;
+  color: #8a94a6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.close-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #f2f4f7;
+  color: #475467;
   font-weight: 700;
   cursor: pointer;
 }
@@ -520,7 +648,8 @@ onMounted(() => {
     padding: 24px;
   }
 
-  .dashboard-hero {
+  .dashboard-hero,
+  .ai-summary-header {
     flex-direction: column;
   }
 
