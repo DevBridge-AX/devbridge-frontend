@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboardService } from '@/services/dashboardService'
 import type {
   WorkspaceDashboardSummary,
@@ -133,168 +134,170 @@ onMounted(() => {
 </script>
 
 <template>
-  <main class="dashboard-page">
-    <section class="dashboard-hero">
-      <div>
-        <p class="eyebrow">Workspace Dashboard</p>
-        <h1>{{ summary?.workspaceName ?? 'DevBridge AX 대시보드' }}</h1>
-        <p class="hero-description">
-          워크스페이스의 업무 진행 현황, 지연 업무, Git 변경사항, 문서
-          업데이트를 한눈에 확인합니다.
-        </p>
-      </div>
+  <AppLayout>
+    <div class="dashboard-page">
+      <section class="dashboard-hero">
+        <div>
+          <p class="eyebrow">Workspace Dashboard</p>
+          <h1>{{ summary?.workspaceName ?? 'DevBridge AX 대시보드' }}</h1>
+          <p class="hero-description">
+            워크스페이스의 업무 진행 현황, 지연 업무, Git 변경사항, 문서
+            업데이트를 한눈에 확인합니다.
+          </p>
+        </div>
 
-      <button class="primary-button" type="button">
-        AI에게 현재 상태 요약 요청
-      </button>
-    </section>
-
-    <section v-if="isLoading" class="state-box">
-      대시보드 데이터를 불러오는 중입니다.
-    </section>
-
-    <section v-else-if="errorMessage" class="state-box error">
-      <strong>데이터 조회 실패</strong>
-      <p>{{ errorMessage }}</p>
-      <button class="retry-button" type="button" @click="fetchDashboardData">
-        다시 시도
-      </button>
-    </section>
-
-    <template v-else-if="hasDashboardData">
-      <section class="summary-grid" aria-label="dashboard summary">
-        <article
-          v-for="item in summaryItems"
-          :key="item.label"
-          class="summary-card"
-        >
-          <p class="summary-label">{{ item.label }}</p>
-          <strong class="summary-value">{{ item.value }}</strong>
-          <span class="summary-description">{{ item.description }}</span>
-        </article>
+        <button class="primary-button" type="button">
+          AI에게 현재 상태 요약 요청
+        </button>
       </section>
 
-      <section class="dashboard-content">
-        <article class="panel">
-          <div class="panel-header">
-            <h2>최근 업무</h2>
-            <span>{{ recentTasks.length }}건</span>
-          </div>
-
-          <p v-if="recentTasks.length === 0" class="empty-text">
-            표시할 최근 업무가 없습니다.
-          </p>
-
-          <ul v-else class="item-list">
-            <li
-              v-for="task in recentTasks"
-              :key="task.taskId"
-              class="item-card"
-            >
-              <div>
-                <strong>{{ task.title }}</strong>
-                <p>
-                  담당자 {{ task.assigneeName }} · 마감
-                  {{ formatDate(task.dueDate) }}
-                </p>
-              </div>
-              <span class="status-badge">{{
-                getStatusLabel(task.status)
-              }}</span>
-            </li>
-          </ul>
-        </article>
-
-        <article class="panel danger-panel">
-          <div class="panel-header">
-            <h2>지연 업무</h2>
-            <span>{{ delayedTasks.length }}건</span>
-          </div>
-
-          <p v-if="delayedTasks.length === 0" class="empty-text">
-            지연된 업무가 없습니다.
-          </p>
-
-          <ul v-else class="item-list">
-            <li
-              v-for="task in delayedTasks"
-              :key="task.taskId"
-              class="item-card"
-            >
-              <div>
-                <strong>{{ task.title }}</strong>
-                <p>
-                  담당자 {{ task.assigneeName }} · 마감
-                  {{ formatDate(task.dueDate) }}
-                </p>
-              </div>
-              <span class="status-badge danger">
-                {{ getStatusLabel(task.status) }}
-              </span>
-            </li>
-          </ul>
-        </article>
-
-        <article class="panel">
-          <div class="panel-header">
-            <h2>최근 Git Commit</h2>
-            <span>{{ recentGitCommits.length }}건</span>
-          </div>
-
-          <p v-if="recentGitCommits.length === 0" class="empty-text">
-            표시할 Git Commit이 없습니다.
-          </p>
-
-          <ul v-else class="item-list">
-            <li
-              v-for="commit in recentGitCommits"
-              :key="commit.commitId"
-              class="item-card vertical"
-            >
-              <strong>{{ commit.commitMessage }}</strong>
-              <p>
-                {{ commit.commitHash }} · {{ commit.authorName }} ·
-                {{ formatDate(commit.pushedAt) }}
-              </p>
-            </li>
-          </ul>
-        </article>
-
-        <article class="panel">
-          <div class="panel-header">
-            <h2>최근 문서</h2>
-            <span>{{ recentDocuments.length }}건</span>
-          </div>
-
-          <p v-if="recentDocuments.length === 0" class="empty-text">
-            표시할 문서가 없습니다.
-          </p>
-
-          <ul v-else class="item-list">
-            <li
-              v-for="document in recentDocuments"
-              :key="document.documentId"
-              class="item-card vertical"
-            >
-              <strong>{{ document.title }}</strong>
-              <p>
-                {{ document.sourceName }} · {{ formatDate(document.createdAt) }}
-              </p>
-            </li>
-          </ul>
-        </article>
+      <section v-if="isLoading" class="state-box">
+        대시보드 데이터를 불러오는 중입니다.
       </section>
-    </template>
 
-    <section v-else class="state-box">
-      표시할 대시보드 데이터가 없습니다.
-    </section>
-  </main>
+      <section v-else-if="errorMessage" class="state-box error">
+        <strong>데이터 조회 실패</strong>
+        <p>{{ errorMessage }}</p>
+        <button class="retry-button" type="button" @click="fetchDashboardData">
+          다시 시도
+        </button>
+      </section>
+
+      <template v-else-if="hasDashboardData">
+        <section class="summary-grid" aria-label="dashboard summary">
+          <article
+            v-for="item in summaryItems"
+            :key="item.label"
+            class="summary-card"
+          >
+            <p class="summary-label">{{ item.label }}</p>
+            <strong class="summary-value">{{ item.value }}</strong>
+            <span class="summary-description">{{ item.description }}</span>
+          </article>
+        </section>
+
+        <section class="dashboard-content">
+          <article class="panel">
+            <div class="panel-header">
+              <h2>최근 업무</h2>
+              <span>{{ recentTasks.length }}건</span>
+            </div>
+
+            <p v-if="recentTasks.length === 0" class="empty-text">
+              표시할 최근 업무가 없습니다.
+            </p>
+
+            <ul v-else class="item-list">
+              <li
+                v-for="task in recentTasks"
+                :key="task.taskId"
+                class="item-card"
+              >
+                <div>
+                  <strong>{{ task.title }}</strong>
+                  <p>
+                    담당자 {{ task.assigneeName }} · 마감
+                    {{ formatDate(task.dueDate) }}
+                  </p>
+                </div>
+                <span class="status-badge">{{
+                  getStatusLabel(task.status)
+                }}</span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="panel danger-panel">
+            <div class="panel-header">
+              <h2>지연 업무</h2>
+              <span>{{ delayedTasks.length }}건</span>
+            </div>
+
+            <p v-if="delayedTasks.length === 0" class="empty-text">
+              지연된 업무가 없습니다.
+            </p>
+
+            <ul v-else class="item-list">
+              <li
+                v-for="task in delayedTasks"
+                :key="task.taskId"
+                class="item-card"
+              >
+                <div>
+                  <strong>{{ task.title }}</strong>
+                  <p>
+                    담당자 {{ task.assigneeName }} · 마감
+                    {{ formatDate(task.dueDate) }}
+                  </p>
+                </div>
+                <span class="status-badge danger">
+                  {{ getStatusLabel(task.status) }}
+                </span>
+              </li>
+            </ul>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <h2>최근 Git Commit</h2>
+              <span>{{ recentGitCommits.length }}건</span>
+            </div>
+
+            <p v-if="recentGitCommits.length === 0" class="empty-text">
+              표시할 Git Commit이 없습니다.
+            </p>
+
+            <ul v-else class="item-list">
+              <li
+                v-for="commit in recentGitCommits"
+                :key="commit.commitId"
+                class="item-card vertical"
+              >
+                <strong>{{ commit.commitMessage }}</strong>
+                <p>
+                  {{ commit.commitHash }} · {{ commit.authorName }} ·
+                  {{ formatDate(commit.pushedAt) }}
+                </p>
+              </li>
+            </ul>
+          </article>
+
+          <article class="panel">
+            <div class="panel-header">
+              <h2>최근 문서</h2>
+              <span>{{ recentDocuments.length }}건</span>
+            </div>
+
+            <p v-if="recentDocuments.length === 0" class="empty-text">
+              표시할 문서가 없습니다.
+            </p>
+
+            <ul v-else class="item-list">
+              <li
+                v-for="document in recentDocuments"
+                :key="document.documentId"
+                class="item-card vertical"
+              >
+                <strong>{{ document.title }}</strong>
+                <p>
+                  {{ document.sourceName }} ·
+                  {{ formatDate(document.createdAt) }}
+                </p>
+              </li>
+            </ul>
+          </article>
+        </section>
+      </template>
+
+      <section v-else class="state-box">
+        표시할 대시보드 데이터가 없습니다.
+      </section>
+    </div>
+  </AppLayout>
 </template>
 
 <style scoped>
 .dashboard-page {
-  min-height: 100vh;
   padding: 40px;
   background: #f5f7fb;
   color: #172033;
