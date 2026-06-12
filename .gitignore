@@ -130,6 +130,8 @@ dist
 
 # Agentic Files
 .agents/*
+.claude/*
+CLAUDE.md
 
 # yarn v3
 .pnp.*
