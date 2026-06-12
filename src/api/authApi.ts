@@ -21,6 +21,7 @@ export interface SigninRequest {
 export interface SigninResponse {
   accessToken: string
   tokenType: string
+  lastWorkspaceId: string | null
 }
 
 export interface SendEmailAuthCodeRequest {
@@ -68,9 +69,7 @@ export const authApi = {
    * 로그아웃 처리합니다. (서버 세션 무효화)
    */
   logout(): Promise<void> {
-    return axiosClient
-      .post<void>('/api/auth/logout')
-      .then(() => undefined)
+    return axiosClient.post<void>('/api/auth/logout').then(() => undefined)
   },
 
   /**
