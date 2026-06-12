@@ -1,13 +1,13 @@
 <template>
   <header class="app-header">
     <div class="header-inner">
-      <RouterLink class="brand" to="/workspace/dashboard">
+      <RouterLink class="brand" to="/workspace">
         <strong>DevBridge AX</strong>
         <span>Project Intelligence Platform</span>
       </RouterLink>
 
       <nav class="nav-menu" aria-label="main navigation">
-        <RouterLink to="/workspace/dashboard">Dashboard</RouterLink>
+        <RouterLink to="/workspace">Dashboard</RouterLink>
         <RouterLink to="/workspace">Workspace</RouterLink>
         <RouterLink to="/settings/profile">Profile</RouterLink>
       </nav>

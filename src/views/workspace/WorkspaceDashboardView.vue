@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboardService } from '@/services/dashboardService'
 import type {
@@ -16,7 +17,12 @@ type SummaryItem = {
   description: string
 }
 
-const TEMP_WORKSPACE_ID = 'ws001'
+const route = useRoute()
+
+const workspaceId = computed(() => {
+  const value = route.params.workspaceId
+  return Array.isArray(value) ? value[0] : value
+})
 
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -97,8 +103,14 @@ const fetchDashboardData = async () => {
   aiSummaryText.value = ''
 
   try {
-    const dashboardData =
-      await dashboardService.getDashboardData(TEMP_WORKSPACE_ID)
+    if (!workspaceId.value) {
+      errorMessage.value = '워크스페이스 정보가 없습니다.'
+      return
+    }
+
+    const dashboardData = await dashboardService.getDashboardData(
+      workspaceId.value,
+    )
 
     summary.value = dashboardData.summary
     detail.value = dashboardData.detail

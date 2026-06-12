@@ -34,9 +34,10 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/workspace/dashboard',
+      path: '/workspaces/:workspaceId/dashboard',
       name: 'workspace-dashboard',
       component: () => import('@/views/workspace/WorkspaceDashboardView.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/settings/profile',
