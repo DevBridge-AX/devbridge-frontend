@@ -1,9 +1,231 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { scheduleService } from '@/services/scheduleService'
+import type { MeetingSummaryResponse, ConfirmedScheduleResponse } from '@/api/scheduleApi'
+import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
+import MeetingList from '@/components/domain/schedule/MeetingList.vue'
+
+// ─── 데이터 상태 ────────────────────────────────────────────────────────────
+const meetings = ref<MeetingSummaryResponse[]>([])
+const confirmedSchedules = ref<ConfirmedScheduleResponse[]>([])
+
+const isLoadingMeetings = ref(true)
+const isLoadingSchedules = ref(true)
+const meetingsError = ref('')
+const schedulesError = ref('')
+
+// ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
+function formatDate(date: Date): string {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+function getCurrentMonthRange(): { startDate: string; endDate: string } {
+  const now = new Date()
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
+  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return { startDate: formatDate(firstDay), endDate: formatDate(lastDay) }
+}
+
+// ─── 마운트 시 데이터 로드 ──────────────────────────────────────────────────
+onMounted(async () => {
+  const { startDate, endDate } = getCurrentMonthRange()
+
+  const [meetingsResult, schedulesResult] = await Promise.allSettled([
+    scheduleService.fetchMeetings(),
+    scheduleService.fetchConfirmedSchedules(startDate, endDate),
+  ])
+
+  if (meetingsResult.status === 'fulfilled') {
+    meetings.value = meetingsResult.value
+  } else {
+    meetingsError.value =
+      meetingsResult.reason instanceof Error ? meetingsResult.reason.message : '회의 목록을 불러오지 못했습니다.'
+  }
+  isLoadingMeetings.value = false
+
+  if (schedulesResult.status === 'fulfilled') {
+    confirmedSchedules.value = schedulesResult.value
+  } else {
+    schedulesError.value =
+      schedulesResult.reason instanceof Error ? schedulesResult.reason.message : '확정 일정을 불러오지 못했습니다.'
+  }
+  isLoadingSchedules.value = false
+})
+
+// ─── 이벤트 핸들러 (추후 연결 예정) ──────────────────────────────────────────
+function handleSelectMeeting(meetingId: string): void {
+  // TODO: 회의 상세 화면/모달 연결
+}
+
+function handleOpenResponse(meetingId: string): void {
+  // TODO: 가능 시간 응답 모달 연결
+}
+
+function handleCalendarSelectMeeting(meetingId: string): void {
+  // TODO: 회의 상세 화면/모달 연결
+}
 </script>
 
 <template>
-  <div></div>
+  <div class="schedule-view">
+    <!-- ── Header ───────────────────────────────────────────────── -->
+    <header class="schedule-header">
+      <h1 class="schedule-title">회의 일정</h1>
+      <button type="button" class="create-btn">+ 회의 생성</button>
+    </header>
+
+    <!-- ── Body ─────────────────────────────────────────────────── -->
+    <div class="schedule-body">
+      <section class="schedule-panel schedule-panel--calendar">
+        <div v-if="isLoadingSchedules" class="panel-loading">
+          <span class="spinner" />
+          <p>확정 일정을 불러오는 중...</p>
+        </div>
+        <p v-else-if="schedulesError" class="panel-error">{{ schedulesError }}</p>
+        <MeetingCalendar
+          v-else
+          :confirmed-schedules="confirmedSchedules"
+          @select-meeting="handleCalendarSelectMeeting"
+        />
+      </section>
+
+      <section class="schedule-panel schedule-panel--list">
+        <div v-if="isLoadingMeetings" class="panel-loading">
+          <span class="spinner" />
+          <p>회의 목록을 불러오는 중...</p>
+        </div>
+        <p v-else-if="meetingsError" class="panel-error">{{ meetingsError }}</p>
+        <MeetingList
+          v-else
+          :meetings="meetings"
+          @select-meeting="handleSelectMeeting"
+          @open-response="handleOpenResponse"
+        />
+      </section>
+    </div>
+
+    <!-- ── Footer ───────────────────────────────────────────────── -->
+    <footer class="schedule-footer" />
+  </div>
 </template>
 
 <style scoped>
+.schedule-view {
+  min-height: 100vh;
+  background: #0d0d12;
+  padding: 48px 24px 80px;
+  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* ── 헤더 ──────────────────────────────────────────────────────────── */
+.schedule-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.schedule-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #f0eeff;
+  margin: 0;
+  letter-spacing: -0.3px;
+}
+
+.create-btn {
+  height: 40px;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 6px 20px rgba(164, 147, 232, 0.28);
+  transition: opacity 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+}
+.create-btn:hover {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(164, 147, 232, 0.38);
+}
+
+/* ── 본문 (2단 구성) ───────────────────────────────────────────────── */
+.schedule-body {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.schedule-panel {
+  background: rgba(255, 255, 255, 0.035);
+  border: 1px solid rgba(164, 147, 232, 0.15);
+  border-radius: 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 24px;
+  box-shadow:
+    0 0 0 1px rgba(164, 147, 232, 0.07),
+    0 24px 64px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 로드/에러 상태 ─────────────────────────────────────────────────── */
+.panel-loading,
+.panel-error {
+  text-align: center;
+  padding: 48px 20px;
+  font-size: 13px;
+  color: rgba(164, 147, 232, 0.55);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.panel-error {
+  color: #f56565;
+}
+
+.spinner {
+  display: inline-block;
+  width: 28px;
+  height: 28px;
+  border: 2px solid rgba(164, 147, 232, 0.25);
+  border-top-color: #a493e8;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── 푸터 ──────────────────────────────────────────────────────────── */
+.schedule-footer {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+  min-height: 40px;
+}
+
+/* ── 반응형 ────────────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .schedule-body {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
