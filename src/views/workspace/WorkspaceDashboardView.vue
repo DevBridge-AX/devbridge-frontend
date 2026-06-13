@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboardService } from '@/services/dashboardService'
 import type {
@@ -18,6 +18,7 @@ type SummaryItem = {
 }
 
 const route = useRoute()
+const router = useRouter()
 
 const workspaceId = computed(() => {
   const value = route.params.workspaceId
@@ -183,6 +184,17 @@ const closeAiSummary = () => {
   isAiSummaryVisible.value = false
 }
 
+const goToTasks = (status?: string) => {
+  if (!workspaceId.value) {
+    return
+  }
+
+  router.push({
+    path: `/workspaces/${workspaceId.value}/tasks`,
+    query: status ? { status } : undefined,
+  })
+}
+
 onMounted(() => {
   void fetchDashboardData()
 })
@@ -265,7 +277,12 @@ onMounted(() => {
           <article class="panel">
             <div class="panel-header">
               <h2>최근 업무</h2>
-              <span>{{ recentTasks.length }}건</span>
+              <div class="panel-actions">
+                <span>{{ recentTasks.length }}건</span>
+                <button type="button" class="text-button" @click="goToTasks()">
+                  전체 보기
+                </button>
+              </div>
             </div>
 
             <p v-if="recentTasks.length === 0" class="empty-text">
@@ -276,7 +293,8 @@ onMounted(() => {
               <li
                 v-for="task in recentTasks"
                 :key="task.taskId"
-                class="item-card"
+                class="item-card clickable"
+                @click="goToTasks(task.status)"
               >
                 <div>
                   <strong>{{ task.title }}</strong>
@@ -295,7 +313,16 @@ onMounted(() => {
           <article class="panel danger-panel">
             <div class="panel-header">
               <h2>지연 업무</h2>
-              <span>{{ delayedTasks.length }}건</span>
+              <div class="panel-actions">
+                <span>{{ delayedTasks.length }}건</span>
+                <button
+                  type="button"
+                  class="text-button danger"
+                  @click="goToTasks('OVERDUE')"
+                >
+                  지연 업무 보기
+                </button>
+              </div>
             </div>
 
             <p v-if="delayedTasks.length === 0" class="empty-text">
@@ -306,7 +333,8 @@ onMounted(() => {
               <li
                 v-for="task in delayedTasks"
                 :key="task.taskId"
-                class="item-card"
+                class="item-card clickable"
+                @click="goToTasks('OVERDUE')"
               >
                 <div>
                   <strong>{{ task.title }}</strong>
@@ -386,6 +414,42 @@ onMounted(() => {
   padding: 40px;
   background: #f5f7fb;
   color: #172033;
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.text-button {
+  border: 0;
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: #eef4ff;
+  color: #2d5fd5;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.text-button.danger {
+  background: #fff0f0;
+  color: #d92d20;
+}
+
+.item-card.clickable {
+  cursor: pointer;
+  transition:
+    transform 0.16s ease,
+    background 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.item-card.clickable:hover {
+  transform: translateY(-1px);
+  background: #eef4ff;
+  box-shadow: 0 10px 24px rgba(23, 32, 51, 0.08);
 }
 
 .dashboard-hero {

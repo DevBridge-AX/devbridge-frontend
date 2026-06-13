@@ -40,6 +40,12 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/workspaces/:workspaceId/tasks',
+      name: 'workspace-tasks',
+      component: () => import('@/views/task/TaskListView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/settings/profile',
       name: 'settings-profile',
       component: () => import('@/views/settings/ProfileView.vue'),
