@@ -6,10 +6,12 @@ import type {
   ConfirmedScheduleResponse,
   WorkspaceMemberResponse,
   CreatedMeetingPayload,
+  TimeSlot,
 } from '@/api/scheduleApi'
 import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
 import MeetingList from '@/components/domain/schedule/MeetingList.vue'
 import MeetingCreateModal from '@/components/domain/schedule/MeetingCreateModal.vue'
+import MeetingResponseModal from '@/components/domain/schedule/MeetingResponseModal.vue'
 
 // ─── 데이터 상태 ────────────────────────────────────────────────────────────
 const meetings = ref<MeetingSummaryResponse[]>([])
@@ -25,6 +27,12 @@ const createModalOpen = ref(false)
 const memberSearchResults = ref<WorkspaceMemberResponse[]>([])
 const isCreatingMeeting = ref(false)
 const createMeetingError = ref('')
+
+// ─── 가능 시간 응답 모달 상태 ────────────────────────────────────────────────
+const responseModalOpen = ref(false)
+const responseModalMeetingId = ref('')
+const isSubmittingResponse = ref(false)
+const submitResponseError = ref('')
 
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
 function formatDate(date: Date): string {
@@ -73,7 +81,9 @@ function handleSelectMeeting(meetingId: string): void {
 }
 
 function handleOpenResponse(meetingId: string): void {
-  // TODO: 가능 시간 응답 모달 연결
+  responseModalMeetingId.value = meetingId
+  submitResponseError.value = ''
+  responseModalOpen.value = true
 }
 
 function handleCalendarSelectMeeting(meetingId: string): void {
@@ -111,6 +121,28 @@ async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<voi
     createMeetingError.value = e instanceof Error ? e.message : '회의 생성에 실패했습니다.'
   } finally {
     isCreatingMeeting.value = false
+  }
+}
+
+// ─── 가능 시간 응답 제출 ─────────────────────────────────────────────────────
+async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
+  submitResponseError.value = ''
+  isSubmittingResponse.value = true
+
+  try {
+    await scheduleService.submitAvailableTimes(responseModalMeetingId.value, { availableTimes: times })
+
+    responseModalOpen.value = false
+
+    try {
+      meetings.value = await scheduleService.fetchMeetings()
+    } catch (e: unknown) {
+      meetingsError.value = e instanceof Error ? e.message : '회의 목록을 불러오지 못했습니다.'
+    }
+  } catch (e: unknown) {
+    submitResponseError.value = e instanceof Error ? e.message : '가능 시간 제출에 실패했습니다.'
+  } finally {
+    isSubmittingResponse.value = false
   }
 }
 </script>
@@ -165,6 +197,16 @@ async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<voi
       @close="createModalOpen = false"
       @search-members="handleSearchMembers"
       @created="handleMeetingCreated"
+    />
+
+    <!-- ── 가능 시간 응답 모달 ──────────────────────────────────────── -->
+    <MeetingResponseModal
+      :is-open="responseModalOpen"
+      :meeting-id="responseModalMeetingId"
+      :is-submitting="isSubmittingResponse"
+      :submit-error="submitResponseError"
+      @close="responseModalOpen = false"
+      @submit="handleSubmitAvailableTimes"
     />
   </div>
 </template>
