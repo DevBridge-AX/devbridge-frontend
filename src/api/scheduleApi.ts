@@ -76,6 +76,10 @@ export interface FetchMyMeetingsParams {
   status?: MeetingStatus
 }
 
+export interface ApiErrorResponse {
+  message?: string
+}
+
 // ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
 
 export const scheduleApi = {
