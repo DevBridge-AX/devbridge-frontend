@@ -1,9 +1,15 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { scheduleService } from '@/services/scheduleService'
-import type { MeetingSummaryResponse, ConfirmedScheduleResponse } from '@/api/scheduleApi'
+import type {
+  MeetingSummaryResponse,
+  ConfirmedScheduleResponse,
+  WorkspaceMemberResponse,
+  CreatedMeetingPayload,
+} from '@/api/scheduleApi'
 import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
 import MeetingList from '@/components/domain/schedule/MeetingList.vue'
+import MeetingCreateModal from '@/components/domain/schedule/MeetingCreateModal.vue'
 
 // ─── 데이터 상태 ────────────────────────────────────────────────────────────
 const meetings = ref<MeetingSummaryResponse[]>([])
@@ -13,6 +19,12 @@ const isLoadingMeetings = ref(true)
 const isLoadingSchedules = ref(true)
 const meetingsError = ref('')
 const schedulesError = ref('')
+
+// ─── 회의 생성 모달 상태 ─────────────────────────────────────────────────────
+const createModalOpen = ref(false)
+const memberSearchResults = ref<WorkspaceMemberResponse[]>([])
+const isCreatingMeeting = ref(false)
+const createMeetingError = ref('')
 
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
 function formatDate(date: Date): string {
@@ -67,6 +79,40 @@ function handleOpenResponse(meetingId: string): void {
 function handleCalendarSelectMeeting(meetingId: string): void {
   // TODO: 회의 상세 화면/모달 연결
 }
+
+function handleSearchMembers(keyword: string): void {
+  // TODO: 워크스페이스 멤버 검색 API(workspaceApi) 완성 후 연결
+}
+
+// ─── 회의 생성 ──────────────────────────────────────────────────────────────
+async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<void> {
+  createMeetingError.value = ''
+  isCreatingMeeting.value = true
+
+  try {
+    const { meetingId } = await scheduleService.createMeeting({
+      title: payload.title,
+      durationMinutes: payload.durationMinutes,
+      participantEmployeeIds: payload.participantEmployeeIds,
+    })
+
+    await scheduleService.submitAvailableTimes(meetingId, {
+      availableTimes: payload.availableTimes,
+    })
+
+    createModalOpen.value = false
+
+    try {
+      meetings.value = await scheduleService.fetchMeetings()
+    } catch (e: unknown) {
+      meetingsError.value = e instanceof Error ? e.message : '회의 목록을 불러오지 못했습니다.'
+    }
+  } catch (e: unknown) {
+    createMeetingError.value = e instanceof Error ? e.message : '회의 생성에 실패했습니다.'
+  } finally {
+    isCreatingMeeting.value = false
+  }
+}
 </script>
 
 <template>
@@ -74,7 +120,7 @@ function handleCalendarSelectMeeting(meetingId: string): void {
     <!-- ── Header ───────────────────────────────────────────────── -->
     <header class="schedule-header">
       <h1 class="schedule-title">회의 일정</h1>
-      <button type="button" class="create-btn">+ 회의 생성</button>
+      <button type="button" class="create-btn" @click="createModalOpen = true">+ 회의 생성</button>
     </header>
 
     <!-- ── Body ─────────────────────────────────────────────────── -->
@@ -109,6 +155,17 @@ function handleCalendarSelectMeeting(meetingId: string): void {
 
     <!-- ── Footer ───────────────────────────────────────────────── -->
     <footer class="schedule-footer" />
+
+    <!-- ── 회의 생성 모달 ───────────────────────────────────────────── -->
+    <MeetingCreateModal
+      :is-open="createModalOpen"
+      :member-search-results="memberSearchResults"
+      :is-submitting="isCreatingMeeting"
+      :submit-error="createMeetingError"
+      @close="createModalOpen = false"
+      @search-members="handleSearchMembers"
+      @created="handleMeetingCreated"
+    />
   </div>
 </template>
 
