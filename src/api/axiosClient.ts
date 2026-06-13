@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { WORKSPACE_ID_KEY, DUMMY_WORKSPACE_ID } from '@/state/workspaceStore'
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL as string,
@@ -18,6 +19,10 @@ axiosClient.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
+    // X-Workspace-Id 헤더 자동 삽입
+    // NOTE: 워크스페이스 기능 구현 전까지 DUMMY_WORKSPACE_ID로 대체 (workspaceStore 참고)
+    config.headers['X-Workspace-Id'] = localStorage.getItem(WORKSPACE_ID_KEY) ?? DUMMY_WORKSPACE_ID
 
     // ── 디버그 로그 (토큰 주입 확인용 — 배포 전 제거 예정) ──────────────
     console.log(
