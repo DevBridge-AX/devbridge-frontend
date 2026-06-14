@@ -1,3 +1,36 @@
+import axiosClient from './axiosClient'
+
+export interface Workspace {
+  id: string
+  name: string
+  description: string | null
+}
+
+export const workspaceApi = {
+  fetchMyWorkspaces(): Promise<Workspace[]> {
+    return axiosClient
+      .get<Workspace[]>('/api/workspaces')
+      .then((res) => res.data)
+  },
+
+  updateWorkspaceAccess(workspaceId: string): Promise<void> {
+    return axiosClient
+      .patch<void>(`/api/workspaces/${workspaceId}/access`)
+      .then(() => undefined)
+  },
+
+  searchMembers(keyword: string): Promise<WorkspaceMemberResponse[]> {
+    const trimmed = keyword.trim()
+    if (!trimmed) {
+      return Promise.resolve([])
+    }
+    const filtered = MOCK_MEMBERS.filter((member) =>
+      member.name.includes(trimmed)
+    )
+    return Promise.resolve(filtered)
+  },
+}
+
 export interface WorkspaceMemberResponse {
   userId: string
   employeeId: string
@@ -14,19 +47,3 @@ const MOCK_MEMBERS: WorkspaceMemberResponse[] = [
   { userId: '3', employeeId: 'EMP003', name: '최형수', department: '기획팀', position: '팀장' },
   { userId: '5', employeeId: 'EMP005', name: '김현수', department: '기획팀', position: '대리' },
 ]
-
-export const workspaceApi = {
-  /**
-   * 워크스페이스 멤버 검색 (Mock)
-   */
-  searchMembers(keyword: string): Promise<WorkspaceMemberResponse[]> {
-    const trimmed = keyword.trim()
-    if (!trimmed) {
-      return Promise.resolve([])
-    }
-    const filtered = MOCK_MEMBERS.filter((member) =>
-      member.name.includes(trimmed)
-    )
-    return Promise.resolve(filtered)
-  },
-}

@@ -20,14 +20,19 @@ async function handleLogin(): Promise<void> {
 
   isLoading.value = true
   loginStatus.value = 'idle'
+  errorMessage.value = ''
 
-  const success = await authService.executeLogin(
+  const loginResult = await authService.executeLogin(
     employeeId.value.trim(),
     password.value,
   )
 
-  if (success) {
-    await router.push('/workspace')
+  if (loginResult.success) {
+    if (loginResult.lastWorkspaceId) {
+      await router.push(`/workspaces/${loginResult.lastWorkspaceId}/dashboard`)
+    } else {
+      await router.push('/workspace')
+    }
   } else {
     loginStatus.value = 'error'
     errorMessage.value = '사번 또는 비밀번호가 일치하지 않습니다.'
@@ -62,7 +67,14 @@ async function handleLogin(): Promise<void> {
           <label class="field-label" for="employeeId">사번</label>
           <div class="input-wrapper">
             <span class="input-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <rect x="2" y="7" width="20" height="14" rx="2" />
                 <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
               </svg>
@@ -84,7 +96,14 @@ async function handleLogin(): Promise<void> {
           <label class="field-label" for="password">비밀번호</label>
           <div class="input-wrapper">
             <span class="input-icon">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
                 <rect x="3" y="11" width="18" height="11" rx="2" />
                 <path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
@@ -103,7 +122,14 @@ async function handleLogin(): Promise<void> {
 
         <!-- 에러 메시지 -->
         <div v-if="loginStatus === 'error'" class="error-banner">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+          >
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
@@ -125,7 +151,9 @@ async function handleLogin(): Promise<void> {
         <!-- 하단 링크 -->
         <div class="footer-links">
           <span class="footer-text">계정이 없으신가요?</span>
-          <RouterLink id="signup-link" to="/signup" class="signup-link">회원가입</RouterLink>
+          <RouterLink id="signup-link" to="/signup" class="signup-link"
+            >회원가입</RouterLink
+          >
         </div>
       </form>
     </div>
@@ -143,7 +171,12 @@ async function handleLogin(): Promise<void> {
   position: relative;
   overflow: hidden;
   padding: 24px 16px;
-  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family:
+    'Inter',
+    'Pretendard',
+    -apple-system,
+    BlinkMacSystemFont,
+    sans-serif;
 }
 
 /* 배경 장식 구체 */
@@ -159,7 +192,11 @@ async function handleLogin(): Promise<void> {
   height: 500px;
   top: -160px;
   right: -120px;
-  background: radial-gradient(circle, rgba(164, 147, 232, 0.22) 0%, transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(164, 147, 232, 0.22) 0%,
+    transparent 65%
+  );
   animation-delay: 0s;
 }
 .bg-orb--2 {
@@ -167,7 +204,11 @@ async function handleLogin(): Promise<void> {
   height: 400px;
   bottom: -100px;
   left: -100px;
-  background: radial-gradient(circle, rgba(100, 80, 200, 0.18) 0%, transparent 65%);
+  background: radial-gradient(
+    circle,
+    rgba(100, 80, 200, 0.18) 0%,
+    transparent 65%
+  );
   animation-delay: -3s;
 }
 .bg-orb--3 {
@@ -176,20 +217,34 @@ async function handleLogin(): Promise<void> {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: radial-gradient(circle, rgba(164, 147, 232, 0.06) 0%, transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(164, 147, 232, 0.06) 0%,
+    transparent 70%
+  );
   animation-delay: -6s;
 }
 @keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-20px); }
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-20px);
+  }
 }
 .bg-orb--3 {
   animation: float3 8s ease-in-out infinite;
   animation-delay: -6s;
 }
 @keyframes float3 {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); }
-  50% { transform: translate(-50%, calc(-50% - 12px)) scale(1.04); }
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  50% {
+    transform: translate(-50%, calc(-50% - 12px)) scale(1.04);
+  }
 }
 
 /* ── 카드 ──────────────────────────────────────────────────────────── */
@@ -241,8 +296,17 @@ async function handleLogin(): Promise<void> {
   animation: logo-pulse 3s ease-in-out infinite;
 }
 @keyframes logo-pulse {
-  0%, 100% { box-shadow: 0 8px 28px rgba(164, 147, 232, 0.38), 0 0 0 1px rgba(164, 147, 232, 0.2); }
-  50% { box-shadow: 0 8px 40px rgba(164, 147, 232, 0.55), 0 0 0 1px rgba(164, 147, 232, 0.35); }
+  0%,
+  100% {
+    box-shadow:
+      0 8px 28px rgba(164, 147, 232, 0.38),
+      0 0 0 1px rgba(164, 147, 232, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 8px 40px rgba(164, 147, 232, 0.55),
+      0 0 0 1px rgba(164, 147, 232, 0.35);
+  }
 }
 .logo-icon {
   font-size: 26px;
@@ -347,10 +411,23 @@ async function handleLogin(): Promise<void> {
   animation: shake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
 }
 @keyframes shake {
-  10%, 90% { transform: translateX(-2px); }
-  20%, 80% { transform: translateX(3px); }
-  30%, 50%, 70% { transform: translateX(-3px); }
-  40%, 60% { transform: translateX(3px); }
+  10%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  80% {
+    transform: translateX(3px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-3px);
+  }
+  40%,
+  60% {
+    transform: translateX(3px);
+  }
 }
 
 /* ── 제출 버튼 ─────────────────────────────────────────────────────── */
@@ -383,7 +460,11 @@ async function handleLogin(): Promise<void> {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 60%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.12) 0%,
+    transparent 60%
+  );
   pointer-events: none;
 }
 .submit-btn:hover:not(:disabled) {
@@ -449,7 +530,9 @@ async function handleLogin(): Promise<void> {
   animation: spin 0.65s linear infinite;
 }
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ── 반응형 ────────────────────────────────────────────────────────── */
