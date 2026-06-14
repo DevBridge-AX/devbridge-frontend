@@ -4,12 +4,20 @@ import { useAuthStore } from '@/state/authStore'
 // ─── Layer 3: 비즈니스 로직 (Service) ─────────────────────────────────────
 // authApi를 조합하여 View가 복잡한 흐름을 신경 쓰지 않도록 추상화합니다.
 
+export interface LoginResult {
+  success: boolean
+  lastWorkspaceId: string | null
+}
+
 /**
  * [Step 1] HR 직원 검증
  * 사원번호와 이름으로 HR 시스템에 등록된 직원인지 확인합니다.
  * @returns 검증 성공 여부 (true/false)
  */
-async function verifyEmployee(employeeId: string, name: string): Promise<boolean> {
+async function verifyEmployee(
+  employeeId: string,
+  name: string,
+): Promise<boolean> {
   try {
     const result = await authApi.verifyHr({ employeeId, name })
     return !!result
@@ -50,14 +58,26 @@ async function registerUser(
  * 로그인 처리: API 호출 후 authStore를 통해 토큰을 저장합니다.
  * @returns 로그인 성공 여부 (true / false)
  */
-async function executeLogin(employeeId: string, password: string): Promise<boolean> {
+
+async function executeLogin(
+  employeeId: string,
+  password: string,
+): Promise<LoginResult> {
   try {
     const response = await authApi.signin({ employeeId, password })
+
     const authStore = useAuthStore()
     authStore.setToken(response.accessToken)
-    return true
+
+    return {
+      success: true,
+      lastWorkspaceId: response.lastWorkspaceId,
+    }
   } catch {
-    return false
+    return {
+      success: false,
+      lastWorkspaceId: null,
+    }
   }
 }
 
