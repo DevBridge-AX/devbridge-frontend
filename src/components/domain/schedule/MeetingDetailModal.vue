@@ -13,6 +13,7 @@ defineProps<{
   isOpen: boolean
   meeting: MeetingDetailResponse | null
   isLoading: boolean
+  loadError?: string
 }>()
 
 const emit = defineEmits<{
@@ -116,6 +117,8 @@ function handleOpenResponse(meetingId: string): void {
         <span class="spinner spinner--lg" />
         <p>회의 정보를 불러오는 중...</p>
       </div>
+
+      <p v-else-if="loadError" class="status-message status-message--error">{{ loadError }}</p>
 
       <template v-else-if="meeting">
         <span class="status-badge" :class="STATUS_BADGE_CLASSES[meeting.status]">
@@ -304,6 +307,9 @@ function handleOpenResponse(meetingId: string): void {
   font-size: 13px;
   color: rgba(240, 238, 255, 0.65);
   margin: 0 0 16px;
+}
+.status-message--error {
+  color: #f56565;
 }
 .empty-state {
   font-size: 13px;

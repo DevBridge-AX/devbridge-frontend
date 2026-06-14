@@ -4,6 +4,7 @@ import { scheduleService } from '@/services/scheduleService'
 import type {
   MeetingSummaryResponse,
   ConfirmedScheduleResponse,
+  MeetingDetailResponse,
   WorkspaceMemberResponse,
   CreatedMeetingPayload,
   TimeSlot,
@@ -12,6 +13,7 @@ import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
 import MeetingList from '@/components/domain/schedule/MeetingList.vue'
 import MeetingCreateModal from '@/components/domain/schedule/MeetingCreateModal.vue'
 import MeetingResponseModal from '@/components/domain/schedule/MeetingResponseModal.vue'
+import MeetingDetailModal from '@/components/domain/schedule/MeetingDetailModal.vue'
 
 // ─── 데이터 상태 ────────────────────────────────────────────────────────────
 const meetings = ref<MeetingSummaryResponse[]>([])
@@ -34,6 +36,12 @@ const responseModalMeetingId = ref('')
 const isSubmittingResponse = ref(false)
 const submitResponseError = ref('')
 
+// ─── 회의 상세 모달 상태 ─────────────────────────────────────────────────────
+const detailModalOpen = ref(false)
+const selectedMeetingDetail = ref<MeetingDetailResponse | null>(null)
+const isLoadingDetail = ref(false)
+const detailLoadError = ref('')
+
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
 function formatDate(date: Date): string {
   const year = date.getFullYear()
@@ -47,6 +55,17 @@ function getCurrentMonthRange(): { startDate: string; endDate: string } {
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
   return { startDate: formatDate(firstDay), endDate: formatDate(lastDay) }
+}
+
+// ─── 확정 일정 새로고침 ─────────────────────────────────────────────────────
+async function refreshConfirmedSchedules(): Promise<void> {
+  const { startDate, endDate } = getCurrentMonthRange()
+
+  try {
+    confirmedSchedules.value = await scheduleService.fetchConfirmedSchedules(startDate, endDate)
+  } catch (e: unknown) {
+    schedulesError.value = e instanceof Error ? e.message : '확정 일정을 불러오지 못했습니다.'
+  }
 }
 
 // ─── 마운트 시 데이터 로드 ──────────────────────────────────────────────────
@@ -75,9 +94,9 @@ onMounted(async () => {
   isLoadingSchedules.value = false
 })
 
-// ─── 이벤트 핸들러 (추후 연결 예정) ──────────────────────────────────────────
+// ─── 이벤트 핸들러 ───────────────────────────────────────────────────────────
 function handleSelectMeeting(meetingId: string): void {
-  // TODO: 회의 상세 화면/모달 연결
+  openMeetingDetail(meetingId)
 }
 
 function handleOpenResponse(meetingId: string): void {
@@ -87,11 +106,32 @@ function handleOpenResponse(meetingId: string): void {
 }
 
 function handleCalendarSelectMeeting(meetingId: string): void {
-  // TODO: 회의 상세 화면/모달 연결
+  openMeetingDetail(meetingId)
 }
 
 function handleSearchMembers(keyword: string): void {
   // TODO: 워크스페이스 멤버 검색 API(workspaceApi) 완성 후 연결
+}
+
+// ─── 회의 상세 ──────────────────────────────────────────────────────────────
+async function openMeetingDetail(meetingId: string): Promise<void> {
+  detailModalOpen.value = true
+  selectedMeetingDetail.value = null
+  detailLoadError.value = ''
+  isLoadingDetail.value = true
+
+  try {
+    selectedMeetingDetail.value = await scheduleService.fetchMeetingDetail(meetingId)
+  } catch (e: unknown) {
+    detailLoadError.value = e instanceof Error ? e.message : '회의 상세 정보를 불러오지 못했습니다.'
+  } finally {
+    isLoadingDetail.value = false
+  }
+}
+
+function handleDetailOpenResponse(meetingId: string): void {
+  detailModalOpen.value = false
+  handleOpenResponse(meetingId)
 }
 
 // ─── 회의 생성 ──────────────────────────────────────────────────────────────
@@ -139,6 +179,8 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
     } catch (e: unknown) {
       meetingsError.value = e instanceof Error ? e.message : '회의 목록을 불러오지 못했습니다.'
     }
+
+    await refreshConfirmedSchedules()
   } catch (e: unknown) {
     submitResponseError.value = e instanceof Error ? e.message : '가능 시간 제출에 실패했습니다.'
   } finally {
@@ -207,6 +249,16 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
       :submit-error="submitResponseError"
       @close="responseModalOpen = false"
       @submit="handleSubmitAvailableTimes"
+    />
+
+    <!-- ── 회의 상세 모달 ───────────────────────────────────────────── -->
+    <MeetingDetailModal
+      :is-open="detailModalOpen"
+      :meeting="selectedMeetingDetail"
+      :is-loading="isLoadingDetail"
+      :load-error="detailLoadError"
+      @close="detailModalOpen = false"
+      @open-response="handleDetailOpenResponse"
     />
   </div>
 </template>
