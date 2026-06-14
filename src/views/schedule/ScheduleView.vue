@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { scheduleService } from '@/services/scheduleService'
+import { workspaceService } from '@/services/workspaceService'
 import type {
   MeetingSummaryResponse,
   ConfirmedScheduleResponse,
@@ -109,22 +110,8 @@ function handleCalendarSelectMeeting(meetingId: string): void {
   openMeetingDetail(meetingId)
 }
 
-function handleSearchMembers(keyword: string): void {
-  const mockMembers = [
-    { userId: '1', employeeId: 'EMP001', name: '김현수', department: '인사팀', position: '팀장' },
-    { userId: '2', employeeId: 'EMP002', name: '이원빈', department: '개발팀', position: '사원' },
-    { userId: '3', employeeId: 'EMP003', name: '최형수', department: '기획팀', position: '팀장' },
-    { userId: '5', employeeId: 'EMP005', name: '김현수', department: '기획팀', position: '대리' },
-  ]
-
-  const trimmed = keyword.trim()
-  if (!trimmed) {
-    memberSearchResults.value = []
-  } else {
-    memberSearchResults.value = mockMembers.filter((m) =>
-      m.name.includes(trimmed)
-    )
-  }
+async function handleSearchMembers(keyword: string): Promise<void> {
+  memberSearchResults.value = await workspaceService.searchMembers(keyword)
 }
 
 // ─── 회의 상세 ──────────────────────────────────────────────────────────────

@@ -80,17 +80,8 @@ export interface ApiErrorResponse {
   message?: string
 }
 
-// ─── 워크스페이스 멤버 (placeholder) ───────────────────────────────────────
-// NOTE: 워크스페이스 API 레이어(workspaceApi.ts)가 아직 없어 임시로 이곳에 정의.
-// WorkspaceService.java의 WorkspaceMemberResponse 빌더(userId/employeeId/name/department/position) 기준.
-// workspaceApi.ts 작성 시 해당 파일로 이동 필요.
-export interface WorkspaceMemberResponse {
-  userId: string
-  employeeId: string
-  name: string
-  department: string
-  position: string
-}
+// ─── 워크스페이스 멤버 ───────────────────────────────────────────────────
+export type { WorkspaceMemberResponse } from './workspaceApi'
 
 // ─── 회의 생성 모달 emit 페이로드 ──────────────────────────────────────────
 // NOTE: purpose/agenda/location은 CreateMeetingRequest에 없는 필드.
