@@ -110,7 +110,21 @@ function handleCalendarSelectMeeting(meetingId: string): void {
 }
 
 function handleSearchMembers(keyword: string): void {
-  // TODO: 워크스페이스 멤버 검색 API(workspaceApi) 완성 후 연결
+  const mockMembers = [
+    { userId: '1', employeeId: 'EMP001', name: '김현수', department: '인사팀', position: '팀장' },
+    { userId: '2', employeeId: 'EMP002', name: '이원빈', department: '개발팀', position: '사원' },
+    { userId: '3', employeeId: 'EMP003', name: '최형수', department: '기획팀', position: '팀장' },
+    { userId: '5', employeeId: 'EMP005', name: '김현수', department: '기획팀', position: '대리' },
+  ]
+
+  const trimmed = keyword.trim()
+  if (!trimmed) {
+    memberSearchResults.value = []
+  } else {
+    memberSearchResults.value = mockMembers.filter((m) =>
+      m.name.includes(trimmed)
+    )
+  }
 }
 
 // ─── 회의 상세 ──────────────────────────────────────────────────────────────
