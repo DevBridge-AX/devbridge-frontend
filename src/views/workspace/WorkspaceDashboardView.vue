@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { dashboardService } from '@/services/dashboardService'
@@ -198,6 +198,13 @@ const goToTasks = (status?: string) => {
 onMounted(() => {
   void fetchDashboardData()
 })
+
+watch(
+  () => workspaceId.value,
+  () => {
+    void fetchDashboardData()
+  },
+)
 </script>
 
 <template>

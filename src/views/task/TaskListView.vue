@@ -3,8 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { taskService } from '@/services/taskService'
 import type { Task } from '@/api/taskApi'
-import AppHeader from '@/components/common/AppHeader.vue'
-import AppFooter from '@/components/common/AppFooter.vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -183,242 +182,253 @@ watch(
     applyStatusQuery()
   },
 )
+
+watch(
+  () => workspaceId.value,
+  () => {
+    selectedTask.value = null
+    applyStatusQuery()
+    fetchTasks()
+  },
+)
 </script>
 
 <template>
-  <AppHeader />
-
-  <main class="page-shell">
-    <section class="task-page">
-      <header class="hero-section">
-        <div>
-          <p class="eyebrow">TASK</p>
-          <h1>업무 관리</h1>
-          <p class="description">
-            현재 Workspace에서 진행되는 업무를 확인하고, 담당자·마감일·진행
-            상태를 추적합니다.
-          </p>
-        </div>
-
-        <div class="header-actions">
-          <button type="button" class="secondary-button" @click="goToDashboard">
-            대시보드로 이동
-          </button>
-          <button type="button" class="primary-button" @click="fetchTasks">
-            새로고침
-          </button>
-        </div>
-      </header>
-
-      <section class="summary-grid">
-        <button
-          type="button"
-          class="summary-card"
-          :class="{ active: selectedStatus === 'ALL' }"
-          @click="setStatusFilter('ALL')"
-        >
-          <span>전체 업무</span>
-          <strong>{{ totalCount }}</strong>
-        </button>
-
-        <button
-          type="button"
-          class="summary-card"
-          :class="{ active: selectedStatus === 'ASSIGNED' }"
-          @click="setStatusFilter('ASSIGNED')"
-        >
-          <span>배정</span>
-          <strong>{{ assignedCount }}</strong>
-        </button>
-
-        <button
-          type="button"
-          class="summary-card"
-          :class="{ active: selectedStatus === 'IN_PROGRESS' }"
-          @click="setStatusFilter('IN_PROGRESS')"
-        >
-          <span>진행 중</span>
-          <strong>{{ inProgressCount }}</strong>
-        </button>
-
-        <button
-          type="button"
-          class="summary-card"
-          :class="{ active: selectedStatus === 'COMPLETED' }"
-          @click="setStatusFilter('COMPLETED')"
-        >
-          <span>완료</span>
-          <strong>{{ completedCount }}</strong>
-        </button>
-
-        <button
-          type="button"
-          class="summary-card warning"
-          :class="{ active: selectedStatus === 'OVERDUE' }"
-          @click="setStatusFilter('OVERDUE')"
-        >
-          <span>지연 가능</span>
-          <strong>{{ overdueCount }}</strong>
-        </button>
-      </section>
-
-      <section class="content-card">
-        <div class="content-header">
+  <AppLayout>
+    <main class="page-shell">
+      <section class="task-page">
+        <header class="hero-section">
           <div>
-            <h2>Task 목록</h2>
-            <p>
-              선택한 Workspace 기준으로 조회된 업무입니다. 항목을 클릭하면 상세
-              정보를 확인할 수 있습니다.
+            <p class="eyebrow">TASK</p>
+            <h1>업무 관리</h1>
+            <p class="description">
+              현재 Workspace에서 진행되는 업무를 확인하고, 담당자·마감일·진행
+              상태를 추적합니다.
             </p>
           </div>
 
-          <span class="count-badge"> {{ filteredTasks.length }}개 표시 </span>
-        </div>
-
-        <div v-if="isLoading" class="state-box">
-          업무 목록을 불러오는 중입니다.
-        </div>
-
-        <div v-else-if="errorMessage" class="state-box error">
-          {{ errorMessage }}
-        </div>
-
-        <div v-else-if="filteredTasks.length === 0" class="state-box">
-          조건에 맞는 업무가 없습니다.
-        </div>
-
-        <div v-else class="task-list">
-          <article
-            v-for="task in filteredTasks"
-            :key="task.id"
-            class="task-item"
-            :class="{ overdue: isOverdue(task) }"
-            role="button"
-            tabindex="0"
-            @click="openTaskDetail(task)"
-            @keydown.enter="openTaskDetail(task)"
-          >
-            <div class="task-main">
-              <div class="task-title-row">
-                <div>
-                  <h3>{{ task.title }}</h3>
-                  <p class="task-description">
-                    {{ task.description || '설명 없음' }}
-                  </p>
-                </div>
-
-                <div class="badge-group">
-                  <span v-if="isOverdue(task)" class="overdue-badge">
-                    지연 가능
-                  </span>
-                  <span
-                    class="status-badge"
-                    :class="getStatusClass(task.status)"
-                  >
-                    {{ getStatusLabel(task.status) }}
-                  </span>
-                </div>
-              </div>
-
-              <dl class="task-meta">
-                <div>
-                  <dt>요청자</dt>
-                  <dd>{{ task.requesterId }}</dd>
-                </div>
-                <div>
-                  <dt>담당자</dt>
-                  <dd>{{ task.assigneeId || '-' }}</dd>
-                </div>
-                <div>
-                  <dt>마감일</dt>
-                  <dd>{{ formatDate(task.dueDate) }}</dd>
-                </div>
-              </dl>
-            </div>
-          </article>
-        </div>
-      </section>
-    </section>
-  </main>
-
-  <Teleport to="body">
-    <div
-      v-if="selectedTask"
-      class="modal-backdrop"
-      @click.self="closeTaskDetail"
-    >
-      <section class="task-modal" role="dialog" aria-modal="true">
-        <header class="modal-header">
-          <div>
-            <p class="eyebrow">TASK DETAIL</p>
-            <h2>{{ selectedTask.title }}</h2>
+          <div class="header-actions">
+            <button
+              type="button"
+              class="secondary-button"
+              @click="goToDashboard"
+            >
+              대시보드로 이동
+            </button>
+            <button type="button" class="primary-button" @click="fetchTasks">
+              새로고침
+            </button>
           </div>
-
-          <button type="button" class="close-button" @click="closeTaskDetail">
-            닫기
-          </button>
         </header>
 
-        <div class="modal-status-row">
-          <span
-            class="status-badge"
-            :class="getStatusClass(selectedTask.status)"
-          >
-            {{ getStatusLabel(selectedTask.status) }}
-          </span>
-          <span v-if="isOverdue(selectedTask)" class="overdue-badge">
-            지연 가능
-          </span>
-        </div>
-
-        <p class="modal-description">
-          {{ selectedTask.description || '등록된 설명이 없습니다.' }}
-        </p>
-
-        <dl class="detail-grid">
-          <div>
-            <dt>Workspace ID</dt>
-            <dd>{{ selectedTask.workspaceId }}</dd>
-          </div>
-          <div>
-            <dt>Task ID</dt>
-            <dd>{{ selectedTask.id }}</dd>
-          </div>
-          <div>
-            <dt>요청자</dt>
-            <dd>{{ selectedTask.requesterId }}</dd>
-          </div>
-          <div>
-            <dt>담당자</dt>
-            <dd>{{ selectedTask.assigneeId || '-' }}</dd>
-          </div>
-          <div>
-            <dt>마감일</dt>
-            <dd>{{ formatDate(selectedTask.dueDate) }}</dd>
-          </div>
-          <div>
-            <dt>현재 상태</dt>
-            <dd>{{ getStatusLabel(selectedTask.status) }}</dd>
-          </div>
-        </dl>
-
-        <footer class="modal-footer">
+        <section class="summary-grid">
           <button
             type="button"
-            class="secondary-button"
-            @click="closeTaskDetail"
+            class="summary-card"
+            :class="{ active: selectedStatus === 'ALL' }"
+            @click="setStatusFilter('ALL')"
           >
-            닫기
+            <span>전체 업무</span>
+            <strong>{{ totalCount }}</strong>
           </button>
-          <button type="button" class="disabled-button" disabled>
-            상태 변경은 이후 단계에서 연결
-          </button>
-        </footer>
-      </section>
-    </div>
-  </Teleport>
 
-  <AppFooter />
+          <button
+            type="button"
+            class="summary-card"
+            :class="{ active: selectedStatus === 'ASSIGNED' }"
+            @click="setStatusFilter('ASSIGNED')"
+          >
+            <span>배정</span>
+            <strong>{{ assignedCount }}</strong>
+          </button>
+
+          <button
+            type="button"
+            class="summary-card"
+            :class="{ active: selectedStatus === 'IN_PROGRESS' }"
+            @click="setStatusFilter('IN_PROGRESS')"
+          >
+            <span>진행 중</span>
+            <strong>{{ inProgressCount }}</strong>
+          </button>
+
+          <button
+            type="button"
+            class="summary-card"
+            :class="{ active: selectedStatus === 'COMPLETED' }"
+            @click="setStatusFilter('COMPLETED')"
+          >
+            <span>완료</span>
+            <strong>{{ completedCount }}</strong>
+          </button>
+
+          <button
+            type="button"
+            class="summary-card warning"
+            :class="{ active: selectedStatus === 'OVERDUE' }"
+            @click="setStatusFilter('OVERDUE')"
+          >
+            <span>지연 가능</span>
+            <strong>{{ overdueCount }}</strong>
+          </button>
+        </section>
+
+        <section class="content-card">
+          <div class="content-header">
+            <div>
+              <h2>Task 목록</h2>
+              <p>
+                선택한 Workspace 기준으로 조회된 업무입니다. 항목을 클릭하면
+                상세 정보를 확인할 수 있습니다.
+              </p>
+            </div>
+
+            <span class="count-badge"> {{ filteredTasks.length }}개 표시 </span>
+          </div>
+
+          <div v-if="isLoading" class="state-box">
+            업무 목록을 불러오는 중입니다.
+          </div>
+
+          <div v-else-if="errorMessage" class="state-box error">
+            {{ errorMessage }}
+          </div>
+
+          <div v-else-if="filteredTasks.length === 0" class="state-box">
+            조건에 맞는 업무가 없습니다.
+          </div>
+
+          <div v-else class="task-list">
+            <article
+              v-for="task in filteredTasks"
+              :key="task.id"
+              class="task-item"
+              :class="{ overdue: isOverdue(task) }"
+              role="button"
+              tabindex="0"
+              @click="openTaskDetail(task)"
+              @keydown.enter="openTaskDetail(task)"
+            >
+              <div class="task-main">
+                <div class="task-title-row">
+                  <div>
+                    <h3>{{ task.title }}</h3>
+                    <p class="task-description">
+                      {{ task.description || '설명 없음' }}
+                    </p>
+                  </div>
+
+                  <div class="badge-group">
+                    <span v-if="isOverdue(task)" class="overdue-badge">
+                      지연 가능
+                    </span>
+                    <span
+                      class="status-badge"
+                      :class="getStatusClass(task.status)"
+                    >
+                      {{ getStatusLabel(task.status) }}
+                    </span>
+                  </div>
+                </div>
+
+                <dl class="task-meta">
+                  <div>
+                    <dt>요청자</dt>
+                    <dd>{{ task.requesterId }}</dd>
+                  </div>
+                  <div>
+                    <dt>담당자</dt>
+                    <dd>{{ task.assigneeId || '-' }}</dd>
+                  </div>
+                  <div>
+                    <dt>마감일</dt>
+                    <dd>{{ formatDate(task.dueDate) }}</dd>
+                  </div>
+                </dl>
+              </div>
+            </article>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <Teleport to="body">
+      <div
+        v-if="selectedTask"
+        class="modal-backdrop"
+        @click.self="closeTaskDetail"
+      >
+        <section class="task-modal" role="dialog" aria-modal="true">
+          <header class="modal-header">
+            <div>
+              <p class="eyebrow">TASK DETAIL</p>
+              <h2>{{ selectedTask.title }}</h2>
+            </div>
+
+            <button type="button" class="close-button" @click="closeTaskDetail">
+              닫기
+            </button>
+          </header>
+
+          <div class="modal-status-row">
+            <span
+              class="status-badge"
+              :class="getStatusClass(selectedTask.status)"
+            >
+              {{ getStatusLabel(selectedTask.status) }}
+            </span>
+            <span v-if="isOverdue(selectedTask)" class="overdue-badge">
+              지연 가능
+            </span>
+          </div>
+
+          <p class="modal-description">
+            {{ selectedTask.description || '등록된 설명이 없습니다.' }}
+          </p>
+
+          <dl class="detail-grid">
+            <div>
+              <dt>Workspace ID</dt>
+              <dd>{{ selectedTask.workspaceId }}</dd>
+            </div>
+            <div>
+              <dt>Task ID</dt>
+              <dd>{{ selectedTask.id }}</dd>
+            </div>
+            <div>
+              <dt>요청자</dt>
+              <dd>{{ selectedTask.requesterId }}</dd>
+            </div>
+            <div>
+              <dt>담당자</dt>
+              <dd>{{ selectedTask.assigneeId || '-' }}</dd>
+            </div>
+            <div>
+              <dt>마감일</dt>
+              <dd>{{ formatDate(selectedTask.dueDate) }}</dd>
+            </div>
+            <div>
+              <dt>현재 상태</dt>
+              <dd>{{ getStatusLabel(selectedTask.status) }}</dd>
+            </div>
+          </dl>
+
+          <footer class="modal-footer">
+            <button
+              type="button"
+              class="secondary-button"
+              @click="closeTaskDetail"
+            >
+              닫기
+            </button>
+            <button type="button" class="disabled-button" disabled>
+              상태 변경은 이후 단계에서 연결
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
+  </AppLayout>
 </template>
 
 <style scoped>
