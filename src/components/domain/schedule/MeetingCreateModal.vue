@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { CreatedMeetingPayload, WorkspaceMemberResponse } from '@/api/scheduleApi'
+import MeetingDateTimePicker from '@/components/domain/schedule/MeetingDateTimePicker.vue'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
@@ -39,7 +40,13 @@ const location = ref('')
 const searchKeyword = ref('')
 const selectedParticipants = ref<WorkspaceMemberResponse[]>([])
 
-const timeSlots = ref<{ startTime: string; endTime: string }[]>([{ startTime: '', endTime: '' }])
+interface TimeSlotForm {
+  startTime: string
+  endTime: string
+  endDateTouched: boolean
+}
+
+const timeSlots = ref<TimeSlotForm[]>([{ startTime: '', endTime: '', endDateTouched: false }])
 
 const formError = ref('')
 
@@ -53,7 +60,7 @@ function resetForm(): void {
   location.value = ''
   searchKeyword.value = ''
   selectedParticipants.value = []
-  timeSlots.value = [{ startTime: '', endTime: '' }]
+  timeSlots.value = [{ startTime: '', endTime: '', endDateTouched: false }]
   formError.value = ''
 }
 
@@ -98,7 +105,7 @@ function removeParticipant(employeeId: string): void {
 
 function addTimeSlot(): void {
   if (timeSlots.value.length < MAX_TIME_SLOTS) {
-    timeSlots.value.push({ startTime: '', endTime: '' })
+    timeSlots.value.push({ startTime: '', endTime: '', endDateTouched: false })
   }
 }
 
@@ -108,11 +115,54 @@ function removeTimeSlot(index: number): void {
   }
 }
 
-// ─── 생성 ──────────────────────────────────────────────────────────────────
-
-function toIsoSeconds(datetimeLocal: string): string {
-  return datetimeLocal.length === 16 ? `${datetimeLocal}:00` : datetimeLocal
+function getDatePart(iso: string): string {
+  return iso.slice(0, 10)
 }
+
+function getTimePart(iso: string): string {
+  return iso.slice(11)
+}
+
+function addMinutesToIso(iso: string, minutes: number): string {
+  const date = new Date(iso)
+  date.setMinutes(date.getMinutes() + minutes)
+
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hour = String(date.getHours()).padStart(2, '0')
+  const minute = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hour}:${minute}:00`
+}
+
+function handleStartTimeChange(index: number, value: string): void {
+  const slot = timeSlots.value[index]
+  if (!slot) return
+
+  slot.startTime = value
+
+  if (!value || slot.endDateTouched) return
+
+  if (slot.endTime) {
+    const startDate = getDatePart(value)
+    slot.endTime = `${startDate}T${getTimePart(slot.endTime)}`
+  } else {
+    slot.endTime = addMinutesToIso(value, durationMinutes.value)
+  }
+}
+
+function handleEndTimeChange(index: number, value: string): void {
+  const slot = timeSlots.value[index]
+  if (!slot) return
+
+  slot.endTime = value
+
+  if (value && slot.startTime && getDatePart(value) !== getDatePart(slot.startTime)) {
+    slot.endDateTouched = true
+  }
+}
+
+// ─── 생성 ──────────────────────────────────────────────────────────────────
 
 function handleCreate(): void {
   formError.value = ''
@@ -148,8 +198,8 @@ function handleCreate(): void {
     agenda: agenda.value.trim(),
     location: location.value.trim(),
     availableTimes: validSlots.map((slot) => ({
-      startTime: toIsoSeconds(slot.startTime),
-      endTime: toIsoSeconds(slot.endTime),
+      startTime: slot.startTime,
+      endTime: slot.endTime,
     })),
   })
 }
@@ -265,9 +315,15 @@ function handleClose(): void {
         <div class="field">
           <label class="field-label">내 가능 시간 (최대 {{ MAX_TIME_SLOTS }}개)</label>
           <div v-for="(slot, index) in timeSlots" :key="index" class="time-slot-row">
-            <input v-model="slot.startTime" type="datetime-local" class="field-input" />
+            <MeetingDateTimePicker
+              :model-value="slot.startTime"
+              @update:model-value="(value) => handleStartTimeChange(index, value)"
+            />
             <span class="time-slot-sep">~</span>
-            <input v-model="slot.endTime" type="datetime-local" class="field-input" />
+            <MeetingDateTimePicker
+              :model-value="slot.endTime"
+              @update:model-value="(value) => handleEndTimeChange(index, value)"
+            />
             <button
               type="button"
               class="slot-remove-btn"
@@ -520,7 +576,7 @@ function handleClose(): void {
   gap: 8px;
   margin-bottom: 8px;
 }
-.time-slot-row .field-input {
+.time-slot-row .dt-picker {
   flex: 1;
 }
 .time-slot-sep {
