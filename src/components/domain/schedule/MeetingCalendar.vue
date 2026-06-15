@@ -90,6 +90,35 @@ function getSchedulesForCell(cell: CalendarCell): ConfirmedScheduleResponse[] {
   return schedulesByDate.value[cell.dateKey] ?? []
 }
 
+// ─── 셀 표시 항목 (시작 시간 배지 + 초과분 "외 N건") ──────────────────────────
+
+const MAX_VISIBLE_MEETINGS = 2
+
+type CellDisplayItem =
+  | { type: 'time'; schedule: ConfirmedScheduleResponse }
+  | { type: 'more'; count: number }
+
+function getDisplayItemsForCell(cell: CalendarCell): CellDisplayItem[] {
+  const schedules = getSchedulesForCell(cell)
+
+  if (schedules.length <= MAX_VISIBLE_MEETINGS) {
+    return schedules.map((schedule) => ({ type: 'time', schedule }))
+  }
+
+  const visible = schedules.slice(0, MAX_VISIBLE_MEETINGS - 1)
+  const remaining = schedules.length - visible.length
+
+  return [
+    ...visible.map((schedule): CellDisplayItem => ({ type: 'time', schedule })),
+    { type: 'more', count: remaining },
+  ]
+}
+
+function formatStartTime(schedule: ConfirmedScheduleResponse): string {
+  const start = new Date(schedule.confirmedStartTime)
+  return start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+}
+
 // ─── 네비게이션 ─────────────────────────────────────────────────────────────
 
 function goToPreviousMonth(): void {
@@ -151,16 +180,18 @@ function handleSelectMeeting(meetingId: string): void {
       >
         <span class="day-number">{{ cell.day }}</span>
         <div class="meeting-tags">
-          <button
-            v-for="schedule in getSchedulesForCell(cell)"
-            :key="schedule.meetingId"
-            type="button"
-            class="meeting-tag"
-            :title="schedule.title"
-            @click="handleSelectMeeting(schedule.meetingId)"
-          >
-            {{ schedule.title }}
-          </button>
+          <template v-for="item in getDisplayItemsForCell(cell)" :key="item.type === 'time' ? item.schedule.meetingId : 'more'">
+            <button
+              v-if="item.type === 'time'"
+              type="button"
+              class="meeting-tag"
+              :title="item.schedule.title"
+              @click="handleSelectMeeting(item.schedule.meetingId)"
+            >
+              {{ formatStartTime(item.schedule) }}
+            </button>
+            <span v-else class="meeting-tag meeting-tag--more">외 {{ item.count }}건</span>
+          </template>
         </div>
       </div>
     </div>
@@ -260,13 +291,14 @@ function handleSelectMeeting(meetingId: string): void {
 
 /* ── 날짜 셀 ───────────────────────────────────────────────────────── */
 .day-cell {
-  min-height: 92px;
+  height: 96px;
   padding: 6px;
   border-right: 1px solid rgba(164, 147, 232, 0.08);
   border-bottom: 1px solid rgba(164, 147, 232, 0.08);
   display: flex;
   flex-direction: column;
   gap: 4px;
+  overflow: hidden;
 }
 
 .calendar-grid > .day-cell:nth-child(7n) {
@@ -325,15 +357,22 @@ function handleSelectMeeting(meetingId: string): void {
   transition: background-color 0.2s, color 0.2s;
 }
 
-.meeting-tag:hover {
+.meeting-tag:hover:not(.meeting-tag--more) {
   background: #a493e8;
   color: #fff;
+}
+
+.meeting-tag--more {
+  background: transparent;
+  color: rgba(164, 147, 232, 0.55);
+  cursor: default;
+  text-align: center;
 }
 
 /* ── 반응형 ────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {
   .day-cell {
-    min-height: 64px;
+    height: 64px;
   }
   .meeting-tag {
     font-size: 10px;
