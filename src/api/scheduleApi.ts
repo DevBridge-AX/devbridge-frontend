@@ -13,10 +13,29 @@ export interface TimeSlot {
   endTime: string
 }
 
+export type MeetingReferenceType = 'DIRECT_FILE' | 'DOC_LINK' | 'EXTERNAL_LINK'
+
+export interface MeetingReferenceRequest {
+  referenceType: MeetingReferenceType
+  documentId?: string | null
+  fileUrl?: string | null
+  title: string
+}
+
+export interface MeetingReferenceResponse {
+  id: string
+  referenceType: MeetingReferenceType
+  documentId: string | null
+  fileUrl: string | null
+  title: string
+  createdAt: string
+}
+
 export interface CreateMeetingRequest {
   title: string
   durationMinutes: number
   participantEmployeeIds: string[]
+  references?: MeetingReferenceRequest[]
 }
 
 export interface CreateMeetingResponse {
@@ -65,6 +84,7 @@ export interface MeetingDetailResponse {
   confirmedEndTime: string | null
   topCandidateTimes: TimeSlot[]
   participants: MeetingParticipant[]
+  references: MeetingReferenceResponse[]
 }
 
 export interface FetchMyConfirmedSchedulesParams {
@@ -94,6 +114,7 @@ export interface CreatedMeetingPayload {
   agenda: string
   location: string
   availableTimes: TimeSlot[]
+  references: MeetingReferenceRequest[]
 }
 
 // ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
@@ -146,5 +167,26 @@ export const scheduleApi = {
     return axiosClient
       .get<MeetingDetailResponse>(`/api/meetings/${meetingId}`)
       .then((res) => res.data)
+  },
+
+  /**
+   * 회의 상세 화면에서 첨부파일(파일 업로드 또는 링크)을 추가합니다.
+   */
+  addMeetingReference(
+    meetingId: string,
+    payload: MeetingReferenceRequest,
+  ): Promise<MeetingReferenceResponse> {
+    return axiosClient
+      .post<MeetingReferenceResponse>(`/api/meetings/${meetingId}/references`, payload)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의 상세 화면에서 첨부파일을 삭제합니다.
+   */
+  deleteMeetingReference(meetingId: string, referenceId: string): Promise<void> {
+    return axiosClient
+      .delete<void>(`/api/meetings/${meetingId}/references/${referenceId}`)
+      .then(() => undefined)
   },
 }

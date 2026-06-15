@@ -1,11 +1,14 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type {
   MeetingDetailResponse,
+  MeetingReferenceRequest,
   MeetingStatus,
   ParticipantRole,
   ParticipantStatus,
   TimeSlot,
 } from '@/api/scheduleApi'
+import { documentService } from '@/services/documentService'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
@@ -14,12 +17,53 @@ defineProps<{
   meeting: MeetingDetailResponse | null
   isLoading: boolean
   loadError?: string
+  isAddingReference?: boolean
+  addReferenceError?: string
+  deletingReferenceId?: string | null
+  deleteReferenceError?: string
 }>()
 
 const emit = defineEmits<{
   close: []
   'open-response': [meetingId: string]
+  'add-reference': [payload: MeetingReferenceRequest]
+  'delete-reference': [referenceId: string]
 }>()
+
+// ─── 첨부파일 업로드 ──────────────────────────────────────────────────────────
+
+const isUploadingFile = ref(false)
+const uploadError = ref('')
+
+async function handleFileSelect(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+
+  if (!files || files.length === 0) return
+
+  uploadError.value = ''
+  isUploadingFile.value = true
+
+  try {
+    for (const file of Array.from(files)) {
+      const { fileUrl } = await documentService.uploadDocument(file)
+      emit('add-reference', {
+        referenceType: 'DIRECT_FILE',
+        fileUrl,
+        title: file.name,
+      })
+    }
+  } catch (error: unknown) {
+    uploadError.value = error instanceof Error ? error.message : '파일 업로드에 실패했습니다.'
+  } finally {
+    isUploadingFile.value = false
+    input.value = ''
+  }
+}
+
+function handleDeleteReference(referenceId: string): void {
+  emit('delete-reference', referenceId)
+}
 
 // ─── 상태 → 라벨 / 배지 클래스 매핑 ────────────────────────────────────────
 
@@ -70,6 +114,13 @@ function formatTimeRange(slot: TimeSlot): string {
   const startTime = start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   const endTime = end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   return `${datePart} ${startTime} ~ ${endTime}`
+}
+
+function formatCreatedAt(iso: string): string {
+  const date = new Date(iso)
+  const datePart = date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
+  const timePart = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+  return `${datePart} ${timePart}`
 }
 
 function formatConfirmedRange(meeting: MeetingDetailResponse): string {
@@ -169,6 +220,47 @@ function handleOpenResponse(meetingId: string): void {
         <template v-else>
           <p class="status-message">취소된 회의입니다.</p>
         </template>
+
+        <!-- 첨부파일 -->
+        <h4 class="section-title section-title--spaced">첨부파일</h4>
+        <ul v-if="meeting.references.length > 0" class="reference-list">
+          <li v-for="reference in meeting.references" :key="reference.id" class="reference-item">
+            <a
+              v-if="reference.fileUrl"
+              class="reference-title reference-link"
+              :href="reference.fileUrl"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ reference.title }}
+            </a>
+            <span v-else class="reference-title">{{ reference.title }}</span>
+            <span class="reference-date">{{ formatCreatedAt(reference.createdAt) }}</span>
+            <button
+              type="button"
+              class="reference-remove"
+              :disabled="deletingReferenceId === reference.id"
+              @click="handleDeleteReference(reference.id)"
+            >
+              <span v-if="deletingReferenceId === reference.id" class="spinner" />
+              <span v-else>×</span>
+            </button>
+          </li>
+        </ul>
+        <p v-else class="empty-state">첨부된 파일이 없습니다.</p>
+
+        <input
+          id="reference-file-input"
+          type="file"
+          class="file-input"
+          multiple
+          :disabled="isUploadingFile || isAddingReference"
+          @change="handleFileSelect"
+        />
+        <p v-if="isUploadingFile || isAddingReference" class="field-hint">첨부파일을 추가하는 중...</p>
+        <p v-if="uploadError" class="field-hint verify-error">{{ uploadError }}</p>
+        <p v-if="addReferenceError" class="field-hint verify-error">{{ addReferenceError }}</p>
+        <p v-if="deleteReferenceError" class="field-hint verify-error">{{ deleteReferenceError }}</p>
       </template>
     </div>
   </div>
@@ -262,6 +354,15 @@ function handleOpenResponse(meetingId: string): void {
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
 }
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #f0eeff;
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
@@ -302,6 +403,18 @@ function handleOpenResponse(meetingId: string): void {
   letter-spacing: 0.2px;
   text-transform: uppercase;
   margin: 0 0 10px;
+}
+.section-title--spaced {
+  margin-top: 20px;
+}
+.field-hint {
+  font-size: 11px;
+  color: rgba(240, 238, 255, 0.45);
+  margin: 8px 0 0;
+  padding: 0 2px;
+}
+.verify-error {
+  color: #f56565 !important;
 }
 .status-message {
   font-size: 13px;
@@ -408,6 +521,75 @@ function handleOpenResponse(meetingId: string): void {
   font-size: 13px;
   color: rgba(240, 238, 255, 0.55);
   margin: 0;
+}
+
+/* ── 첨부파일 목록 ──────────────────────────────────────────────────── */
+.reference-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.reference-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(164, 147, 232, 0.1);
+}
+.reference-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: #f0eeff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.reference-link {
+  color: #a493e8;
+  text-decoration: none;
+}
+.reference-link:hover {
+  text-decoration: underline;
+}
+.reference-date {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: rgba(240, 238, 255, 0.4);
+}
+.reference-remove {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: rgba(240, 238, 255, 0.4);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+.reference-remove:hover:not(:disabled) {
+  background: rgba(245, 101, 101, 0.15);
+  color: #f56565;
+}
+.reference-remove:disabled {
+  cursor: not-allowed;
+}
+
+/* ── 파일 입력 ──────────────────────────────────────────────────────── */
+.file-input {
+  font-size: 12px;
+  color: rgba(240, 238, 255, 0.6);
+  width: 100%;
 }
 
 /* ── 버튼 ──────────────────────────────────────────────────────────── */

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import type { CreatedMeetingPayload, WorkspaceMemberResponse } from '@/api/scheduleApi'
+import type { CreatedMeetingPayload, MeetingReferenceRequest, WorkspaceMemberResponse } from '@/api/scheduleApi'
+import { documentService } from '@/services/documentService'
 import MeetingDateTimePicker from '@/components/domain/schedule/MeetingDateTimePicker.vue'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
@@ -50,6 +51,20 @@ const timeSlots = ref<TimeSlotForm[]>([{ startTime: '', endTime: '', endDateTouc
 
 const formError = ref('')
 
+// ─── 첨부파일 ──────────────────────────────────────────────────────────────
+
+interface AttachmentForm {
+  id: string
+  file: File
+  status: 'uploading' | 'done' | 'error'
+  fileUrl?: string
+  errorMessage?: string
+}
+
+const attachments = ref<AttachmentForm[]>([])
+
+const isUploadingAttachments = computed(() => attachments.value.some((a) => a.status === 'uploading'))
+
 // ─── 모달 열릴 때 폼 초기화 ──────────────────────────────────────────────────
 
 function resetForm(): void {
@@ -61,6 +76,7 @@ function resetForm(): void {
   searchKeyword.value = ''
   selectedParticipants.value = []
   timeSlots.value = [{ startTime: '', endTime: '', endDateTouched: false }]
+  attachments.value = []
   formError.value = ''
 }
 
@@ -162,6 +178,39 @@ function handleEndTimeChange(index: number, value: string): void {
   }
 }
 
+// ─── 첨부파일 업로드 ──────────────────────────────────────────────────────────
+
+async function handleFileSelect(event: Event): Promise<void> {
+  const input = event.target as HTMLInputElement
+  const files = input.files
+
+  if (!files || files.length === 0) return
+
+  for (const file of Array.from(files)) {
+    const attachment: AttachmentForm = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      file,
+      status: 'uploading',
+    }
+    attachments.value.push(attachment)
+
+    try {
+      const { fileUrl } = await documentService.uploadDocument(file)
+      attachment.status = 'done'
+      attachment.fileUrl = fileUrl
+    } catch (error: unknown) {
+      attachment.status = 'error'
+      attachment.errorMessage = error instanceof Error ? error.message : '파일 업로드에 실패했습니다.'
+    }
+  }
+
+  input.value = ''
+}
+
+function removeAttachment(id: string): void {
+  attachments.value = attachments.value.filter((a) => a.id !== id)
+}
+
 // ─── 생성 ──────────────────────────────────────────────────────────────────
 
 function handleCreate(): void {
@@ -190,6 +239,19 @@ function handleCreate(): void {
     }
   }
 
+  if (isUploadingAttachments.value) {
+    formError.value = '첨부파일 업로드가 완료될 때까지 기다려 주세요.'
+    return
+  }
+
+  const references: MeetingReferenceRequest[] = attachments.value
+    .filter((a): a is AttachmentForm & { fileUrl: string } => a.status === 'done' && !!a.fileUrl)
+    .map((a) => ({
+      referenceType: 'DIRECT_FILE',
+      fileUrl: a.fileUrl,
+      title: a.file.name,
+    }))
+
   emit('created', {
     title: title.value.trim(),
     durationMinutes: durationMinutes.value,
@@ -201,6 +263,7 @@ function handleCreate(): void {
       startTime: slot.startTime,
       endTime: slot.endTime,
     })),
+    references,
   })
 }
 
@@ -341,6 +404,28 @@ function handleClose(): void {
           >
             + 시간 추가
           </button>
+        </div>
+
+        <!-- 첨부파일 -->
+        <div class="field">
+          <label class="field-label" for="meeting-attachments">첨부파일</label>
+          <input
+            id="meeting-attachments"
+            type="file"
+            class="file-input"
+            multiple
+            @change="handleFileSelect"
+          />
+          <ul v-if="attachments.length > 0" class="attachment-list">
+            <li v-for="attachment in attachments" :key="attachment.id" class="attachment-item">
+              <span class="attachment-name">{{ attachment.file.name }}</span>
+              <span v-if="attachment.status === 'uploading'" class="spinner" />
+              <span v-else-if="attachment.status === 'error'" class="attachment-error">
+                {{ attachment.errorMessage }}
+              </span>
+              <button type="button" class="attachment-remove" @click="removeAttachment(attachment.id)">×</button>
+            </li>
+          </ul>
         </div>
 
         <p v-if="formError" class="field-hint verify-error">{{ formError }}</p>
@@ -567,6 +652,54 @@ function handleClose(): void {
 .member-meta {
   font-size: 11px;
   color: rgba(240, 238, 255, 0.45);
+}
+
+/* ── 첨부파일 ──────────────────────────────────────────────────────── */
+.file-input {
+  font-size: 12px;
+  color: rgba(240, 238, 255, 0.6);
+}
+.attachment-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(164, 147, 232, 0.1);
+}
+.attachment-name {
+  flex: 1;
+  font-size: 12px;
+  color: #f0eeff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.attachment-error {
+  font-size: 11px;
+  color: #f56565;
+}
+.attachment-remove {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: rgba(240, 238, 255, 0.4);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.attachment-remove:hover {
+  color: #f56565;
 }
 
 /* ── 가능 시간 슬롯 ─────────────────────────────────────────────────── */

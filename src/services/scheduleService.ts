@@ -8,6 +8,8 @@ import type {
   SubmitAvailableTimesRequest,
   SubmitAvailableTimesResponse,
   ConfirmedScheduleResponse,
+  MeetingReferenceRequest,
+  MeetingReferenceResponse,
   ApiErrorResponse,
 } from '@/api/scheduleApi'
 import axios from 'axios'
@@ -139,10 +141,68 @@ async function fetchConfirmedSchedules(
   }
 }
 
+/**
+ * 회의 상세 화면에서 첨부파일(파일 업로드 또는 링크)을 추가합니다.
+ * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
+ */
+async function addMeetingReference(
+  meetingId: string,
+  request: MeetingReferenceRequest,
+): Promise<MeetingReferenceResponse> {
+  try {
+    return await scheduleApi.addMeetingReference(meetingId, request)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const serverMessage = (error.response?.data as ApiErrorResponse | undefined)?.message
+
+      if (status === 400) {
+        throw new Error(serverMessage ?? '첨부파일 정보가 올바르지 않습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('존재하지 않는 회의입니다.')
+      }
+
+      if (status === 401) {
+        throw new Error('인증이 만료되었습니다. 다시 로그인해 주세요.')
+      }
+    }
+
+    throw new Error('첨부파일 추가에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+}
+
+/**
+ * 회의 상세 화면에서 첨부파일을 삭제합니다.
+ * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
+ */
+async function deleteMeetingReference(meetingId: string, referenceId: string): Promise<void> {
+  try {
+    await scheduleApi.deleteMeetingReference(meetingId, referenceId)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 404) {
+        throw new Error('존재하지 않는 첨부파일입니다.')
+      }
+
+      if (status === 401) {
+        throw new Error('인증이 만료되었습니다. 다시 로그인해 주세요.')
+      }
+    }
+
+    throw new Error('첨부파일 삭제에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+}
+
 export const scheduleService = {
   fetchMeetings,
   fetchMeetingDetail,
   createMeeting,
   submitAvailableTimes,
   fetchConfirmedSchedules,
+  addMeetingReference,
+  deleteMeetingReference,
 }

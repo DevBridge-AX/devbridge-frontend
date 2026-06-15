@@ -2,12 +2,14 @@
 import { ref, onMounted } from 'vue'
 import { scheduleService } from '@/services/scheduleService'
 import { workspaceService } from '@/services/workspaceService'
+import AppLayout from '@/layouts/AppLayout.vue'
 import type {
   MeetingSummaryResponse,
   ConfirmedScheduleResponse,
   MeetingDetailResponse,
   WorkspaceMemberResponse,
   CreatedMeetingPayload,
+  MeetingReferenceRequest,
   TimeSlot,
 } from '@/api/scheduleApi'
 import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
@@ -42,6 +44,12 @@ const detailModalOpen = ref(false)
 const selectedMeetingDetail = ref<MeetingDetailResponse | null>(null)
 const isLoadingDetail = ref(false)
 const detailLoadError = ref('')
+
+// ─── 회의 첨부파일 상태 ──────────────────────────────────────────────────────
+const isAddingReference = ref(false)
+const addReferenceError = ref('')
+const deletingReferenceId = ref<string | null>(null)
+const deleteReferenceError = ref('')
 
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
 function formatDate(date: Date): string {
@@ -120,6 +128,8 @@ async function openMeetingDetail(meetingId: string): Promise<void> {
   selectedMeetingDetail.value = null
   detailLoadError.value = ''
   isLoadingDetail.value = true
+  addReferenceError.value = ''
+  deleteReferenceError.value = ''
 
   try {
     selectedMeetingDetail.value = await scheduleService.fetchMeetingDetail(meetingId)
@@ -145,6 +155,7 @@ async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<voi
       title: payload.title,
       durationMinutes: payload.durationMinutes,
       participantEmployeeIds: payload.participantEmployeeIds,
+      references: payload.references,
     })
 
     await scheduleService.submitAvailableTimes(meetingId, {
@@ -162,6 +173,44 @@ async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<voi
     createMeetingError.value = e instanceof Error ? e.message : '회의 생성에 실패했습니다.'
   } finally {
     isCreatingMeeting.value = false
+  }
+}
+
+// ─── 회의 첨부파일 ────────────────────────────────────────────────────────
+async function handleAddReference(payload: MeetingReferenceRequest): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  addReferenceError.value = ''
+  isAddingReference.value = true
+
+  try {
+    const reference = await scheduleService.addMeetingReference(
+      selectedMeetingDetail.value.meetingId,
+      payload,
+    )
+    selectedMeetingDetail.value.references.push(reference)
+  } catch (e: unknown) {
+    addReferenceError.value = e instanceof Error ? e.message : '첨부파일 추가에 실패했습니다.'
+  } finally {
+    isAddingReference.value = false
+  }
+}
+
+async function handleDeleteReference(referenceId: string): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  deleteReferenceError.value = ''
+  deletingReferenceId.value = referenceId
+
+  try {
+    await scheduleService.deleteMeetingReference(selectedMeetingDetail.value.meetingId, referenceId)
+    selectedMeetingDetail.value.references = selectedMeetingDetail.value.references.filter(
+      (reference) => reference.id !== referenceId,
+    )
+  } catch (e: unknown) {
+    deleteReferenceError.value = e instanceof Error ? e.message : '첨부파일 삭제에 실패했습니다.'
+  } finally {
+    deletingReferenceId.value = null
   }
 }
 
@@ -191,7 +240,8 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
 </script>
 
 <template>
-  <div class="schedule-view">
+  <AppLayout>
+    <div class="schedule-view">
     <!-- ── Header ───────────────────────────────────────────────── -->
     <header class="schedule-header">
       <h1 class="schedule-title">회의 일정</h1>
@@ -258,10 +308,17 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
       :meeting="selectedMeetingDetail"
       :is-loading="isLoadingDetail"
       :load-error="detailLoadError"
+      :is-adding-reference="isAddingReference"
+      :add-reference-error="addReferenceError"
+      :deleting-reference-id="deletingReferenceId"
+      :delete-reference-error="deleteReferenceError"
       @close="detailModalOpen = false"
       @open-response="handleDetailOpenResponse"
+      @add-reference="handleAddReference"
+      @delete-reference="handleDeleteReference"
     />
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <style scoped>
