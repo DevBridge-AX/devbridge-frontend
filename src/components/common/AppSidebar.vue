@@ -1,0 +1,153 @@
+<script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+
+const props = defineProps<{
+  isCollapsed: boolean
+}>()
+
+const emit = defineEmits<{
+  toggleSidebar: []
+}>()
+
+const route = useRoute()
+const router = useRouter()
+
+const currentWorkspaceId = computed(() => {
+  const value = route.params.workspaceId
+  return Array.isArray(value) ? value[0] : value
+})
+
+const hasWorkspaceContext = computed(() => {
+  return Boolean(currentWorkspaceId.value)
+})
+
+function goToWorkspaceList() {
+  router.push('/workspace')
+}
+
+function goToDashboard() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/dashboard`)
+}
+
+function goToTasks() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/tasks`)
+}
+
+function goToSchedule() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/schedule`)
+}
+
+function isActiveMenu(menu: 'dashboard' | 'tasks' | 'schedule') {
+  if (menu === 'dashboard') {
+    return route.name === 'workspace-dashboard'
+  }
+
+  if (menu === 'tasks') {
+    return route.name === 'workspace-tasks'
+  }
+
+  if (menu === 'schedule') {
+    return route.name === 'workspace-schedule'
+  }
+
+  return false
+}
+</script>
+
+<template>
+  <aside v-if="!props.isCollapsed" class="app-sidebar">
+    <div class="sidebar-top">
+      <button type="button" class="brand-button" @click="goToWorkspaceList">
+        <span class="brand-mark">D</span>
+
+        <span class="brand-text">
+          <strong>DevBridge AX</strong>
+          <small>Project Platform</small>
+        </span>
+      </button>
+
+      <button
+        type="button"
+        class="collapse-button"
+        aria-label="사이드바 접기"
+        @click="emit('toggleSidebar')"
+      >
+        ‹
+      </button>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Workspace navigation">
+      <p class="section-label">Menu</p>
+
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('dashboard') }"
+        @click="goToDashboard"
+      >
+        <span class="nav-icon">D</span>
+        <span>Dashboard</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('tasks') }"
+        @click="goToTasks"
+      >
+        <span class="nav-icon">T</span>
+        <span>Tasks</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item disabled"
+        :disabled="!hasWorkspaceContext"
+      >
+        <span class="nav-icon">N</span>
+        <span>Documents</span>
+      </button>
+
+      <button type="button" class="nav-item disabled">
+        <span class="nav-icon">C</span>
+        <span>Chat</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('schedule') }"
+        @click="goToSchedule"
+      >
+        <span class="nav-icon">S</span>
+        <span>Schedule</span>
+      </button>
+
+      <button type="button" class="nav-item disabled">
+        <span class="nav-icon">P</span>
+        <span>Settings</span>
+      </button>
+    </nav>
+
+    <div class="sidebar-note">
+      <strong>Workspace Flow</strong>
+      <span>Documents, Git, AI 분석 기능은 다음 단계에서 연결됩니다.</span>
+    </div>
+  </aside>
+</template>
