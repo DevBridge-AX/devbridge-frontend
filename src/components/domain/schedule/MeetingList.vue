@@ -38,11 +38,13 @@ function formatSchedule(meeting: MeetingSummaryResponse): string {
   const start = new Date(meeting.confirmedStartTime)
   const end = new Date(meeting.confirmedEndTime)
 
-  const datePart = start.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' })
-  const startTime = start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-  const endTime = end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+  const month = String(start.getMonth() + 1).padStart(2, '0')
+  const day = String(start.getDate()).padStart(2, '0')
+  const meridiem = start.getHours() < 12 ? '오전' : '오후'
+  const startTime = start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
+  const endTime = end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })
 
-  return `${datePart} ${startTime} ~ ${endTime}`
+  return `${month}/${day} (${meridiem}) ${startTime} ~ ${endTime}`
 }
 
 // ─── 이벤트 핸들러 ──────────────────────────────────────────────────────────
@@ -61,16 +63,16 @@ function handleOpenResponse(meetingId: string): void {
     <table v-if="meetings.length > 0" class="meeting-table">
       <thead>
         <tr>
+          <th class="col-schedule">일시</th>
           <th>회의명</th>
-          <th>회의 일시</th>
           <th>상태</th>
           <th class="col-action">액션</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="meeting in meetings" :key="meeting.meetingId">
-          <td class="col-title">{{ meeting.title }}</td>
           <td class="col-schedule">{{ formatSchedule(meeting) }}</td>
+          <td class="col-title">{{ meeting.title }}</td>
           <td>
             <span class="status-badge" :class="STATUS_BADGE_CLASSES[meeting.status]">
               {{ STATUS_LABELS[meeting.status] }}
@@ -134,9 +136,12 @@ function handleOpenResponse(meetingId: string): void {
 
 .col-title {
   font-weight: 600;
+  white-space: normal;
+  word-break: break-word;
 }
 
 .col-schedule {
+  width: 150px;
   color: rgba(240, 238, 255, 0.65);
   white-space: nowrap;
 }
