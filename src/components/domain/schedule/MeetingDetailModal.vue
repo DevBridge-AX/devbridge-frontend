@@ -123,6 +123,10 @@ function formatCreatedAt(iso: string): string {
   return `${datePart} ${timePart}`
 }
 
+function isMeetingLinkUrl(value: string): boolean {
+  return /^https?:\/\//i.test(value)
+}
+
 function formatConfirmedRange(meeting: MeetingDetailResponse): string {
   if (!meeting.confirmedStartTime || !meeting.confirmedEndTime) return '-'
 
@@ -175,6 +179,27 @@ function handleOpenResponse(meetingId: string): void {
         <span class="status-badge" :class="STATUS_BADGE_CLASSES[meeting.status]">
           {{ STATUS_LABELS[meeting.status] }}
         </span>
+
+        <!-- 요약 / 아젠다 -->
+        <div v-if="meeting.aiSummary" class="info-box">
+          <p class="info-label">요약 / 아젠다</p>
+          <p class="info-text">{{ meeting.aiSummary }}</p>
+        </div>
+
+        <!-- 장소 / 회의 링크 -->
+        <div v-if="meeting.meetingLink" class="info-box">
+          <p class="info-label">장소 / 회의 링크</p>
+          <a
+            v-if="isMeetingLinkUrl(meeting.meetingLink)"
+            class="info-text info-link"
+            :href="meeting.meetingLink"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {{ meeting.meetingLink }}
+          </a>
+          <p v-else class="info-text">{{ meeting.meetingLink }}</p>
+        </div>
 
         <!-- GATHERING: 참석자 목록 + 응답 현황 -->
         <template v-if="meeting.status === 'GATHERING'">
@@ -438,6 +463,38 @@ function handleOpenResponse(meetingId: string): void {
   font-size: 13px;
   color: rgba(240, 238, 255, 0.45);
   margin: 0 0 16px;
+}
+
+/* ── 요약/아젠다, 장소/링크 ─────────────────────────────────────────── */
+.info-box {
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(164, 147, 232, 0.1);
+  margin: 0 0 12px;
+}
+.info-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: rgba(164, 147, 232, 0.65);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin: 0 0 6px;
+}
+.info-text {
+  font-size: 13px;
+  color: #f0eeff;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.info-link {
+  display: block;
+  color: #a493e8;
+  text-decoration: none;
+}
+.info-link:hover {
+  text-decoration: underline;
 }
 
 /* ── 참석자 목록 ────────────────────────────────────────────────────── */

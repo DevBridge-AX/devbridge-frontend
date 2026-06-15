@@ -85,6 +85,10 @@ export interface MeetingDetailResponse {
   topCandidateTimes: TimeSlot[]
   participants: MeetingParticipant[]
   references: MeetingReferenceResponse[]
+  // NOTE: 백엔드 응답에 아직 포함되지 않은 선반영 필드.
+  // 추가되는 즉시 상세 모달에서 자동으로 노출됨 (요약/아젠다, 장소/회의 링크).
+  aiSummary?: string | null
+  meetingLink?: string | null
 }
 
 export interface FetchMyConfirmedSchedulesParams {
