@@ -52,8 +52,8 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/schedule',
-      name: 'schedule',
+      path: '/workspaces/:workspaceId/schedule',
+      name: 'workspace-schedule',
       component: () => import('@/views/schedule/ScheduleView.vue'),
       meta: { requiresAuth: true },
     },

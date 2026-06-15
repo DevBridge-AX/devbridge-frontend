@@ -97,13 +97,26 @@ function goToTasks() {
   router.push(`/workspaces/${currentWorkspaceId.value}/tasks`)
 }
 
-function isActiveMenu(menu: 'dashboard' | 'tasks') {
+function goToSchedule() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/schedule`)
+}
+
+function isActiveMenu(menu: 'dashboard' | 'tasks' | 'schedule') {
   if (menu === 'dashboard') {
     return route.name === 'workspace-dashboard'
   }
 
   if (menu === 'tasks') {
     return route.name === 'workspace-tasks'
+  }
+
+  if (menu === 'schedule') {
+    return route.name === 'workspace-schedule'
   }
 
   return false
@@ -233,7 +246,12 @@ onMounted(() => {
             <span>Chat</span>
           </button>
 
-          <button type="button" class="nav-item disabled">
+          <button
+            type="button"
+            class="nav-item"
+            :class="{ active: isActiveMenu('schedule') }"
+            @click="goToSchedule"
+          >
             <span class="nav-icon">S</span>
             <span>Schedule</span>
           </button>
