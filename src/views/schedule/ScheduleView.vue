@@ -370,10 +370,10 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
   box-shadow: 0 10px 28px rgba(164, 147, 232, 0.38);
 }
 
-/* ── 본문 (2단 구성) ───────────────────────────────────────────────── */
+/* ── 본문 (캘린더 위 + 목록 아래, 화면 크기와 무관하게 고정) ────────────── */
 .schedule-body {
-  display: grid;
-  grid-template-columns: 3fr 2fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   max-width: 1200px;
   margin: 0 auto;
@@ -431,10 +431,4 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
   min-height: 40px;
 }
 
-/* ── 반응형 ────────────────────────────────────────────────────────── */
-@media (max-width: 900px) {
-  .schedule-body {
-    grid-template-columns: 1fr;
-  }
-}
 </style>
