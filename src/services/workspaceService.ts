@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { workspaceApi } from '@/api/workspaceApi'
 import type { Workspace } from '@/api/workspaceApi'
+import type { WorkspaceMemberResponse } from '@/api/workspaceApi'
 
 async function getMyWorkspaces(): Promise<Workspace[]> {
   try {
@@ -42,7 +43,17 @@ async function updateWorkspaceAccess(workspaceId: string): Promise<void> {
   }
 }
 
+async function searchMembers(keyword: string): Promise<WorkspaceMemberResponse[]> {
+  try {
+    return await workspaceApi.searchMembers(keyword)
+  } catch (error: unknown) {
+    console.error('[workspaceService] 멤버 검색 실패:', error)
+    return []
+  }
+}
+
 export const workspaceService = {
   getMyWorkspaces,
   updateWorkspaceAccess,
+  searchMembers,
 }

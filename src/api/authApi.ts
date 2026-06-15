@@ -34,6 +34,16 @@ export interface VerifyEmailAuthCodeRequest {
   code: string
 }
 
+export interface CurrentUserResponse {
+  id: string
+  employeeId: string
+  email: string
+  name: string
+  department: string
+  position: string
+  systemRole: string
+}
+
 // ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
 
 export const authApi = {
@@ -88,5 +98,14 @@ export const authApi = {
     return axiosClient
       .post<void>('/api/auth/email/verify', payload)
       .then(() => undefined)
+  },
+
+  /**
+   * 인증 토큰 기반으로 로그인한 본인의 정보를 조회합니다.
+   */
+  fetchCurrentUser(): Promise<CurrentUserResponse> {
+    return axiosClient
+      .get<CurrentUserResponse>('/api/users/me')
+      .then((res) => res.data)
   },
 }

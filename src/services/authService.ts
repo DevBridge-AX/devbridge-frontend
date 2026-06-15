@@ -68,6 +68,7 @@ async function executeLogin(
 
     const authStore = useAuthStore()
     authStore.setToken(response.accessToken)
+    await fetchCurrentUser()
 
     return {
       success: true,
@@ -78,6 +79,21 @@ async function executeLogin(
       success: false,
       lastWorkspaceId: null,
     }
+  }
+}
+
+/**
+ * 로그인한 본인 정보를 조회하여 authStore에 저장합니다.
+ * Host 판별 등 본인 식별이 필요한 화면에서 사용합니다.
+ */
+async function fetchCurrentUser(): Promise<void> {
+  try {
+    const user = await authApi.fetchCurrentUser()
+    const authStore = useAuthStore()
+    authStore.setCurrentUser(user)
+  } catch {
+    // 본인 정보 조회 실패 시 currentUser는 null로 유지되며,
+    // Host 판별이 필요한 화면에서는 "Host 아님"으로 안전하게 처리됨
   }
 }
 
@@ -100,4 +116,5 @@ export const authService = {
   registerUser,
   executeLogin,
   executeLogout,
+  fetchCurrentUser,
 }
