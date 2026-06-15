@@ -5,6 +5,7 @@ import type {
   MeetingDetailResponse,
   CreateMeetingRequest,
   CreateMeetingResponse,
+  UpdateMeetingRequest,
   SubmitAvailableTimesRequest,
   SubmitAvailableTimesResponse,
   ConfirmedScheduleResponse,
@@ -79,6 +80,38 @@ async function createMeeting(request: CreateMeetingRequest): Promise<CreateMeeti
     }
 
     throw new Error('회의 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+}
+
+/**
+ * 회의 정보(제목/목적/아젠다/장소)를 수정합니다. 주최자(HOST)만 가능합니다.
+ * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
+ */
+async function updateMeeting(
+  meetingId: string,
+  request: UpdateMeetingRequest,
+): Promise<MeetingDetailResponse> {
+  try {
+    return await scheduleApi.updateMeeting(meetingId, request)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const serverMessage = (error.response?.data as ApiErrorResponse | undefined)?.message
+
+      if (status === 400) {
+        throw new Error(serverMessage ?? '주최자만 회의 정보를 수정할 수 있습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('존재하지 않는 회의입니다.')
+      }
+
+      if (status === 401) {
+        throw new Error('인증이 만료되었습니다. 다시 로그인해 주세요.')
+      }
+    }
+
+    throw new Error('회의 정보 수정에 실패했습니다. 잠시 후 다시 시도해 주세요.')
   }
 }
 
@@ -201,6 +234,7 @@ export const scheduleService = {
   fetchMeetings,
   fetchMeetingDetail,
   createMeeting,
+  updateMeeting,
   submitAvailableTimes,
   fetchConfirmedSchedules,
   addMeetingReference,

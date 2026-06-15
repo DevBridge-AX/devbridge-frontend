@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { scheduleService } from '@/services/scheduleService'
 import { workspaceService } from '@/services/workspaceService'
+import { useAuthStore } from '@/state/authStore'
 import AppLayout from '@/layouts/AppLayout.vue'
 import type {
   MeetingSummaryResponse,
@@ -10,6 +11,7 @@ import type {
   WorkspaceMemberResponse,
   CreatedMeetingPayload,
   MeetingReferenceRequest,
+  UpdateMeetingRequest,
   TimeSlot,
 } from '@/api/scheduleApi'
 import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
@@ -44,6 +46,18 @@ const detailModalOpen = ref(false)
 const selectedMeetingDetail = ref<MeetingDetailResponse | null>(null)
 const isLoadingDetail = ref(false)
 const detailLoadError = ref('')
+
+// ─── 회의 정보 수정 상태 (Host 전용) ─────────────────────────────────────────
+const authStore = useAuthStore()
+const isUpdatingMeeting = ref(false)
+const updateMeetingError = ref('')
+
+const isHostOfSelectedMeeting = computed<boolean>(() => {
+  const meeting = selectedMeetingDetail.value
+  const employeeId = authStore.currentUser?.employeeId
+  if (!meeting || !employeeId) return false
+  return meeting.participants.some((p) => p.role === 'HOST' && p.employeeId === employeeId)
+})
 
 // ─── 회의 첨부파일 상태 ──────────────────────────────────────────────────────
 const isAddingReference = ref(false)
@@ -130,6 +144,7 @@ async function openMeetingDetail(meetingId: string): Promise<void> {
   isLoadingDetail.value = true
   addReferenceError.value = ''
   deleteReferenceError.value = ''
+  updateMeetingError.value = ''
 
   try {
     selectedMeetingDetail.value = await scheduleService.fetchMeetingDetail(meetingId)
@@ -143,6 +158,28 @@ async function openMeetingDetail(meetingId: string): Promise<void> {
 function handleDetailOpenResponse(meetingId: string): void {
   detailModalOpen.value = false
   handleOpenResponse(meetingId)
+}
+
+// ─── 회의 정보 수정 ────────────────────────────────────────────────────────
+async function handleUpdateMeeting(payload: UpdateMeetingRequest): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  updateMeetingError.value = ''
+  isUpdatingMeeting.value = true
+
+  try {
+    const updated = await scheduleService.updateMeeting(selectedMeetingDetail.value.meetingId, payload)
+    selectedMeetingDetail.value = updated
+
+    const target = meetings.value.find((m) => m.meetingId === updated.meetingId)
+    if (target) {
+      target.title = updated.title
+    }
+  } catch (e: unknown) {
+    updateMeetingError.value = e instanceof Error ? e.message : '회의 정보 수정에 실패했습니다.'
+  } finally {
+    isUpdatingMeeting.value = false
+  }
 }
 
 // ─── 회의 생성 ──────────────────────────────────────────────────────────────
@@ -311,12 +348,16 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
       :meeting="selectedMeetingDetail"
       :is-loading="isLoadingDetail"
       :load-error="detailLoadError"
+      :is-host="isHostOfSelectedMeeting"
+      :is-updating-meeting="isUpdatingMeeting"
+      :update-meeting-error="updateMeetingError"
       :is-adding-reference="isAddingReference"
       :add-reference-error="addReferenceError"
       :deleting-reference-id="deletingReferenceId"
       :delete-reference-error="deleteReferenceError"
       @close="detailModalOpen = false"
       @open-response="handleDetailOpenResponse"
+      @update-meeting="handleUpdateMeeting"
       @add-reference="handleAddReference"
       @delete-reference="handleDeleteReference"
     />

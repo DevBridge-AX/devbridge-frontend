@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import type {
   MeetingDetailResponse,
   MeetingReferenceRequest,
@@ -7,16 +7,20 @@ import type {
   ParticipantRole,
   ParticipantStatus,
   TimeSlot,
+  UpdateMeetingRequest,
 } from '@/api/scheduleApi'
 import { documentService } from '@/services/documentService'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean
   meeting: MeetingDetailResponse | null
   isLoading: boolean
   loadError?: string
+  isHost?: boolean
+  isUpdatingMeeting?: boolean
+  updateMeetingError?: string
   isAddingReference?: boolean
   addReferenceError?: string
   deletingReferenceId?: string | null
@@ -26,6 +30,7 @@ defineProps<{
 const emit = defineEmits<{
   close: []
   'open-response': [meetingId: string]
+  'update-meeting': [payload: UpdateMeetingRequest]
   'add-reference': [payload: MeetingReferenceRequest]
   'delete-reference': [referenceId: string]
 }>()
@@ -144,6 +149,64 @@ function formatConfirmedRange(meeting: MeetingDetailResponse): string {
   return `${datePart} ${startTime} ~ ${endTime}`
 }
 
+// ─── 회의 정보 수정 (Host 전용) ──────────────────────────────────────────────
+
+const isEditing = ref(false)
+const editTitle = ref('')
+const editPurpose = ref('')
+const editAgenda = ref('')
+const editLocation = ref('')
+const editFormError = ref('')
+
+// 모달에 표시되는 회의가 바뀌면 수정 모드를 초기화한다.
+watch(
+  () => props.meeting?.meetingId,
+  () => {
+    isEditing.value = false
+  },
+)
+
+// 수정 요청이 에러 없이 완료되면 수정 모드를 닫는다.
+watch(
+  () => props.isUpdatingMeeting,
+  (isUpdating, wasUpdating) => {
+    if (wasUpdating && !isUpdating && !props.updateMeetingError) {
+      isEditing.value = false
+    }
+  },
+)
+
+function startEdit(): void {
+  if (!props.meeting) return
+
+  editTitle.value = props.meeting.title
+  editPurpose.value = props.meeting.purpose ?? ''
+  editAgenda.value = props.meeting.agenda ?? ''
+  editLocation.value = props.meeting.location ?? ''
+  editFormError.value = ''
+  isEditing.value = true
+}
+
+function cancelEdit(): void {
+  isEditing.value = false
+}
+
+function submitEdit(): void {
+  editFormError.value = ''
+
+  if (!editTitle.value.trim()) {
+    editFormError.value = '회의명을 입력해 주세요.'
+    return
+  }
+
+  emit('update-meeting', {
+    title: editTitle.value.trim(),
+    purpose: editPurpose.value.trim(),
+    agenda: editAgenda.value.trim(),
+    location: editLocation.value.trim(),
+  })
+}
+
 // ─── 이벤트 핸들러 ──────────────────────────────────────────────────────────
 
 function handleClose(): void {
@@ -180,32 +243,105 @@ function handleOpenResponse(meetingId: string): void {
           {{ STATUS_LABELS[meeting.status] }}
         </span>
 
-        <!-- 목적 -->
-        <div v-if="meeting.purpose" class="info-box">
-          <p class="info-label">목적</p>
-          <p class="info-text">{{ meeting.purpose }}</p>
-        </div>
+        <!-- 회의 정보 수정 버튼 (Host 전용) -->
+        <button
+          v-if="isHost && !isEditing"
+          type="button"
+          class="btn btn--secondary edit-toggle-btn"
+          @click="startEdit"
+        >
+          회의 정보 수정
+        </button>
 
-        <!-- 아젠다 -->
-        <div v-if="meeting.agenda" class="info-box">
-          <p class="info-label">아젠다</p>
-          <p class="info-text">{{ meeting.agenda }}</p>
-        </div>
+        <!-- 회의 정보 수정 폼 -->
+        <form v-if="isEditing" class="edit-form" @submit.prevent="submitEdit">
+          <div class="field">
+            <label class="field-label" for="edit-meeting-title">회의명</label>
+            <input
+              id="edit-meeting-title"
+              v-model="editTitle"
+              type="text"
+              class="field-input"
+              placeholder="회의명을 입력하세요"
+            />
+          </div>
 
-        <!-- 장소 / 회의 링크 -->
-        <div v-if="meeting.location" class="info-box">
-          <p class="info-label">장소 / 회의 링크</p>
-          <a
-            v-if="isMeetingLinkUrl(meeting.location)"
-            class="info-text info-link"
-            :href="meeting.location"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            {{ meeting.location }}
-          </a>
-          <p v-else class="info-text">{{ meeting.location }}</p>
-        </div>
+          <div class="field">
+            <label class="field-label" for="edit-meeting-purpose">목적</label>
+            <input
+              id="edit-meeting-purpose"
+              v-model="editPurpose"
+              type="text"
+              class="field-input"
+              placeholder="회의 목적 (선택)"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="edit-meeting-agenda">아젠다</label>
+            <textarea
+              id="edit-meeting-agenda"
+              v-model="editAgenda"
+              class="field-textarea"
+              placeholder="회의 아젠다 (선택)"
+              rows="3"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="edit-meeting-location">장소</label>
+            <input
+              id="edit-meeting-location"
+              v-model="editLocation"
+              type="text"
+              class="field-input"
+              placeholder="회의실 또는 화상회의 링크 (선택)"
+            />
+          </div>
+
+          <p v-if="editFormError" class="field-hint verify-error">{{ editFormError }}</p>
+          <p v-if="updateMeetingError" class="field-hint verify-error">{{ updateMeetingError }}</p>
+
+          <div class="edit-actions">
+            <button type="button" class="btn btn--secondary" :disabled="isUpdatingMeeting" @click="cancelEdit">
+              취소
+            </button>
+            <button type="submit" class="btn btn--primary" :disabled="isUpdatingMeeting">
+              <span v-if="isUpdatingMeeting" class="spinner" />
+              저장
+            </button>
+          </div>
+        </form>
+
+        <!-- 목적 / 아젠다 / 장소 (수정 모드가 아닐 때 표시) -->
+        <template v-if="!isEditing">
+          <!-- 목적 -->
+          <div v-if="meeting.purpose" class="info-box">
+            <p class="info-label">목적</p>
+            <p class="info-text">{{ meeting.purpose }}</p>
+          </div>
+
+          <!-- 아젠다 -->
+          <div v-if="meeting.agenda" class="info-box">
+            <p class="info-label">아젠다</p>
+            <p class="info-text">{{ meeting.agenda }}</p>
+          </div>
+
+          <!-- 장소 / 회의 링크 -->
+          <div v-if="meeting.location" class="info-box">
+            <p class="info-label">장소 / 회의 링크</p>
+            <a
+              v-if="isMeetingLinkUrl(meeting.location)"
+              class="info-text info-link"
+              :href="meeting.location"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ meeting.location }}
+            </a>
+            <p v-else class="info-text">{{ meeting.location }}</p>
+          </div>
+        </template>
 
         <!-- GATHERING: 참석자 목록 + 응답 현황 -->
         <template v-if="meeting.status === 'GATHERING'">
@@ -712,12 +848,89 @@ function handleOpenResponse(meetingId: string): void {
 .btn:active {
   transform: translateY(1px);
 }
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .btn--primary {
   background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
   color: #fff;
   box-shadow: 0 4px 12px rgba(164, 147, 232, 0.25);
 }
-.btn--primary:hover {
+.btn--primary:hover:not(:disabled) {
   opacity: 0.95;
+}
+.btn--secondary {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(240, 238, 255, 0.7);
+}
+.btn--secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f0eeff;
+}
+
+/* ── 회의 정보 수정 ─────────────────────────────────────────────────── */
+.edit-toggle-btn {
+  margin-bottom: 16px;
+}
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-bottom: 16px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(240, 238, 255, 0.5);
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+}
+.field-input,
+.field-textarea {
+  padding: 0 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(164, 147, 232, 0.2);
+  background: rgba(255, 255, 255, 0.045);
+  color: #f0eeff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  box-sizing: border-box;
+  font-family: inherit;
+  width: 100%;
+}
+.field-input {
+  height: 44px;
+}
+.field-textarea {
+  padding: 10px 14px;
+  resize: vertical;
+  min-height: 72px;
+}
+.field-input::placeholder,
+.field-textarea::placeholder {
+  color: rgba(164, 147, 232, 0.3);
+}
+.field-input:focus,
+.field-textarea:focus {
+  border-color: #a493e8;
+  background: rgba(164, 147, 232, 0.07);
+  box-shadow: 0 0 0 3px rgba(164, 147, 232, 0.13);
+}
+.edit-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+.edit-actions .btn {
+  width: auto;
+  flex: 1;
 }
 </style>

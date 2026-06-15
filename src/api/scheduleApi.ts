@@ -45,6 +45,13 @@ export interface CreateMeetingResponse {
   meetingId: string
 }
 
+export interface UpdateMeetingRequest {
+  title: string
+  purpose?: string | null
+  agenda?: string | null
+  location?: string | null
+}
+
 export interface SubmitAvailableTimesRequest {
   availableTimes: TimeSlot[]
 }
@@ -170,6 +177,15 @@ export const scheduleApi = {
   fetchMeetingDetail(meetingId: string): Promise<MeetingDetailResponse> {
     return axiosClient
       .get<MeetingDetailResponse>(`/api/meetings/${meetingId}`)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의 정보(제목/목적/아젠다/장소)를 수정합니다. 주최자(HOST)만 가능합니다.
+   */
+  updateMeeting(meetingId: string, payload: UpdateMeetingRequest): Promise<MeetingDetailResponse> {
+    return axiosClient
+      .patch<MeetingDetailResponse>(`/api/meetings/${meetingId}`, payload)
       .then((res) => res.data)
   },
 
