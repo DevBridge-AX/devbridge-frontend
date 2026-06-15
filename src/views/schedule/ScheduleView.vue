@@ -155,6 +155,9 @@ async function handleMeetingCreated(payload: CreatedMeetingPayload): Promise<voi
       title: payload.title,
       durationMinutes: payload.durationMinutes,
       participantEmployeeIds: payload.participantEmployeeIds,
+      purpose: payload.purpose,
+      agenda: payload.agenda,
+      location: payload.location,
       references: payload.references,
     })
 

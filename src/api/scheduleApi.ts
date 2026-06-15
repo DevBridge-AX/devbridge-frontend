@@ -35,6 +35,9 @@ export interface CreateMeetingRequest {
   title: string
   durationMinutes: number
   participantEmployeeIds: string[]
+  purpose?: string | null
+  agenda?: string | null
+  location?: string | null
   references?: MeetingReferenceRequest[]
 }
 
@@ -78,6 +81,9 @@ export interface MeetingParticipant {
 export interface MeetingDetailResponse {
   meetingId: string
   title: string
+  purpose?: string | null
+  agenda?: string | null
+  location?: string | null
   durationMinutes: number
   status: MeetingStatus
   confirmedStartTime: string | null
@@ -85,10 +91,6 @@ export interface MeetingDetailResponse {
   topCandidateTimes: TimeSlot[]
   participants: MeetingParticipant[]
   references: MeetingReferenceResponse[]
-  // NOTE: 백엔드 응답에 아직 포함되지 않은 선반영 필드.
-  // 추가되는 즉시 상세 모달에서 자동으로 노출됨 (요약/아젠다, 장소/회의 링크).
-  aiSummary?: string | null
-  meetingLink?: string | null
 }
 
 export interface FetchMyConfirmedSchedulesParams {
@@ -108,8 +110,6 @@ export interface ApiErrorResponse {
 export type { WorkspaceMemberResponse } from './workspaceApi'
 
 // ─── 회의 생성 모달 emit 페이로드 ──────────────────────────────────────────
-// NOTE: purpose/agenda/location은 CreateMeetingRequest에 없는 필드.
-// 백엔드 스펙 확정 전까지 UI에서만 수집하며, createMeeting 호출 시 전송하지 않음.
 export interface CreatedMeetingPayload {
   title: string
   durationMinutes: number

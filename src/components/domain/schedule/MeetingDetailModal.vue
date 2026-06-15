@@ -180,25 +180,31 @@ function handleOpenResponse(meetingId: string): void {
           {{ STATUS_LABELS[meeting.status] }}
         </span>
 
-        <!-- 요약 / 아젠다 -->
-        <div v-if="meeting.aiSummary" class="info-box">
-          <p class="info-label">요약 / 아젠다</p>
-          <p class="info-text">{{ meeting.aiSummary }}</p>
+        <!-- 목적 -->
+        <div v-if="meeting.purpose" class="info-box">
+          <p class="info-label">목적</p>
+          <p class="info-text">{{ meeting.purpose }}</p>
+        </div>
+
+        <!-- 아젠다 -->
+        <div v-if="meeting.agenda" class="info-box">
+          <p class="info-label">아젠다</p>
+          <p class="info-text">{{ meeting.agenda }}</p>
         </div>
 
         <!-- 장소 / 회의 링크 -->
-        <div v-if="meeting.meetingLink" class="info-box">
+        <div v-if="meeting.location" class="info-box">
           <p class="info-label">장소 / 회의 링크</p>
           <a
-            v-if="isMeetingLinkUrl(meeting.meetingLink)"
+            v-if="isMeetingLinkUrl(meeting.location)"
             class="info-text info-link"
-            :href="meeting.meetingLink"
+            :href="meeting.location"
             target="_blank"
             rel="noopener noreferrer"
           >
-            {{ meeting.meetingLink }}
+            {{ meeting.location }}
           </a>
-          <p v-else class="info-text">{{ meeting.meetingLink }}</p>
+          <p v-else class="info-text">{{ meeting.location }}</p>
         </div>
 
         <!-- GATHERING: 참석자 목록 + 응답 현황 -->

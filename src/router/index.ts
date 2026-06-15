@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
+import { authService } from '@/services/authService'
 
 declare module 'vue-router' {
   interface RouteMeta {
@@ -60,10 +61,15 @@ const router = createRouter({
   ],
 })
 
-router.beforeEach((to) => {
+router.beforeEach(async (to) => {
   const authStore = useAuthStore()
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
+  }
+
+  // 새로고침 등으로 토큰은 있지만 본인 정보가 비어있는 경우 채워둔다. (Host 판별에 사용)
+  if (authStore.isAuthenticated && !authStore.currentUser) {
+    await authService.fetchCurrentUser()
   }
 })
 
