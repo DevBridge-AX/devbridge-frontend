@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import TaskDetailModal from '@/components/task/TaskDetailModal.vue'
 import { dashboardService } from '@/services/dashboardService'
 import type {
   WorkspaceDashboardSummary,
@@ -10,6 +11,7 @@ import type {
   DashboardGitCommitItem,
   DashboardDocumentItem,
 } from '@/api/dashboardApi'
+import '@/assets/styles/workspace-dashboard.css'
 
 type SummaryItem = {
   label: string
@@ -32,6 +34,9 @@ const detail = ref<WorkspaceDashboardDetail | null>(null)
 
 const isAiSummaryVisible = ref(false)
 const aiSummaryText = ref('')
+
+const selectedTaskId = ref<string | null>(null)
+const isTaskDetailModalOpen = ref(false)
 
 const summaryItems = computed<SummaryItem[]>(() => {
   if (!summary.value) {
@@ -133,6 +138,7 @@ const getStatusLabel = (status: string) => {
     IN_PROGRESS: '진행 중',
     DONE: '완료',
     DELAYED: '지연',
+    OVERDUE: '지연',
   }
 
   return statusMap[status] ?? status
@@ -162,14 +168,14 @@ const buildAiSummary = () => {
 
   const riskMessage =
     delayedTaskCount > 0
-      ? `현재 지연 업무가 ${delayedTaskCount}건 존재하므로, 지연 업무를 우선 확인할 필요가 있습니다.`
+      ? `현재 지연 업무가 ${delayedTaskCount}건 존재하므로 지연 업무를 우선 확인할 필요가 있습니다.`
       : '현재 지연 업무가 없어 일정 리스크는 낮은 상태입니다.'
 
   const progressMessage =
     progressRate >= 70
-      ? '전체 완료율이 높은 편이므로 마무리 작업과 품질 검토 중심으로 관리하면 좋습니다.'
+      ? '전체 완료율이 높은 편이므로 마무리 작업과 산출물 검토 중심으로 관리하면 좋습니다.'
       : progressRate >= 40
-        ? '전체 완료율은 중간 수준이므로 진행 중 업무의 병목 여부를 확인하는 것이 좋습니다.'
+        ? '전체 완료율이 중간 수준이므로 진행 중 업무의 병목 여부를 확인하는 것이 좋습니다.'
         : '전체 완료율이 낮은 편이므로 핵심 업무의 우선순위 재정리가 필요합니다.'
 
   return `${workspaceName} 워크스페이스에는 총 ${totalTaskCount}개의 업무가 등록되어 있으며, 이 중 ${doneTaskCount}건이 완료되고 ${inProgressTaskCount}건이 진행 중입니다. 현재 완료율은 ${progressRate}%입니다. ${riskMessage} 최근 Git Commit은 ${recentCommitCount}건, 최근 문서는 ${recentDocumentCount}건 확인되었습니다. ${progressMessage}`
@@ -193,6 +199,16 @@ const goToTasks = (status?: string) => {
     path: `/workspaces/${workspaceId.value}/tasks`,
     query: status ? { status } : undefined,
   })
+}
+
+const openTaskDetailModal = (taskId: string) => {
+  selectedTaskId.value = taskId
+  isTaskDetailModalOpen.value = true
+}
+
+const closeTaskDetailModal = () => {
+  isTaskDetailModalOpen.value = false
+  selectedTaskId.value = null
 }
 
 onMounted(() => {
@@ -263,7 +279,7 @@ watch(
 
           <p class="ai-summary-note">
             현재 요약은 실제 Dashboard API 데이터를 기반으로 프론트에서 생성한
-            1차 rule-based 요약입니다. 추후 AI Engine API와 연결하면 동일한
+            1차 rule-based 요약입니다. 추후 AI Engine API를 연결하면 동일한
             영역에서 실제 AI 응답을 표시할 수 있습니다.
           </p>
         </section>
@@ -301,12 +317,12 @@ watch(
                 v-for="task in recentTasks"
                 :key="task.taskId"
                 class="item-card clickable"
-                @click="goToTasks(task.status)"
+                @click="openTaskDetailModal(task.taskId)"
               >
                 <div>
                   <strong>{{ task.title }}</strong>
                   <p>
-                    담당자 {{ task.assigneeName }} · 마감
+                    담당자 {{ task.assigneeName || '미지정' }} · 마감
                     {{ formatDate(task.dueDate) }}
                   </p>
                 </div>
@@ -341,12 +357,12 @@ watch(
                 v-for="task in delayedTasks"
                 :key="task.taskId"
                 class="item-card clickable"
-                @click="goToTasks('OVERDUE')"
+                @click="openTaskDetailModal(task.taskId)"
               >
                 <div>
                   <strong>{{ task.title }}</strong>
                   <p>
-                    담당자 {{ task.assigneeName }} · 마감
+                    담당자 {{ task.assigneeName || '미지정' }} · 마감
                     {{ formatDate(task.dueDate) }}
                   </p>
                 </div>
@@ -375,7 +391,8 @@ watch(
               >
                 <strong>{{ commit.commitMessage }}</strong>
                 <p>
-                  {{ commit.commitHash }} · {{ commit.authorName }} ·
+                  {{ commit.commitHash }} ·
+                  {{ commit.authorName || '작성자 미상' }} ·
                   {{ formatDate(commit.pushedAt) }}
                 </p>
               </li>
@@ -413,332 +430,11 @@ watch(
         표시할 대시보드 데이터가 없습니다.
       </section>
     </div>
+
+    <TaskDetailModal
+      :task-id="selectedTaskId"
+      :is-open="isTaskDetailModalOpen"
+      @close="closeTaskDetailModal"
+    />
   </AppLayout>
 </template>
-
-<style scoped>
-.dashboard-page {
-  padding: 40px;
-  background: #f5f7fb;
-  color: #172033;
-}
-
-.panel-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.text-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 7px 10px;
-  background: #eef4ff;
-  color: #2d5fd5;
-  font-size: 12px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.text-button.danger {
-  background: #fff0f0;
-  color: #d92d20;
-}
-
-.item-card.clickable {
-  cursor: pointer;
-  transition:
-    transform 0.16s ease,
-    background 0.16s ease,
-    box-shadow 0.16s ease;
-}
-
-.item-card.clickable:hover {
-  transform: translateY(-1px);
-  background: #eef4ff;
-  box-shadow: 0 10px 24px rgba(23, 32, 51, 0.08);
-}
-
-.dashboard-hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 32px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #1f2a44, #334d8f);
-  color: white;
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  opacity: 0.78;
-}
-
-.eyebrow.dark {
-  color: #667085;
-  opacity: 1;
-}
-
-.dashboard-hero h1 {
-  margin: 0;
-  font-size: 32px;
-  font-weight: 800;
-}
-
-.hero-description {
-  max-width: 680px;
-  margin: 12px 0 0;
-  line-height: 1.6;
-  color: rgba(255, 255, 255, 0.82);
-}
-
-.primary-button {
-  flex-shrink: 0;
-  border: 0;
-  border-radius: 999px;
-  padding: 12px 18px;
-  background: white;
-  color: #263b70;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.primary-button:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-.state-box {
-  margin-top: 24px;
-  padding: 24px;
-  border-radius: 18px;
-  background: white;
-  color: #667085;
-  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
-}
-
-.state-box.error {
-  color: #d92d20;
-  border: 1px solid #ffd6d6;
-}
-
-.state-box p {
-  margin: 8px 0 0;
-}
-
-.retry-button {
-  margin-top: 16px;
-  border: 0;
-  border-radius: 999px;
-  padding: 10px 14px;
-  background: #d92d20;
-  color: white;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.ai-summary-panel {
-  margin-top: 24px;
-  padding: 24px;
-  border: 1px solid #d7e3ff;
-  border-radius: 22px;
-  background: #ffffff;
-  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
-}
-
-.ai-summary-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.ai-summary-header h2 {
-  margin: 0;
-  color: #172033;
-  font-size: 20px;
-}
-
-.ai-summary-text {
-  margin: 18px 0 0;
-  color: #344054;
-  line-height: 1.7;
-}
-
-.ai-summary-note {
-  margin: 14px 0 0;
-  color: #8a94a6;
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-.close-button {
-  border: 0;
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: #f2f4f7;
-  color: #475467;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 24px;
-}
-
-.summary-card {
-  padding: 20px;
-  border-radius: 18px;
-  background: white;
-  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
-}
-
-.summary-label {
-  margin: 0 0 12px;
-  color: #667085;
-  font-size: 14px;
-}
-
-.summary-value {
-  display: block;
-  font-size: 30px;
-  color: #172033;
-}
-
-.summary-description {
-  display: block;
-  margin-top: 8px;
-  color: #8a94a6;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.dashboard-content {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 20px;
-  margin-top: 24px;
-}
-
-.panel {
-  padding: 24px;
-  border-radius: 22px;
-  background: white;
-  box-shadow: 0 12px 30px rgba(23, 32, 51, 0.08);
-}
-
-.danger-panel {
-  border: 1px solid #ffd6d6;
-}
-
-.panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.panel-header h2 {
-  margin: 0;
-  font-size: 18px;
-}
-
-.panel-header span {
-  color: #667085;
-  font-size: 14px;
-}
-
-.empty-text {
-  margin: 0;
-  color: #8a94a6;
-  font-size: 14px;
-}
-
-.item-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.item-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 16px;
-  border-radius: 16px;
-  background: #f8fafc;
-}
-
-.item-card.vertical {
-  align-items: flex-start;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.item-card strong {
-  color: #172033;
-  font-size: 15px;
-}
-
-.item-card p {
-  margin: 6px 0 0;
-  color: #667085;
-  font-size: 13px;
-}
-
-.status-badge {
-  flex-shrink: 0;
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: #e7efff;
-  color: #2d5fd5;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.status-badge.danger {
-  background: #fff0f0;
-  color: #d92d20;
-}
-
-@media (max-width: 1400px) {
-  .summary-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 1200px) {
-  .summary-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 800px) {
-  .dashboard-page {
-    padding: 24px;
-  }
-
-  .dashboard-hero,
-  .ai-summary-header {
-    flex-direction: column;
-  }
-
-  .summary-grid,
-  .dashboard-content {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

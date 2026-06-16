@@ -2,22 +2,52 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { taskService } from '@/services/taskService'
-import type { Task } from '@/api/taskApi'
+import { useAuthStore } from '@/state/authStore'
+import type { CreateTaskRequest, Task, UpdateTaskRequest } from '@/api/taskApi'
 import AppLayout from '@/layouts/AppLayout.vue'
+import TaskDetailModal from '@/components/task/TaskDetailModal.vue'
+import '@/assets/styles/task-list.css'
+
+type TaskFormMode = 'create' | 'edit'
+
+type TaskFormState = {
+  title: string
+  description: string
+  assigneeId: string
+  dueDate: string
+}
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const tasks = ref<Task[]>([])
 const isLoading = ref(false)
 const errorMessage = ref('')
 const selectedStatus = ref('ALL')
-const selectedTask = ref<Task | null>(null)
+
+const selectedTaskId = ref<string | null>(null)
+const isTaskDetailModalOpen = ref(false)
+
+const isTaskFormOpen = ref(false)
+const taskFormMode = ref<TaskFormMode>('create')
+const editingTaskId = ref<string | null>(null)
+const isSavingTask = ref(false)
+const formErrorMessage = ref('')
+
+const taskForm = ref<TaskFormState>({
+  title: '',
+  description: '',
+  assigneeId: '',
+  dueDate: '',
+})
 
 const workspaceId = computed(() => {
   const value = route.params.workspaceId
   return Array.isArray(value) ? value[0] : value
 })
+
+const currentUserId = computed(() => authStore.currentUser?.id ?? '')
 
 const totalCount = computed(() => tasks.value.length)
 
@@ -30,14 +60,21 @@ const inProgressCount = computed(
 )
 
 const completedCount = computed(
-  () => tasks.value.filter((task) => task.status === 'COMPLETED').length,
+  () =>
+    tasks.value.filter(
+      (task) => task.status === 'DONE' || task.status === 'COMPLETED',
+    ).length,
 )
 
 const overdueCount = computed(() => {
   const now = new Date()
 
   return tasks.value.filter((task) => {
-    if (!task.dueDate || task.status === 'COMPLETED') {
+    if (
+      !task.dueDate ||
+      task.status === 'DONE' ||
+      task.status === 'COMPLETED'
+    ) {
       return false
     }
 
@@ -54,7 +91,11 @@ const filteredTasks = computed(() => {
     const now = new Date()
 
     return tasks.value.filter((task) => {
-      if (!task.dueDate || task.status === 'COMPLETED') {
+      if (
+        !task.dueDate ||
+        task.status === 'DONE' ||
+        task.status === 'COMPLETED'
+      ) {
         return false
       }
 
@@ -62,7 +103,21 @@ const filteredTasks = computed(() => {
     })
   }
 
+  if (selectedStatus.value === 'DONE') {
+    return tasks.value.filter(
+      (task) => task.status === 'DONE' || task.status === 'COMPLETED',
+    )
+  }
+
   return tasks.value.filter((task) => task.status === selectedStatus.value)
+})
+
+const formTitle = computed(() => {
+  return taskFormMode.value === 'create' ? '업무 추가' : '업무 수정'
+})
+
+const submitButtonLabel = computed(() => {
+  return taskFormMode.value === 'create' ? '업무 생성' : '수정 저장'
 })
 
 async function fetchTasks() {
@@ -76,7 +131,7 @@ async function fetchTasks() {
 
   try {
     tasks.value = await taskService.getTasksByWorkspace(workspaceId.value)
-  } catch (error) {
+  } catch (error: unknown) {
     errorMessage.value =
       error instanceof Error
         ? error.message
@@ -94,16 +149,160 @@ function goToDashboard() {
   router.push(`/workspaces/${workspaceId.value}/dashboard`)
 }
 
-function openTaskDetail(task: Task) {
-  selectedTask.value = task
+function openTaskDetail(taskId: string) {
+  selectedTaskId.value = taskId
+  isTaskDetailModalOpen.value = true
 }
 
 function closeTaskDetail() {
-  selectedTask.value = null
+  isTaskDetailModalOpen.value = false
+  selectedTaskId.value = null
 }
 
 function setStatusFilter(status: string) {
   selectedStatus.value = status
+}
+
+function resetTaskForm() {
+  taskForm.value = {
+    title: '',
+    description: '',
+    assigneeId: '',
+    dueDate: '',
+  }
+  formErrorMessage.value = ''
+  editingTaskId.value = null
+}
+
+function openCreateTaskForm() {
+  taskFormMode.value = 'create'
+  resetTaskForm()
+  isTaskFormOpen.value = true
+}
+
+function openEditTaskForm(task: Task) {
+  taskFormMode.value = 'edit'
+  editingTaskId.value = task.id
+  formErrorMessage.value = ''
+
+  taskForm.value = {
+    title: task.title,
+    description: task.description ?? '',
+    assigneeId: task.assigneeId ?? '',
+    dueDate: toDateTimeLocalValue(task.dueDate),
+  }
+
+  isTaskFormOpen.value = true
+}
+
+function closeTaskForm() {
+  if (isSavingTask.value) {
+    return
+  }
+
+  isTaskFormOpen.value = false
+  resetTaskForm()
+}
+
+async function submitTaskForm() {
+  if (!workspaceId.value) {
+    formErrorMessage.value = '워크스페이스 정보가 없습니다.'
+    return
+  }
+
+  if (!taskForm.value.title.trim()) {
+    formErrorMessage.value = '업무 제목을 입력해야 합니다.'
+    return
+  }
+
+  isSavingTask.value = true
+  formErrorMessage.value = ''
+
+  try {
+    if (taskFormMode.value === 'create') {
+      if (!currentUserId.value) {
+        formErrorMessage.value =
+          '요청자 정보를 확인할 수 없습니다. 다시 로그인해 주세요.'
+        return
+      }
+
+      const request: CreateTaskRequest = {
+        workspaceId: workspaceId.value,
+        requesterId: currentUserId.value,
+        assigneeId: normalizeNullableValue(taskForm.value.assigneeId),
+        title: taskForm.value.title.trim(),
+        description: normalizeNullableValue(taskForm.value.description),
+        dueDate: normalizeDueDateValue(taskForm.value.dueDate),
+      }
+
+      await taskService.createTask(request)
+    } else {
+      if (!editingTaskId.value) {
+        formErrorMessage.value = '수정할 업무 정보가 없습니다.'
+        return
+      }
+
+      const request: UpdateTaskRequest = {
+        assigneeId: normalizeNullableValue(taskForm.value.assigneeId),
+        title: taskForm.value.title.trim(),
+        description: normalizeNullableValue(taskForm.value.description),
+        dueDate: normalizeDueDateValue(taskForm.value.dueDate),
+      }
+
+      await taskService.updateTask(editingTaskId.value, request)
+    }
+
+    closeTaskForm()
+    await fetchTasks()
+  } catch (error: unknown) {
+    formErrorMessage.value =
+      error instanceof Error ? error.message : '업무 저장에 실패했습니다.'
+  } finally {
+    isSavingTask.value = false
+  }
+}
+
+async function changeTaskStatus(task: Task, status: string) {
+  if (task.status === status) {
+    return
+  }
+
+  try {
+    await taskService.updateTaskStatus(task.id, {
+      status,
+      changedBy: currentUserId.value || null,
+    })
+
+    await fetchTasks()
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '업무 상태를 변경하지 못했습니다.'
+  }
+}
+
+async function removeTask(task: Task) {
+  const confirmed = window.confirm(
+    `"${task.title}" 업무를 삭제할까요?\n삭제된 업무는 목록에서 제외됩니다.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await taskService.deleteTask(task.id)
+
+    if (selectedTaskId.value === task.id) {
+      closeTaskDetail()
+    }
+
+    await fetchTasks()
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error ? error.message : '업무를 삭제하지 못했습니다.'
+  }
 }
 
 function applyStatusQuery() {
@@ -119,17 +318,23 @@ function applyStatusQuery() {
     'ASSIGNED',
     'IN_PROGRESS',
     'REVIEW',
+    'DONE',
     'COMPLETED',
     'CANCELLED',
     'OVERDUE',
   ]
 
-  selectedStatus.value = availableStatuses.includes(status) ? status : 'ALL'
+  if (!availableStatuses.includes(status)) {
+    selectedStatus.value = 'ALL'
+    return
+  }
+
+  selectedStatus.value = status === 'COMPLETED' ? 'DONE' : status
 }
 
 function formatDate(value: string | null) {
   if (!value) {
-    return '-'
+    return '미정'
   }
 
   return new Date(value).toLocaleDateString('ko-KR', {
@@ -144,6 +349,7 @@ function getStatusLabel(status: string) {
     ASSIGNED: '배정',
     IN_PROGRESS: '진행 중',
     REVIEW: '검토',
+    DONE: '완료',
     COMPLETED: '완료',
     CANCELLED: '취소',
   }
@@ -156,6 +362,7 @@ function getStatusClass(status: string) {
     ASSIGNED: 'assigned',
     IN_PROGRESS: 'in-progress',
     REVIEW: 'review',
+    DONE: 'done',
     COMPLETED: 'completed',
     CANCELLED: 'cancelled',
   }
@@ -164,16 +371,37 @@ function getStatusClass(status: string) {
 }
 
 function isOverdue(task: Task) {
-  if (!task.dueDate || task.status === 'COMPLETED') {
+  if (!task.dueDate || task.status === 'DONE' || task.status === 'COMPLETED') {
     return false
   }
 
   return new Date(task.dueDate) < new Date()
 }
 
+function normalizeNullableValue(value: string) {
+  const trimmedValue = value.trim()
+  return trimmedValue.length > 0 ? trimmedValue : null
+}
+
+function normalizeDueDateValue(value: string) {
+  if (!value) {
+    return null
+  }
+
+  return value
+}
+
+function toDateTimeLocalValue(value: string | null) {
+  if (!value) {
+    return ''
+  }
+
+  return value.slice(0, 16)
+}
+
 onMounted(() => {
   applyStatusQuery()
-  fetchTasks()
+  void fetchTasks()
 })
 
 watch(
@@ -186,45 +414,52 @@ watch(
 watch(
   () => workspaceId.value,
   () => {
-    selectedTask.value = null
+    selectedTaskId.value = null
+    isTaskDetailModalOpen.value = false
+    isTaskFormOpen.value = false
     applyStatusQuery()
-    fetchTasks()
+    void fetchTasks()
   },
 )
 </script>
 
 <template>
   <AppLayout>
-    <main class="page-shell">
-      <section class="task-page">
-        <header class="hero-section">
+    <main class="task-list-page-shell">
+      <section class="task-list-page">
+        <header class="task-list-hero">
           <div>
-            <p class="eyebrow">TASK</p>
+            <p class="task-list-eyebrow">Task</p>
             <h1>업무 관리</h1>
-            <p class="description">
+            <p class="task-list-description">
               현재 Workspace에서 진행되는 업무를 확인하고, 담당자·마감일·진행
-              상태를 추적합니다.
+              상태를 추적합니다. 업무 항목을 클릭하면 상세 정보, 관련 문서, 변경
+              사항, 산출물, 활동 이력을 확인할 수 있습니다.
             </p>
           </div>
 
-          <div class="header-actions">
+          <div class="task-list-header-actions">
             <button
               type="button"
-              class="secondary-button"
+              class="task-list-secondary-button"
               @click="goToDashboard"
             >
               대시보드로 이동
             </button>
-            <button type="button" class="primary-button" @click="fetchTasks">
+            <button
+              type="button"
+              class="task-list-primary-button"
+              @click="fetchTasks"
+            >
               새로고침
             </button>
           </div>
         </header>
 
-        <section class="summary-grid">
+        <section class="task-list-summary-grid">
           <button
             type="button"
-            class="summary-card"
+            class="task-list-summary-card"
             :class="{ active: selectedStatus === 'ALL' }"
             @click="setStatusFilter('ALL')"
           >
@@ -234,7 +469,7 @@ watch(
 
           <button
             type="button"
-            class="summary-card"
+            class="task-list-summary-card"
             :class="{ active: selectedStatus === 'ASSIGNED' }"
             @click="setStatusFilter('ASSIGNED')"
           >
@@ -244,7 +479,7 @@ watch(
 
           <button
             type="button"
-            class="summary-card"
+            class="task-list-summary-card"
             :class="{ active: selectedStatus === 'IN_PROGRESS' }"
             @click="setStatusFilter('IN_PROGRESS')"
           >
@@ -254,9 +489,9 @@ watch(
 
           <button
             type="button"
-            class="summary-card"
-            :class="{ active: selectedStatus === 'COMPLETED' }"
-            @click="setStatusFilter('COMPLETED')"
+            class="task-list-summary-card"
+            :class="{ active: selectedStatus === 'DONE' }"
+            @click="setStatusFilter('DONE')"
           >
             <span>완료</span>
             <strong>{{ completedCount }}</strong>
@@ -264,7 +499,7 @@ watch(
 
           <button
             type="button"
-            class="summary-card warning"
+            class="task-list-summary-card warning"
             :class="{ active: selectedStatus === 'OVERDUE' }"
             @click="setStatusFilter('OVERDUE')"
           >
@@ -273,78 +508,151 @@ watch(
           </button>
         </section>
 
-        <section class="content-card">
-          <div class="content-header">
+        <section class="task-list-content-card">
+          <div class="task-list-content-header">
             <div>
               <h2>Task 목록</h2>
               <p>
                 선택한 Workspace 기준으로 조회된 업무입니다. 항목을 클릭하면
-                상세 정보를 확인할 수 있습니다.
+                공통 Task 상세 모달에서 업무 맥락과 연결 데이터를 확인합니다.
               </p>
             </div>
 
-            <span class="count-badge"> {{ filteredTasks.length }}개 표시 </span>
+            <div class="task-list-content-actions">
+              <span class="task-list-count-badge">
+                {{ filteredTasks.length }}개 표시
+              </span>
+              <button
+                type="button"
+                class="task-list-add-button"
+                @click="openCreateTaskForm"
+              >
+                + 업무 추가
+              </button>
+            </div>
           </div>
 
-          <div v-if="isLoading" class="state-box">
+          <div v-if="isLoading" class="task-list-state-box">
             업무 목록을 불러오는 중입니다.
           </div>
 
-          <div v-else-if="errorMessage" class="state-box error">
+          <div v-else-if="errorMessage" class="task-list-state-box error">
             {{ errorMessage }}
           </div>
 
-          <div v-else-if="filteredTasks.length === 0" class="state-box">
+          <div
+            v-else-if="filteredTasks.length === 0"
+            class="task-list-state-box"
+          >
             조건에 맞는 업무가 없습니다.
           </div>
 
-          <div v-else class="task-list">
+          <div v-else class="task-list-items">
             <article
               v-for="task in filteredTasks"
               :key="task.id"
-              class="task-item"
+              class="task-list-item"
               :class="{ overdue: isOverdue(task) }"
               role="button"
               tabindex="0"
-              @click="openTaskDetail(task)"
-              @keydown.enter="openTaskDetail(task)"
+              @click="openTaskDetail(task.id)"
+              @keydown.enter="openTaskDetail(task.id)"
             >
-              <div class="task-main">
-                <div class="task-title-row">
-                  <div>
-                    <h3>{{ task.title }}</h3>
-                    <p class="task-description">
-                      {{ task.description || '설명 없음' }}
-                    </p>
-                  </div>
-
-                  <div class="badge-group">
-                    <span v-if="isOverdue(task)" class="overdue-badge">
-                      지연 가능
-                    </span>
-                    <span
-                      class="status-badge"
-                      :class="getStatusClass(task.status)"
-                    >
-                      {{ getStatusLabel(task.status) }}
-                    </span>
-                  </div>
+              <div class="task-list-title-row">
+                <div>
+                  <h3>{{ task.title }}</h3>
+                  <p class="task-list-description-text">
+                    {{ task.description || '설명 없음' }}
+                  </p>
                 </div>
 
-                <dl class="task-meta">
-                  <div>
-                    <dt>요청자</dt>
-                    <dd>{{ task.requesterId }}</dd>
-                  </div>
-                  <div>
-                    <dt>담당자</dt>
-                    <dd>{{ task.assigneeId || '-' }}</dd>
-                  </div>
-                  <div>
-                    <dt>마감일</dt>
-                    <dd>{{ formatDate(task.dueDate) }}</dd>
-                  </div>
-                </dl>
+                <div class="task-list-badge-group">
+                  <span v-if="isOverdue(task)" class="task-list-overdue-badge">
+                    지연 가능
+                  </span>
+                  <span
+                    class="task-list-status-badge"
+                    :class="getStatusClass(task.status)"
+                  >
+                    {{ getStatusLabel(task.status) }}
+                  </span>
+                </div>
+              </div>
+
+              <dl class="task-list-meta">
+                <div>
+                  <dt>요청자</dt>
+                  <dd>{{ task.requesterId }}</dd>
+                </div>
+                <div>
+                  <dt>담당자</dt>
+                  <dd>{{ task.assigneeId || '미지정' }}</dd>
+                </div>
+                <div>
+                  <dt>마감일</dt>
+                  <dd>{{ formatDate(task.dueDate) }}</dd>
+                </div>
+              </dl>
+
+              <div class="task-list-item-footer">
+                <div
+                  class="task-list-status-actions"
+                  aria-label="Task status actions"
+                  @click.stop
+                >
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'ASSIGNED' }"
+                    @click="changeTaskStatus(task, 'ASSIGNED')"
+                  >
+                    배정
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'IN_PROGRESS' }"
+                    @click="changeTaskStatus(task, 'IN_PROGRESS')"
+                  >
+                    진행
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'REVIEW' }"
+                    @click="changeTaskStatus(task, 'REVIEW')"
+                  >
+                    검토
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{
+                      active:
+                        task.status === 'DONE' || task.status === 'COMPLETED',
+                    }"
+                    @click="changeTaskStatus(task, 'DONE')"
+                  >
+                    완료
+                  </button>
+                </div>
+
+                <div class="task-list-row-actions" @click.stop>
+                  <button
+                    type="button"
+                    class="task-list-row-button"
+                    @click="openEditTaskForm(task)"
+                  >
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-row-button danger"
+                    @click="removeTask(task)"
+                  >
+                    삭제
+                  </button>
+                </div>
               </div>
             </article>
           </div>
@@ -352,512 +660,113 @@ watch(
       </section>
     </main>
 
+    <TaskDetailModal
+      :task-id="selectedTaskId"
+      :is-open="isTaskDetailModalOpen"
+      @close="closeTaskDetail"
+    />
+
     <Teleport to="body">
       <div
-        v-if="selectedTask"
-        class="modal-backdrop"
-        @click.self="closeTaskDetail"
+        v-if="isTaskFormOpen"
+        class="task-list-form-overlay"
+        role="dialog"
+        aria-modal="true"
       >
-        <section class="task-modal" role="dialog" aria-modal="true">
-          <header class="modal-header">
+        <section class="task-list-form-modal">
+          <header class="task-list-form-header">
             <div>
-              <p class="eyebrow">TASK DETAIL</p>
-              <h2>{{ selectedTask.title }}</h2>
+              <p class="task-list-eyebrow">{{ taskFormMode }}</p>
+              <h2>{{ formTitle }}</h2>
             </div>
 
-            <button type="button" class="close-button" @click="closeTaskDetail">
-              닫기
+            <button
+              type="button"
+              class="task-list-form-close"
+              aria-label="업무 입력 창 닫기"
+              @click="closeTaskForm"
+            >
+              ×
             </button>
           </header>
 
-          <div class="modal-status-row">
-            <span
-              class="status-badge"
-              :class="getStatusClass(selectedTask.status)"
-            >
-              {{ getStatusLabel(selectedTask.status) }}
-            </span>
-            <span v-if="isOverdue(selectedTask)" class="overdue-badge">
-              지연 가능
-            </span>
-          </div>
+          <form class="task-list-form-body" @submit.prevent="submitTaskForm">
+            <p class="task-list-form-note">
+              요청자는 현재 로그인 사용자로 자동 설정됩니다. 담당자 ID는 선택
+              입력이며, 멤버 선택 API가 연결되면 드롭다운 방식으로 개선합니다.
+            </p>
 
-          <p class="modal-description">
-            {{ selectedTask.description || '등록된 설명이 없습니다.' }}
-          </p>
+            <div v-if="formErrorMessage" class="task-list-form-error">
+              {{ formErrorMessage }}
+            </div>
 
-          <dl class="detail-grid">
-            <div>
-              <dt>Workspace ID</dt>
-              <dd>{{ selectedTask.workspaceId }}</dd>
+            <div class="task-list-field">
+              <label for="task-title">업무 제목</label>
+              <input
+                id="task-title"
+                v-model="taskForm.title"
+                type="text"
+                placeholder="예: 문서 업로드 기능 구현"
+                autocomplete="off"
+              />
             </div>
-            <div>
-              <dt>Task ID</dt>
-              <dd>{{ selectedTask.id }}</dd>
-            </div>
-            <div>
-              <dt>요청자</dt>
-              <dd>{{ selectedTask.requesterId }}</dd>
-            </div>
-            <div>
-              <dt>담당자</dt>
-              <dd>{{ selectedTask.assigneeId || '-' }}</dd>
-            </div>
-            <div>
-              <dt>마감일</dt>
-              <dd>{{ formatDate(selectedTask.dueDate) }}</dd>
-            </div>
-            <div>
-              <dt>현재 상태</dt>
-              <dd>{{ getStatusLabel(selectedTask.status) }}</dd>
-            </div>
-          </dl>
 
-          <footer class="modal-footer">
-            <button
-              type="button"
-              class="secondary-button"
-              @click="closeTaskDetail"
-            >
-              닫기
-            </button>
-            <button type="button" class="disabled-button" disabled>
-              상태 변경은 이후 단계에서 연결
-            </button>
-          </footer>
+            <div class="task-list-field">
+              <label for="task-description">업무 설명</label>
+              <textarea
+                id="task-description"
+                v-model="taskForm.description"
+                placeholder="업무 목적, 범위, 필요한 산출물을 입력하세요."
+              />
+            </div>
+
+            <div class="task-list-form-grid">
+              <div class="task-list-field">
+                <label for="task-assignee">담당자 ID</label>
+                <input
+                  id="task-assignee"
+                  v-model="taskForm.assigneeId"
+                  type="text"
+                  placeholder="선택 입력"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="task-list-field">
+                <label for="task-due-date">마감일</label>
+                <input
+                  id="task-due-date"
+                  v-model="taskForm.dueDate"
+                  type="datetime-local"
+                />
+              </div>
+            </div>
+
+            <footer class="task-list-form-footer">
+              <div class="task-list-form-footer-left">
+                <button
+                  type="button"
+                  class="task-list-ghost-button"
+                  :disabled="isSavingTask"
+                  @click="closeTaskForm"
+                >
+                  취소
+                </button>
+              </div>
+
+              <div class="task-list-form-footer-right">
+                <button
+                  type="submit"
+                  class="task-list-danger-button"
+                  :disabled="isSavingTask"
+                >
+                  {{ isSavingTask ? '저장 중...' : submitButtonLabel }}
+                </button>
+              </div>
+            </footer>
+          </form>
         </section>
       </div>
     </Teleport>
   </AppLayout>
 </template>
-
-<style scoped>
-.page-shell {
-  min-height: calc(100vh - 120px);
-  background: #f8fafc;
-  padding: 32px 38px;
-}
-
-.task-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.hero-section {
-  display: flex;
-  justify-content: space-between;
-  gap: 24px;
-  align-items: flex-start;
-  border-radius: 28px;
-  background: linear-gradient(135deg, #17203f 0%, #405299 100%);
-  color: #ffffff;
-  padding: 32px;
-  box-shadow: 0 20px 48px rgba(15, 23, 42, 0.14);
-}
-
-.eyebrow {
-  margin: 0 0 8px;
-  color: inherit;
-  opacity: 0.74;
-  font-size: 12px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.hero-section h1 {
-  margin: 0;
-  color: #ffffff;
-  font-size: 32px;
-  font-weight: 800;
-}
-
-.description {
-  margin: 10px 0 0;
-  max-width: 620px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.header-actions {
-  display: flex;
-  gap: 10px;
-  flex-shrink: 0;
-}
-
-.primary-button,
-.secondary-button,
-.disabled-button,
-.close-button {
-  border: 0;
-  border-radius: 12px;
-  padding: 11px 16px;
-  font-weight: 800;
-  cursor: pointer;
-}
-
-.primary-button {
-  background: #2563eb;
-  color: #ffffff;
-}
-
-.secondary-button {
-  background: #e2e8f0;
-  color: #1e293b;
-}
-
-.hero-section .secondary-button {
-  background: rgba(255, 255, 255, 0.88);
-  color: #1e293b;
-}
-
-.hero-section .primary-button {
-  background: #ffffff;
-  color: #1e293b;
-}
-
-.disabled-button {
-  background: #f1f5f9;
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-.close-button {
-  background: #0f172a;
-  color: #ffffff;
-}
-
-.summary-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 14px;
-}
-
-.summary-card {
-  padding: 18px;
-  border: 1px solid #e2e8f0;
-  border-radius: 18px;
-  background: #ffffff;
-  text-align: left;
-  cursor: pointer;
-  transition:
-    transform 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease;
-}
-
-.summary-card:hover,
-.summary-card.active {
-  transform: translateY(-2px);
-  border-color: #93c5fd;
-  box-shadow: 0 16px 34px rgba(15, 23, 42, 0.08);
-}
-
-.summary-card span {
-  display: block;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 800;
-}
-
-.summary-card strong {
-  display: block;
-  margin-top: 10px;
-  color: #0f172a;
-  font-size: 28px;
-}
-
-.summary-card.warning strong {
-  color: #dc2626;
-}
-
-.content-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 20px;
-  background: #ffffff;
-  overflow: hidden;
-  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.05);
-}
-
-.content-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 20px;
-  align-items: flex-start;
-  padding: 22px 24px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.content-header h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.content-header p {
-  margin: 6px 0 0;
-  color: #64748b;
-  font-size: 13px;
-}
-
-.count-badge {
-  border-radius: 999px;
-  background: #eff6ff;
-  color: #2563eb;
-  padding: 7px 12px;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.state-box {
-  padding: 48px;
-  color: #64748b;
-  text-align: center;
-}
-
-.state-box.error {
-  color: #dc2626;
-}
-
-.task-list {
-  display: flex;
-  flex-direction: column;
-}
-
-.task-item {
-  padding: 22px 24px;
-  border-bottom: 1px solid #e2e8f0;
-  cursor: pointer;
-  transition:
-    background 0.16s ease,
-    transform 0.16s ease;
-}
-
-.task-item:hover {
-  background: #f8fafc;
-}
-
-.task-item:last-child {
-  border-bottom: 0;
-}
-
-.task-item.overdue {
-  border-left: 4px solid #ef4444;
-}
-
-.task-title-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.task-title-row h3 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 18px;
-  font-weight: 800;
-}
-
-.badge-group {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.status-badge,
-.overdue-badge {
-  border-radius: 999px;
-  padding: 6px 10px;
-  font-size: 12px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.status-badge {
-  background: #eff6ff;
-  color: #2563eb;
-}
-
-.status-badge.assigned {
-  background: #eef2ff;
-  color: #4f46e5;
-}
-
-.status-badge.in-progress {
-  background: #ecfeff;
-  color: #0891b2;
-}
-
-.status-badge.review {
-  background: #fef9c3;
-  color: #a16207;
-}
-
-.status-badge.completed {
-  background: #dcfce7;
-  color: #15803d;
-}
-
-.status-badge.cancelled {
-  background: #f1f5f9;
-  color: #64748b;
-}
-
-.overdue-badge {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.task-description {
-  margin: 10px 0 16px;
-  color: #475569;
-  font-size: 14px;
-  line-height: 1.6;
-}
-
-.task-meta {
-  display: flex;
-  gap: 28px;
-  margin: 0;
-}
-
-.task-meta div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.task-meta dt {
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.task-meta dd {
-  margin: 0;
-  color: #334155;
-  font-size: 13px;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 1000;
-  display: flex;
-  justify-content: flex-end;
-  background: rgba(15, 23, 42, 0.46);
-  backdrop-filter: blur(3px);
-}
-
-.task-modal {
-  width: min(520px, 100%);
-  height: 100%;
-  background: #ffffff;
-  padding: 30px;
-  box-shadow: -20px 0 44px rgba(15, 23, 42, 0.24);
-  overflow-y: auto;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  align-items: flex-start;
-}
-
-.modal-header h2 {
-  margin: 0;
-  color: #0f172a;
-  font-size: 24px;
-  font-weight: 800;
-}
-
-.modal-status-row {
-  display: flex;
-  gap: 8px;
-  margin-top: 20px;
-}
-
-.modal-description {
-  margin: 22px 0;
-  color: #475569;
-  font-size: 15px;
-  line-height: 1.7;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 12px;
-  margin: 0;
-}
-
-.detail-grid div {
-  border: 1px solid #e2e8f0;
-  border-radius: 14px;
-  background: #f8fafc;
-  padding: 14px;
-}
-
-.detail-grid dt {
-  margin-bottom: 6px;
-  color: #94a3b8;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.detail-grid dd {
-  margin: 0;
-  color: #0f172a;
-  font-size: 14px;
-  word-break: break-all;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 26px;
-}
-
-@media (max-width: 960px) {
-  .page-shell {
-    padding: 24px 20px;
-  }
-
-  .hero-section {
-    flex-direction: column;
-  }
-
-  .summary-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .task-title-row {
-    flex-direction: column;
-  }
-
-  .badge-group {
-    justify-content: flex-start;
-  }
-
-  .task-meta {
-    flex-direction: column;
-    gap: 12px;
-  }
-
-  .modal-backdrop {
-    justify-content: center;
-  }
-
-  .task-modal {
-    width: 100%;
-  }
-}
-</style>

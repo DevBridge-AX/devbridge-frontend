@@ -18,10 +18,6 @@ const currentWorkspaceId = computed(() => {
   return Array.isArray(value) ? value[0] : value
 })
 
-const hasWorkspaceContext = computed(() => {
-  return Boolean(currentWorkspaceId.value)
-})
-
 function goToWorkspaceList() {
   router.push('/workspace')
 }
@@ -44,6 +40,15 @@ function goToTasks() {
   router.push(`/workspaces/${currentWorkspaceId.value}/tasks`)
 }
 
+function goToDocuments() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/documents`)
+}
+
 function goToSchedule() {
   if (!currentWorkspaceId.value) {
     router.push('/workspace')
@@ -57,13 +62,19 @@ function goToSettings() {
   router.push('/settings/profile')
 }
 
-function isActiveMenu(menu: 'dashboard' | 'tasks' | 'schedule' | 'settings') {
+function isActiveMenu(
+  menu: 'dashboard' | 'tasks' | 'documents' | 'schedule' | 'settings',
+) {
   if (menu === 'dashboard') {
     return route.name === 'workspace-dashboard'
   }
 
   if (menu === 'tasks') {
     return route.name === 'workspace-tasks'
+  }
+
+  if (menu === 'documents') {
+    return route.name === 'workspace-documents'
   }
 
   if (menu === 'schedule') {
@@ -125,14 +136,15 @@ function isActiveMenu(menu: 'dashboard' | 'tasks' | 'schedule' | 'settings') {
 
       <button
         type="button"
-        class="nav-item disabled"
-        :disabled="!hasWorkspaceContext"
+        class="nav-item"
+        :class="{ active: isActiveMenu('documents') }"
+        @click="goToDocuments"
       >
         <span class="nav-icon">N</span>
         <span>Documents</span>
       </button>
 
-      <button type="button" class="nav-item disabled">
+      <button type="button" class="nav-item disabled" disabled>
         <span class="nav-icon">C</span>
         <span>Chat</span>
       </button>
@@ -160,7 +172,7 @@ function isActiveMenu(menu: 'dashboard' | 'tasks' | 'schedule' | 'settings') {
 
     <div class="sidebar-note">
       <strong>Workspace Flow</strong>
-      <span>Documents, Git, AI 분석 기능은 다음 단계에서 연결됩니다.</span>
+      <span>Documents, Git, AI 분석 기능을 업무 흐름과 연결합니다.</span>
     </div>
   </aside>
 </template>

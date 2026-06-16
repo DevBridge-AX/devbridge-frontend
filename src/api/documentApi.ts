@@ -1,38 +1,129 @@
 import axiosClient from './axiosClient'
 
-// ─── Request / Response 타입 정의 (Co-location) ───────────────────────────
+export interface DocumentItem {
+  id: string
 
-export interface PresignedUrlRequest {
-  fileName: string
-  contentType: string
+  workspaceId: string
+  workspaceName: string
+
+  dataSourceId: string
+  sourceName: string
+  sourceType: string
+  sourceStatus: string
+
+  title: string
+  documentType: string | null
+  description: string | null
+
+  vectorId: string | null
+
+  summary: string | null
+  keywords: string | null
+  analysisStatus: string | null
+  analyzedAt: string | null
+
+  originalFileName: string | null
+  storedFileName: string | null
+  fileUrl: string | null
+  previewUrl: string | null
+  downloadUrl: string | null
+  contentType: string | null
+  fileSize: number | null
+
+  uploadedById: string | null
+  uploadedByName: string | null
+  uploadedByEmail: string | null
+
+  createdAt: string | null
+  updatedAt: string | null
 }
 
-export interface PresignedUrlResponse {
-  uploadUrl: string
-  fileKey: string
-  fileUrl: string
+export interface UploadDocumentRequest {
+  workspaceId: string
+  dataSourceId: string
+  uploadedById?: string | null
+  documentType?: string | null
+  description?: string | null
+  file: File
 }
 
-// ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
+export interface UpdateDocumentRequest {
+  title: string
+  documentType: string
+  description: string
+}
 
 export const documentApi = {
-  /**
-   * 파일명과 콘텐츠 타입을 전달해 업로드용 Presigned URL과 파일 키, 조회 URL을 발급받습니다.
-   */
-  getPresignedUrl(payload: PresignedUrlRequest): Promise<PresignedUrlResponse> {
+  fetchDocumentsByWorkspace(workspaceId: string): Promise<DocumentItem[]> {
     return axiosClient
-      .post<PresignedUrlResponse>('/api/documents/presigned-url', payload)
+      .get<DocumentItem[]>('/api/documents', {
+        params: { workspaceId },
+      })
       .then((res) => res.data)
   },
 
-  /**
-   * Presigned URL로 파일 원본을 업로드합니다.
-   */
-  uploadFile(uploadUrl: string, file: File): Promise<void> {
+  fetchDocumentDetail(documentId: string): Promise<DocumentItem> {
     return axiosClient
-      .put<void>(uploadUrl, file, {
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
+      .get<DocumentItem>(`/api/documents/${documentId}`)
+      .then((res) => res.data)
+  },
+
+  updateDocument(
+    documentId: string,
+    request: UpdateDocumentRequest,
+  ): Promise<DocumentItem> {
+    return axiosClient
+      .put<DocumentItem>(`/api/documents/${documentId}`, request)
+      .then((res) => res.data)
+  },
+
+  uploadDocument(request: UploadDocumentRequest): Promise<DocumentItem> {
+    const formData = new FormData()
+
+    formData.append('workspaceId', request.workspaceId)
+    formData.append('dataSourceId', request.dataSourceId)
+    formData.append('file', request.file)
+
+    if (request.uploadedById) {
+      formData.append('uploadedById', request.uploadedById)
+    }
+
+    if (request.documentType) {
+      formData.append('documentType', request.documentType)
+    }
+
+    if (request.description) {
+      formData.append('description', request.description)
+    }
+
+    return axiosClient
+      .post<DocumentItem>('/api/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       })
-      .then(() => undefined)
+      .then((res) => res.data)
+  },
+
+  fetchDocumentPreviewBlob(documentId: string): Promise<Blob> {
+    return axiosClient
+      .get<Blob>(`/api/documents/${documentId}/preview`, {
+        responseType: 'blob',
+      })
+      .then((res) => res.data)
+  },
+
+  fetchDocumentDownloadBlob(documentId: string): Promise<Blob> {
+    return axiosClient
+      .get<Blob>(`/api/documents/${documentId}/download`, {
+        responseType: 'blob',
+      })
+      .then((res) => res.data)
+  },
+
+  deleteDocument(documentId: string): Promise<void> {
+    return axiosClient
+      .delete<void>(`/api/documents/${documentId}`)
+      .then((res) => res.data)
   },
 }
