@@ -3,8 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { documentService } from '@/services/documentService'
+import { gitService } from '@/services/gitService'
 import { useAuthStore } from '@/state/authStore'
 import type { DocumentItem } from '@/api/documentApi'
+import type { GitCommitItem } from '@/api/gitApi'
 import '@/assets/styles/documents.css'
 
 const route = useRoute()
@@ -14,15 +16,20 @@ const authStore = useAuthStore()
 const documents = ref<DocumentItem[]>([])
 const selectedDocument = ref<DocumentItem | null>(null)
 
+const activeKnowledgeTab = ref<'documents' | 'git' | 'ai'>('documents')
+const gitCommits = ref<GitCommitItem[]>([])
+
 const isLoading = ref(false)
 const isUploading = ref(false)
 const isUploadModalOpen = ref(false)
 const isEditingDocument = ref(false)
 const isUpdatingDocument = ref(false)
+const isGitLoading = ref(false)
 
 const errorMessage = ref('')
 const uploadMessage = ref('')
 const uploadDescription = ref('')
+const gitErrorMessage = ref('')
 
 const editTitle = ref('')
 const editDocumentType = ref('REPORT')
@@ -45,6 +52,12 @@ const documentTypeOptions = [
   { value: 'REFERENCE', label: '참고자료' },
   { value: 'ETC', label: '기타' },
 ]
+
+const knowledgeTabs = [
+  { key: 'documents', label: 'Documents' },
+  { key: 'git', label: 'Git Changes' },
+  { key: 'ai', label: 'AI Analysis' },
+] as const
 
 const workspaceId = computed(() => {
   const value = route.params.workspaceId
@@ -97,6 +110,30 @@ async function fetchDocuments() {
         : '문서 목록을 불러오지 못했습니다.'
   } finally {
     isLoading.value = false
+  }
+}
+
+async function fetchGitCommits() {
+  isGitLoading.value = true
+  gitErrorMessage.value = ''
+
+  try {
+    gitCommits.value = await gitService.getRecentCommits(20)
+  } catch (error: unknown) {
+    gitErrorMessage.value =
+      error instanceof Error
+        ? error.message
+        : 'Git 변경사항을 불러오지 못했습니다.'
+  } finally {
+    isGitLoading.value = false
+  }
+}
+
+function changeKnowledgeTab(tabKey: 'documents' | 'git' | 'ai') {
+  activeKnowledgeTab.value = tabKey
+
+  if (tabKey === 'git' && gitCommits.value.length === 0) {
+    void fetchGitCommits()
   }
 }
 
@@ -512,6 +549,7 @@ watch(
             >
               대시보드로 이동
             </button>
+
             <button
               type="button"
               class="documents-primary-button"
@@ -563,7 +601,33 @@ watch(
           </article>
         </section>
 
-        <section class="documents-content-card">
+        <section class="knowledge-hub-tabs-card">
+          <div>
+            <p class="documents-eyebrow">Knowledge Hub</p>
+            <h2>프로젝트 지식 허브</h2>
+            <p>
+              문서, Git 변경사항, AI 분석 결과를 하나의 흐름으로 확인합니다.
+            </p>
+          </div>
+
+          <div class="knowledge-hub-tabs">
+            <button
+              v-for="tab in knowledgeTabs"
+              :key="tab.key"
+              type="button"
+              class="knowledge-hub-tab-button"
+              :class="{ active: activeKnowledgeTab === tab.key }"
+              @click="changeKnowledgeTab(tab.key)"
+            >
+              {{ tab.label }}
+            </button>
+          </div>
+        </section>
+
+        <section
+          v-if="activeKnowledgeTab === 'documents'"
+          class="documents-content-card"
+        >
           <div class="documents-content-header">
             <div>
               <h2>Document 목록</h2>
@@ -634,6 +698,90 @@ watch(
                 </div>
               </dl>
             </article>
+          </div>
+        </section>
+
+        <section
+          v-else-if="activeKnowledgeTab === 'git'"
+          class="documents-content-card"
+        >
+          <div class="documents-content-header">
+            <div>
+              <h2>Git Changes</h2>
+              <p>
+                현재 연결된 로컬 Git 저장소의 최근 commit 변경사항입니다. 이후
+                Task와 연결하여 작업별 변경 이력을 추적할 수 있습니다.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              class="documents-secondary-button"
+              :disabled="isGitLoading"
+              @click="fetchGitCommits"
+            >
+              {{ isGitLoading ? '불러오는 중...' : 'Git 새로고침' }}
+            </button>
+          </div>
+
+          <div v-if="isGitLoading" class="documents-state-box">
+            Git 변경사항을 불러오는 중입니다.
+          </div>
+
+          <div v-else-if="gitErrorMessage" class="documents-state-box error">
+            {{ gitErrorMessage }}
+          </div>
+
+          <div v-else-if="gitCommits.length === 0" class="documents-state-box">
+            표시할 Git commit이 없습니다.
+          </div>
+
+          <div v-else class="git-commit-list">
+            <article
+              v-for="commit in gitCommits"
+              :key="commit.hash"
+              class="git-commit-card"
+            >
+              <div class="git-commit-main">
+                <span class="git-commit-hash">{{ commit.shortHash }}</span>
+                <h3>{{ commit.message }}</h3>
+                <p>
+                  {{ commit.authorName }}
+                  <span v-if="commit.authorEmail">
+                    · {{ commit.authorEmail }}
+                  </span>
+                </p>
+              </div>
+
+              <div class="git-commit-meta">
+                <span>{{ commit.branchName }}</span>
+                <strong>{{ commit.committedAt }}</strong>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section
+          v-else-if="activeKnowledgeTab === 'ai'"
+          class="documents-content-card"
+        >
+          <div class="documents-content-header">
+            <div>
+              <h2>AI Analysis</h2>
+              <p>
+                문서와 Git 변경사항을 기반으로 프로젝트 지식 요약, 관련 Task
+                추천, 변경 리스크 분석을 제공할 예정입니다.
+              </p>
+            </div>
+          </div>
+
+          <div class="ai-analysis-placeholder">
+            <p class="documents-eyebrow">Coming Next</p>
+            <h3>AI 기반 프로젝트 분석 영역</h3>
+            <p>
+              이후 FastAPI와 Vector DB가 연결되면 문서 요약, 키워드 추출, 관련
+              Task 추천, Git 변경사항 분석 결과가 이 영역에 표시됩니다.
+            </p>
           </div>
         </section>
       </section>
@@ -834,6 +982,7 @@ watch(
                   >
                     새 창 미리보기
                   </button>
+
                   <button
                     type="button"
                     class="documents-primary-button"
@@ -869,6 +1018,7 @@ watch(
                     selectedDocument.originalFileName || selectedDocument.title
                   "
                 />
+
                 <iframe v-else :src="previewObjectUrl" title="문서 미리보기" />
               </div>
 
@@ -932,9 +1082,9 @@ watch(
 
               <article class="document-detail-card">
                 <span>Uploaded By</span>
-                <strong>
-                  {{ selectedDocument.uploadedByName || '미지정' }}
-                </strong>
+                <strong>{{
+                  selectedDocument.uploadedByName || '미지정'
+                }}</strong>
               </article>
 
               <article class="document-detail-card">

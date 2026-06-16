@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { taskService } from '@/services/taskService'
+import { gitService } from '@/services/gitService'
 import type { TaskDetail } from '@/api/taskApi'
+import type { GitCommitItem } from '@/api/gitApi'
 
 const props = defineProps<{
   taskId: string | null
@@ -15,9 +17,15 @@ const emit = defineEmits<{
 const activeTab = ref<
   'overview' | 'documents' | 'changes' | 'deliverables' | 'activity'
 >('overview')
+
 const isLoading = ref(false)
+const isGitLoading = ref(false)
+
 const errorMessage = ref('')
+const gitErrorMessage = ref('')
+
 const taskDetail = ref<TaskDetail | null>(null)
+const recentGitCommits = ref<GitCommitItem[]>([])
 
 const statusLabel = computed(() => {
   const status = taskDetail.value?.status
@@ -64,6 +72,32 @@ async function fetchTaskDetail() {
   }
 }
 
+async function fetchRecentGitCommits() {
+  isGitLoading.value = true
+  gitErrorMessage.value = ''
+
+  try {
+    recentGitCommits.value = await gitService.getRecentCommits(5)
+  } catch (error: unknown) {
+    gitErrorMessage.value =
+      error instanceof Error
+        ? error.message
+        : 'Git 변경사항을 불러오지 못했습니다.'
+  } finally {
+    isGitLoading.value = false
+  }
+}
+
+function changeTab(
+  tab: 'overview' | 'documents' | 'changes' | 'deliverables' | 'activity',
+) {
+  activeTab.value = tab
+
+  if (tab === 'changes' && recentGitCommits.value.length === 0) {
+    void fetchRecentGitCommits()
+  }
+}
+
 function closeModal() {
   emit('close')
 }
@@ -79,6 +113,8 @@ watch(
   () => {
     if (props.isOpen) {
       activeTab.value = 'overview'
+      recentGitCommits.value = []
+      gitErrorMessage.value = ''
       void fetchTaskDetail()
     }
   },
@@ -169,7 +205,13 @@ onMounted(() => {
             </article>
             <article>
               <span>Git Changes</span>
-              <strong>{{ taskDetail.commitCount }}</strong>
+              <strong>
+                {{
+                  recentGitCommits.length > 0
+                    ? recentGitCommits.length
+                    : taskDetail.commitCount
+                }}
+              </strong>
             </article>
             <article>
               <span>Deliverables</span>
@@ -185,35 +227,35 @@ onMounted(() => {
             <button
               type="button"
               :class="{ active: activeTab === 'overview' }"
-              @click="activeTab = 'overview'"
+              @click="changeTab('overview')"
             >
               Overview
             </button>
             <button
               type="button"
               :class="{ active: activeTab === 'documents' }"
-              @click="activeTab = 'documents'"
+              @click="changeTab('documents')"
             >
               Documents
             </button>
             <button
               type="button"
               :class="{ active: activeTab === 'changes' }"
-              @click="activeTab = 'changes'"
+              @click="changeTab('changes')"
             >
               Recent Changes
             </button>
             <button
               type="button"
               :class="{ active: activeTab === 'deliverables' }"
-              @click="activeTab = 'deliverables'"
+              @click="changeTab('deliverables')"
             >
               Deliverables
             </button>
             <button
               type="button"
               :class="{ active: activeTab === 'activity' }"
-              @click="activeTab = 'activity'"
+              @click="changeTab('activity')"
             >
               Activity
             </button>
@@ -226,7 +268,7 @@ onMounted(() => {
                 <p>
                   {{
                     taskDetail.aiSummary ||
-                    '아직 AI 분석 요약이 없습니다. Day 3에서 문서 분석과 AI Engine 연결 후 이 영역에 요약이 표시됩니다.'
+                    '아직 AI 분석 요약이 없습니다. 문서 분석과 AI Engine 연결 후 이 영역에 요약이 표시됩니다.'
                   }}
                 </p>
               </article>
@@ -257,29 +299,80 @@ onMounted(() => {
                 v-if="taskDetail.recentDocuments.length === 0"
                 class="empty-panel"
               >
-                아직 연결된 문서가 없습니다. Day 2에서 문서 업로드와 Task 연결
-                기능을 추가합니다.
+                아직 연결된 문서가 없습니다. 이후 Task-Document 연결 기능을
+                추가하면 이 영역에 관련 문서가 표시됩니다.
               </p>
             </div>
 
             <div v-else-if="activeTab === 'changes'" class="list-panel">
-              <article
-                v-for="commit in taskDetail.recentCommits"
-                :key="commit.id"
-                class="linked-item"
-              >
-                <strong>{{ commit.message }}</strong>
-                <p>{{ commit.summary || commit.commitHash }}</p>
-                <small>{{ commit.authorName || '작성자 미상' }}</small>
-              </article>
+              <div class="task-git-header">
+                <div>
+                  <strong>최근 Git 변경사항</strong>
+                  <p>
+                    현재는 taskId 직접 매핑 전 단계이므로 로컬 저장소의 최근
+                    commit 5개를 표시합니다.
+                  </p>
+                </div>
 
-              <p
-                v-if="taskDetail.recentCommits.length === 0"
-                class="empty-panel"
-              >
-                아직 연결된 Git 변경사항이 없습니다. Day 4에서 commit 수집과
-                Task 연결 기능을 추가합니다.
-              </p>
+                <button
+                  type="button"
+                  class="task-mini-button"
+                  :disabled="isGitLoading"
+                  @click="fetchRecentGitCommits"
+                >
+                  {{ isGitLoading ? '불러오는 중...' : '새로고침' }}
+                </button>
+              </div>
+
+              <div v-if="isGitLoading" class="empty-panel">
+                Git 변경사항을 불러오는 중입니다.
+              </div>
+
+              <div v-else-if="gitErrorMessage" class="empty-panel error">
+                {{ gitErrorMessage }}
+              </div>
+
+              <template v-else-if="recentGitCommits.length > 0">
+                <article
+                  v-for="commit in recentGitCommits"
+                  :key="commit.hash"
+                  class="linked-item git-linked-item"
+                >
+                  <div class="git-linked-header">
+                    <span>{{ commit.shortHash }}</span>
+                    <small>{{ commit.branchName }}</small>
+                  </div>
+
+                  <strong>{{ commit.message }}</strong>
+                  <p>
+                    {{ commit.authorName }}
+                    <span v-if="commit.authorEmail">
+                      · {{ commit.authorEmail }}
+                    </span>
+                  </p>
+                  <small>{{ commit.committedAt }}</small>
+                </article>
+              </template>
+
+              <template v-else>
+                <article
+                  v-for="commit in taskDetail.recentCommits"
+                  :key="commit.id"
+                  class="linked-item"
+                >
+                  <strong>{{ commit.message }}</strong>
+                  <p>{{ commit.summary || commit.commitHash }}</p>
+                  <small>{{ commit.authorName || '작성자 미상' }}</small>
+                </article>
+
+                <p
+                  v-if="taskDetail.recentCommits.length === 0"
+                  class="empty-panel"
+                >
+                  아직 연결된 Git 변경사항이 없습니다. 이후 commit 수집과 Task
+                  연결 기능을 추가하면 작업별 변경 이력이 표시됩니다.
+                </p>
+              </template>
             </div>
 
             <div v-else-if="activeTab === 'deliverables'" class="list-panel">
@@ -588,6 +681,87 @@ onMounted(() => {
   line-height: 1.7;
 }
 
+.empty-panel.error {
+  color: #b42318;
+  border-color: #fecdd3;
+  background: #fff1f2;
+}
+
+.task-git-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 18px;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  background: white;
+}
+
+.task-git-header strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.task-git-header p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.task-mini-button {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  background: white;
+  color: #344054;
+  cursor: pointer;
+  font-weight: 900;
+}
+
+.task-mini-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.git-linked-item {
+  border-color: #dbeafe;
+  background: #f8fbff;
+}
+
+.git-linked-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.git-linked-header span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.git-linked-header small {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  font-weight: 900;
+}
+
 @media (max-width: 800px) {
   .task-modal-overlay {
     padding: 16px;
@@ -603,6 +777,11 @@ onMounted(() => {
 
   .task-hero-meta {
     grid-template-columns: 1fr;
+  }
+
+  .task-git-header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>
