@@ -333,6 +333,52 @@
   font-weight: 900;
 }
 
+.header-profile {
+  position: relative;
+}
+
+.header-profile-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 150px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 24px rgba(16, 24, 40, 0.1);
+  padding: 6px;
+  z-index: 50;
+}
+
+.header-profile-option {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #172033;
+  cursor: pointer;
+  padding: 8px 12px;
+  text-align: left;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.header-profile-option:hover {
+  background: #f2f4f7;
+}
+
+.header-profile-option.logout {
+  color: #ef4444;
+}
+
+.header-profile-option.logout:hover {
+  background: #fef2f2;
+}
+
 .app-footer {
   border-top: 1px solid #e5e7eb;
   background: white;
