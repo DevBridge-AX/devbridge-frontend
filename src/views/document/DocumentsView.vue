@@ -3,20 +3,56 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { documentService } from '@/services/documentService'
+import { useAuthStore } from '@/state/authStore'
 import type { DocumentItem } from '@/api/documentApi'
 import '@/assets/styles/documents.css'
 
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const documents = ref<DocumentItem[]>([])
 const selectedDocument = ref<DocumentItem | null>(null)
+
 const isLoading = ref(false)
+const isUploading = ref(false)
+const isUploadModalOpen = ref(false)
+const isEditingDocument = ref(false)
+const isUpdatingDocument = ref(false)
+
 const errorMessage = ref('')
+const uploadMessage = ref('')
+const uploadDescription = ref('')
+
+const editTitle = ref('')
+const editDocumentType = ref('REPORT')
+const editDescription = ref('')
+const editMessage = ref('')
+
+const previewObjectUrl = ref('')
+const previewContentType = ref<string | null>(null)
+const isPreviewLoading = ref(false)
+const previewErrorMessage = ref('')
+
+const fileInputRef = ref<HTMLInputElement | null>(null)
+const selectedUploadFile = ref<File | null>(null)
+const selectedDocumentType = ref('REPORT')
+
+const documentTypeOptions = [
+  { value: 'REPORT', label: '보고서' },
+  { value: 'MEETING_NOTE', label: '회의록' },
+  { value: 'GUIDE', label: '지침' },
+  { value: 'REFERENCE', label: '참고자료' },
+  { value: 'ETC', label: '기타' },
+]
 
 const workspaceId = computed(() => {
   const value = route.params.workspaceId
   return Array.isArray(value) ? value[0] : value
+})
+
+const uploadedById = computed(() => {
+  return authStore.currentUser?.id ?? null
 })
 
 const totalDocumentCount = computed(() => documents.value.length)
@@ -65,6 +101,12 @@ async function fetchDocuments() {
 }
 
 async function openDocumentDetail(documentId: string) {
+  clearPreviewObjectUrl()
+  resetEditDocumentForm()
+
+  isPreviewLoading.value = true
+  previewErrorMessage.value = ''
+
   try {
     selectedDocument.value = await documentService.getDocumentDetail(documentId)
   } catch (error: unknown) {
@@ -72,11 +114,41 @@ async function openDocumentDetail(documentId: string) {
       error instanceof Error
         ? error.message
         : '문서 상세 정보를 불러오지 못했습니다.'
+    isPreviewLoading.value = false
+    return
+  }
+
+  try {
+    const previewResult =
+      await documentService.getDocumentPreviewObjectUrl(documentId)
+
+    previewObjectUrl.value = previewResult.objectUrl
+    previewContentType.value =
+      previewResult.contentType ?? selectedDocument.value.contentType
+  } catch (error: unknown) {
+    previewErrorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '문서 미리보기를 불러오지 못했습니다.'
+  } finally {
+    isPreviewLoading.value = false
   }
 }
 
 function closeDocumentDetail() {
   selectedDocument.value = null
+  previewErrorMessage.value = ''
+  resetEditDocumentForm()
+  clearPreviewObjectUrl()
+}
+
+function clearPreviewObjectUrl() {
+  if (previewObjectUrl.value) {
+    URL.revokeObjectURL(previewObjectUrl.value)
+  }
+
+  previewObjectUrl.value = ''
+  previewContentType.value = null
 }
 
 function goToDashboard() {
@@ -87,12 +159,153 @@ function goToDashboard() {
   router.push(`/workspaces/${workspaceId.value}/dashboard`)
 }
 
+function openUploadModal() {
+  uploadMessage.value = ''
+  selectedUploadFile.value = null
+  selectedDocumentType.value = 'REPORT'
+  uploadDescription.value = ''
+
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+
+  isUploadModalOpen.value = true
+}
+
+function closeUploadModal() {
+  if (isUploading.value) {
+    return
+  }
+
+  isUploadModalOpen.value = false
+  selectedUploadFile.value = null
+  selectedDocumentType.value = 'REPORT'
+  uploadDescription.value = ''
+  uploadMessage.value = ''
+
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+function openFilePicker() {
+  uploadMessage.value = ''
+  fileInputRef.value?.click()
+}
+
+function handleUploadFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0] ?? null
+
+  selectedUploadFile.value = file
+
+  if (file) {
+    uploadMessage.value = `${file.name} 파일이 선택되었습니다.`
+  } else {
+    uploadMessage.value = ''
+  }
+}
+
+async function uploadSelectedDocument() {
+  if (!workspaceId.value) {
+    errorMessage.value = '워크스페이스 정보가 없습니다.'
+    return
+  }
+
+  if (!selectedUploadFile.value) {
+    uploadMessage.value = '업로드할 파일을 먼저 선택해 주세요.'
+    return
+  }
+
+  isUploading.value = true
+  errorMessage.value = ''
+  uploadMessage.value = ''
+
+  try {
+    await documentService.uploadWorkspaceDocument({
+      workspaceId: workspaceId.value,
+      uploadedById: uploadedById.value,
+      documentType: selectedDocumentType.value,
+      description: uploadDescription.value,
+      file: selectedUploadFile.value,
+    })
+
+    await fetchDocuments()
+    closeUploadModal()
+  } catch (error: unknown) {
+    uploadMessage.value =
+      error instanceof Error ? error.message : '문서 업로드에 실패했습니다.'
+  } finally {
+    isUploading.value = false
+  }
+}
+
 function formatDate(value: string | null) {
   if (!value) {
     return '미정'
   }
 
   return value.replace('T', ' ').slice(0, 16)
+}
+
+function formatFileSize(value: number | null) {
+  if (value === null || value === undefined) {
+    return '미정'
+  }
+
+  if (value < 1024) {
+    return `${value} B`
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`
+  }
+
+  return `${(value / 1024 / 1024).toFixed(1)} MB`
+}
+
+function getDocumentTypeLabel(type: string | null) {
+  if (type === 'REPORT') {
+    return '보고서'
+  }
+
+  if (type === 'MEETING_NOTE') {
+    return '회의록'
+  }
+
+  if (type === 'GUIDE') {
+    return '지침'
+  }
+
+  if (type === 'REFERENCE') {
+    return '참고자료'
+  }
+
+  if (type === 'TECH') {
+    return '기술 문서'
+  }
+
+  if (type === 'PLANNING') {
+    return '기획 문서'
+  }
+
+  if (type === 'DESIGN') {
+    return '디자인 문서'
+  }
+
+  if (type === 'MEETING') {
+    return '회의록'
+  }
+
+  if (type === 'GIT') {
+    return 'Git 문서'
+  }
+
+  if (type === 'ETC') {
+    return '기타'
+  }
+
+  return '미분류'
 }
 
 function getAnalysisStatusLabel(status: string | null) {
@@ -120,7 +333,146 @@ function buildSummaryText(document: DocumentItem) {
     return document.summary
   }
 
-  return '아직 문서 요약이 없습니다. Day 3에서 AI Engine 문서 분석을 연결하면 이 영역에 요약과 키워드가 표시됩니다.'
+  if (document.description) {
+    return document.description
+  }
+
+  return '아직 문서 요약이 없습니다. 이후 datasource/FastAPI 분석 연결 시 이 영역에 요약과 키워드가 표시됩니다.'
+}
+
+function buildKeywordList(value: string | null) {
+  if (!value) {
+    return []
+  }
+
+  return value
+    .split(',')
+    .map((keyword) => keyword.trim())
+    .filter(Boolean)
+}
+
+function canInlinePreview(document: DocumentItem) {
+  const contentType = previewContentType.value ?? document.contentType ?? ''
+
+  return (
+    contentType.startsWith('application/pdf') ||
+    contentType.startsWith('image/') ||
+    contentType.startsWith('text/')
+  )
+}
+
+function isImageDocument(document: DocumentItem) {
+  const contentType = previewContentType.value ?? document.contentType ?? ''
+  return contentType.startsWith('image/')
+}
+
+function openPreview() {
+  if (!previewObjectUrl.value) {
+    return
+  }
+
+  window.open(previewObjectUrl.value, '_blank', 'noopener,noreferrer')
+}
+
+async function openDownload(document: DocumentItem) {
+  try {
+    const downloadResult = await documentService.getDocumentDownloadObjectUrl(
+      document.id,
+    )
+
+    const link = window.document.createElement('a')
+    link.href = downloadResult.objectUrl
+    link.download = document.originalFileName || document.title || 'document'
+    link.click()
+
+    window.setTimeout(() => {
+      URL.revokeObjectURL(downloadResult.objectUrl)
+    }, 1000)
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error ? error.message : '문서 다운로드에 실패했습니다.'
+  }
+}
+
+function resetEditDocumentForm() {
+  isEditingDocument.value = false
+  editTitle.value = ''
+  editDocumentType.value = 'REPORT'
+  editDescription.value = ''
+  editMessage.value = ''
+}
+
+function openEditDocumentForm() {
+  if (!selectedDocument.value) {
+    return
+  }
+
+  editTitle.value = selectedDocument.value.title
+  editDocumentType.value = selectedDocument.value.documentType || 'REPORT'
+  editDescription.value = selectedDocument.value.description || ''
+  editMessage.value = ''
+  isEditingDocument.value = true
+}
+
+function closeEditDocumentForm() {
+  if (isUpdatingDocument.value) {
+    return
+  }
+
+  resetEditDocumentForm()
+}
+
+async function updateSelectedDocument() {
+  if (!selectedDocument.value) {
+    return
+  }
+
+  isUpdatingDocument.value = true
+  editMessage.value = ''
+
+  try {
+    const updatedDocument = await documentService.updateDocument(
+      selectedDocument.value.id,
+      {
+        title: editTitle.value,
+        documentType: editDocumentType.value,
+        description: editDescription.value,
+      },
+    )
+
+    selectedDocument.value = updatedDocument
+    resetEditDocumentForm()
+    await fetchDocuments()
+  } catch (error: unknown) {
+    editMessage.value =
+      error instanceof Error ? error.message : '문서 수정에 실패했습니다.'
+  } finally {
+    isUpdatingDocument.value = false
+  }
+}
+
+async function deleteSelectedDocument() {
+  if (!selectedDocument.value) {
+    return
+  }
+
+  const confirmed = window.confirm(
+    `"${selectedDocument.value.title}" 문서를 삭제하시겠습니까?`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await documentService.deleteDocument(selectedDocument.value.id)
+
+    closeDocumentDetail()
+    await fetchDocuments()
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error ? error.message : '문서 삭제에 실패했습니다.'
+  }
 }
 
 onMounted(() => {
@@ -131,6 +483,8 @@ watch(
   () => workspaceId.value,
   () => {
     selectedDocument.value = null
+    clearPreviewObjectUrl()
+    resetEditDocumentForm()
     void fetchDocuments()
   },
 )
@@ -145,9 +499,8 @@ watch(
             <p class="documents-eyebrow">Documents</p>
             <h1>문서 관리</h1>
             <p class="documents-description">
-              워크스페이스에 연결된 지식 문서를 확인합니다. 문서는 Task,
-              Dashboard, AI 분석의 공통 데이터로 사용되며, 이후
-              업로드·요약·키워드 분석 기능과 연결됩니다.
+              워크스페이스의 보고서, 회의록, 지침, 참고자료를 업로드하고
+              미리보기·다운로드·AI 분석 연결 상태를 관리합니다.
             </p>
           </div>
 
@@ -168,6 +521,25 @@ watch(
             </button>
           </div>
         </header>
+
+        <section class="documents-toolbar-card">
+          <div>
+            <p class="documents-eyebrow">Knowledge Documents</p>
+            <h2>문서 관리</h2>
+            <p>
+              프로젝트 지식 문서를 업로드하고, 미리보기·다운로드·수정·삭제할 수
+              있습니다.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            class="documents-primary-button"
+            @click="openUploadModal"
+          >
+            문서 업로드
+          </button>
+        </section>
 
         <section class="documents-summary-grid">
           <article class="documents-summary-card">
@@ -197,7 +569,8 @@ watch(
               <h2>Document 목록</h2>
               <p>
                 현재 Workspace 기준으로 조회된 Knowledge Document입니다. 항목을
-                클릭하면 상세 정보와 분석 연결 상태를 확인할 수 있습니다.
+                클릭하면 파일 정보, 미리보기, 다운로드, 분석 상태를 확인할 수
+                있습니다.
               </p>
             </div>
 
@@ -215,8 +588,8 @@ watch(
           </div>
 
           <div v-else-if="documents.length === 0" class="documents-state-box">
-            아직 연결된 문서가 없습니다. 이후 파일 업로드 또는 데이터 소스
-            연결을 통해 문서를 추가할 수 있습니다.
+            아직 연결된 문서가 없습니다. 상단의 문서 업로드 버튼으로 파일을
+            추가할 수 있습니다.
           </div>
 
           <div v-else class="documents-grid">
@@ -232,7 +605,7 @@ watch(
               <div class="document-card-header">
                 <h3>{{ document.title }}</h3>
                 <span class="document-source-badge">
-                  {{ document.sourceType }}
+                  {{ getDocumentTypeLabel(document.documentType) }}
                 </span>
               </div>
 
@@ -242,8 +615,8 @@ watch(
 
               <dl class="document-meta">
                 <div>
-                  <span>Source</span>
-                  <strong>{{ document.sourceName }}</strong>
+                  <span>File</span>
+                  <strong>{{ document.originalFileName || '미등록' }}</strong>
                 </div>
                 <div>
                   <span>Analysis</span>
@@ -252,8 +625,8 @@ watch(
                   }}</strong>
                 </div>
                 <div>
-                  <span>Vector ID</span>
-                  <strong>{{ document.vectorId || '미연결' }}</strong>
+                  <span>Uploader</span>
+                  <strong>{{ document.uploadedByName || '미지정' }}</strong>
                 </div>
                 <div>
                   <span>Created</span>
@@ -265,6 +638,107 @@ watch(
         </section>
       </section>
     </main>
+
+    <Teleport to="body">
+      <div
+        v-if="isUploadModalOpen"
+        class="document-modal-overlay"
+        role="dialog"
+        aria-modal="true"
+        @click.self="closeUploadModal"
+      >
+        <section class="document-modal upload-modal">
+          <header class="document-modal-header">
+            <div>
+              <p class="documents-eyebrow">Upload Document</p>
+              <h2>문서 업로드</h2>
+              <p>파일을 선택하고 문서 유형과 설명을 입력합니다.</p>
+            </div>
+
+            <button
+              type="button"
+              class="document-modal-close"
+              aria-label="문서 업로드 닫기"
+              @click="closeUploadModal"
+            >
+              ×
+            </button>
+          </header>
+
+          <div class="document-modal-body upload-modal-body">
+            <label class="documents-field upload-modal-field">
+              <span>문서 유형</span>
+              <select v-model="selectedDocumentType">
+                <option
+                  v-for="option in documentTypeOptions"
+                  :key="option.value"
+                  :value="option.value"
+                >
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+
+            <label class="documents-field upload-modal-field">
+              <span>문서 설명 선택 입력</span>
+              <textarea
+                v-model="uploadDescription"
+                rows="4"
+                placeholder="예: 프론트엔드 작업 지침, 회의 내용 정리, API 명세 참고자료 등"
+              />
+            </label>
+
+            <div class="upload-file-box">
+              <input
+                ref="fileInputRef"
+                type="file"
+                class="documents-hidden-file"
+                @change="handleUploadFileChange"
+              />
+
+              <button
+                type="button"
+                class="documents-secondary-button"
+                @click="openFilePicker"
+              >
+                파일 선택
+              </button>
+
+              <p v-if="selectedUploadFile">
+                선택된 파일:
+                <strong>{{ selectedUploadFile.name }}</strong>
+              </p>
+
+              <p v-else>아직 선택된 파일이 없습니다.</p>
+            </div>
+
+            <p v-if="uploadMessage" class="documents-upload-message">
+              {{ uploadMessage }}
+            </p>
+          </div>
+
+          <footer class="document-modal-footer">
+            <button
+              type="button"
+              class="documents-ghost-button"
+              :disabled="isUploading"
+              @click="closeUploadModal"
+            >
+              취소
+            </button>
+
+            <button
+              type="button"
+              class="documents-primary-button"
+              :disabled="isUploading || !selectedUploadFile"
+              @click="uploadSelectedDocument"
+            >
+              {{ isUploading ? '업로드 중...' : '업로드' }}
+            </button>
+          </footer>
+        </section>
+      </div>
+    </Teleport>
 
     <Teleport to="body">
       <div
@@ -292,15 +766,182 @@ watch(
           </header>
 
           <div class="document-modal-body">
+            <section
+              v-if="isEditingDocument"
+              class="document-analysis-card document-edit-card"
+            >
+              <div class="document-section-heading">
+                <div>
+                  <h3>Document 수정</h3>
+                  <p>문서 제목, 문서 유형, 문서 설명을 수정합니다.</p>
+                </div>
+              </div>
+
+              <div class="document-edit-form">
+                <label class="documents-field">
+                  <span>문서 제목</span>
+                  <input
+                    v-model="editTitle"
+                    type="text"
+                    placeholder="문서 제목을 입력하세요"
+                  />
+                </label>
+
+                <label class="documents-field">
+                  <span>문서 유형</span>
+                  <select v-model="editDocumentType">
+                    <option
+                      v-for="option in documentTypeOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </label>
+
+                <label class="documents-field document-edit-description">
+                  <span>문서 설명</span>
+                  <textarea
+                    v-model="editDescription"
+                    rows="4"
+                    placeholder="문서 설명을 입력하세요"
+                  />
+                </label>
+              </div>
+
+              <p v-if="editMessage" class="documents-upload-message">
+                {{ editMessage }}
+              </p>
+            </section>
+
+            <section class="document-analysis-card">
+              <div class="document-section-heading">
+                <div>
+                  <h3>Preview</h3>
+                  <p>
+                    PDF, 이미지, 텍스트 계열 파일은 브라우저에서 기본 미리보기를
+                    제공합니다.
+                  </p>
+                </div>
+
+                <div class="document-preview-actions">
+                  <button
+                    type="button"
+                    class="documents-secondary-button"
+                    :disabled="!previewObjectUrl"
+                    @click="openPreview"
+                  >
+                    새 창 미리보기
+                  </button>
+                  <button
+                    type="button"
+                    class="documents-primary-button"
+                    :disabled="!selectedDocument.downloadUrl"
+                    @click="openDownload(selectedDocument)"
+                  >
+                    다운로드
+                  </button>
+                </div>
+              </div>
+
+              <div v-if="isPreviewLoading" class="documents-state-box">
+                문서 미리보기를 불러오는 중입니다.
+              </div>
+
+              <div
+                v-else-if="previewErrorMessage"
+                class="documents-state-box error"
+              >
+                {{ previewErrorMessage }}
+              </div>
+
+              <div
+                v-else-if="
+                  previewObjectUrl && canInlinePreview(selectedDocument)
+                "
+                class="document-preview-frame"
+              >
+                <img
+                  v-if="isImageDocument(selectedDocument)"
+                  :src="previewObjectUrl"
+                  :alt="
+                    selectedDocument.originalFileName || selectedDocument.title
+                  "
+                />
+                <iframe v-else :src="previewObjectUrl" title="문서 미리보기" />
+              </div>
+
+              <div v-else class="documents-state-box">
+                이 파일 형식은 브라우저 기본 미리보기를 지원하지 않습니다.
+                다운로드 버튼으로 확인해 주세요.
+              </div>
+            </section>
+
             <section class="document-analysis-card">
               <h3>AI Analysis</h3>
               <p>{{ buildSummaryText(selectedDocument) }}</p>
+
+              <div
+                v-if="buildKeywordList(selectedDocument.keywords).length > 0"
+                class="document-keyword-list"
+              >
+                <span
+                  v-for="keyword in buildKeywordList(selectedDocument.keywords)"
+                  :key="keyword"
+                >
+                  {{ keyword }}
+                </span>
+              </div>
             </section>
 
             <section class="document-detail-grid">
               <article class="document-detail-card">
                 <span>Document ID</span>
                 <strong>{{ selectedDocument.id }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Document Type</span>
+                <strong>{{
+                  getDocumentTypeLabel(selectedDocument.documentType)
+                }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Description</span>
+                <strong>{{ selectedDocument.description || '미입력' }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Original File</span>
+                <strong>{{
+                  selectedDocument.originalFileName || '미등록'
+                }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>File Size</span>
+                <strong>{{ formatFileSize(selectedDocument.fileSize) }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Content Type</span>
+                <strong>{{ selectedDocument.contentType || '미정' }}</strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Uploaded By</span>
+                <strong>
+                  {{ selectedDocument.uploadedByName || '미지정' }}
+                </strong>
+              </article>
+
+              <article class="document-detail-card">
+                <span>Uploader Email</span>
+                <strong>{{
+                  selectedDocument.uploadedByEmail || '미지정'
+                }}</strong>
               </article>
 
               <article class="document-detail-card">
@@ -331,6 +972,11 @@ watch(
               </article>
 
               <article class="document-detail-card">
+                <span>Analyzed At</span>
+                <strong>{{ formatDate(selectedDocument.analyzedAt) }}</strong>
+              </article>
+
+              <article class="document-detail-card">
                 <span>Vector ID</span>
                 <strong>{{ selectedDocument.vectorId || '미연결' }}</strong>
               </article>
@@ -343,6 +989,46 @@ watch(
           </div>
 
           <footer class="document-modal-footer">
+            <div class="document-modal-footer-actions">
+              <button
+                v-if="!isEditingDocument"
+                type="button"
+                class="documents-secondary-button"
+                @click="openEditDocumentForm"
+              >
+                문서 수정
+              </button>
+
+              <template v-else>
+                <button
+                  type="button"
+                  class="documents-primary-button"
+                  :disabled="isUpdatingDocument"
+                  @click="updateSelectedDocument"
+                >
+                  {{ isUpdatingDocument ? '수정 중...' : '수정 저장' }}
+                </button>
+
+                <button
+                  type="button"
+                  class="documents-ghost-button"
+                  :disabled="isUpdatingDocument"
+                  @click="closeEditDocumentForm"
+                >
+                  수정 취소
+                </button>
+              </template>
+
+              <button
+                type="button"
+                class="documents-danger-button"
+                :disabled="isUpdatingDocument"
+                @click="deleteSelectedDocument"
+              >
+                문서 삭제
+              </button>
+            </div>
+
             <button
               type="button"
               class="documents-ghost-button"
