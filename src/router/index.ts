@@ -47,9 +47,9 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
-      path: '/settings/profile',
-      name: 'settings-profile',
-      component: () => import('@/views/settings/ProfileView.vue'),
+      path: '/workspaces/:workspaceId/documents',
+      name: 'workspace-documents',
+      component: () => import('@/views/document/DocumentsView.vue'),
       meta: { requiresAuth: true },
     },
     {
@@ -58,16 +58,22 @@ const router = createRouter({
       component: () => import('@/views/schedule/ScheduleView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/settings/profile',
+      name: 'settings-profile',
+      component: () => import('@/views/settings/ProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
   ],
 })
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore()
+
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
   }
 
-  // 새로고침 등으로 토큰은 있지만 본인 정보가 비어있는 경우 채워둔다. (Host 판별에 사용)
   if (authStore.isAuthenticated && !authStore.currentUser) {
     await authService.fetchCurrentUser()
   }

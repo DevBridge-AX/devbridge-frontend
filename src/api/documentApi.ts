@@ -1,38 +1,38 @@
 import axiosClient from './axiosClient'
 
-// ─── Request / Response 타입 정의 (Co-location) ───────────────────────────
+export interface DocumentItem {
+  id: string
 
-export interface PresignedUrlRequest {
-  fileName: string
-  contentType: string
+  workspaceId: string
+  workspaceName: string
+
+  dataSourceId: string
+  sourceName: string
+  sourceType: string
+  sourceStatus: string
+
+  title: string
+  vectorId: string | null
+
+  summary: string | null
+  analysisStatus: string | null
+
+  createdAt: string | null
+  updatedAt: string | null
 }
-
-export interface PresignedUrlResponse {
-  uploadUrl: string
-  fileKey: string
-  fileUrl: string
-}
-
-// ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
 
 export const documentApi = {
-  /**
-   * 파일명과 콘텐츠 타입을 전달해 업로드용 Presigned URL과 파일 키, 조회 URL을 발급받습니다.
-   */
-  getPresignedUrl(payload: PresignedUrlRequest): Promise<PresignedUrlResponse> {
+  fetchDocumentsByWorkspace(workspaceId: string): Promise<DocumentItem[]> {
     return axiosClient
-      .post<PresignedUrlResponse>('/api/documents/presigned-url', payload)
+      .get<DocumentItem[]>('/api/documents', {
+        params: { workspaceId },
+      })
       .then((res) => res.data)
   },
 
-  /**
-   * Presigned URL로 파일 원본을 업로드합니다.
-   */
-  uploadFile(uploadUrl: string, file: File): Promise<void> {
+  fetchDocumentDetail(documentId: string): Promise<DocumentItem> {
     return axiosClient
-      .put<void>(uploadUrl, file, {
-        headers: { 'Content-Type': file.type || 'application/octet-stream' },
-      })
-      .then(() => undefined)
+      .get<DocumentItem>(`/api/documents/${documentId}`)
+      .then((res) => res.data)
   },
 }

@@ -1,37 +1,81 @@
-import { documentApi } from '@/api/documentApi'
 import axios from 'axios'
+import { documentApi } from '@/api/documentApi'
+import type { DocumentItem } from '@/api/documentApi'
 
-// ─── Layer 3: 비즈니스 로직 (Service) ─────────────────────────────────────
-// Presigned URL 발급과 파일 업로드를 묶어 호출부가 2단계 흐름을 신경 쓰지 않도록 추상화합니다.
-
-export interface UploadedDocument {
-  fileKey: string
+export interface UploadDocumentResult {
   fileUrl: string
 }
 
-/**
- * 파일에 대한 Presigned URL을 발급받고 동일 파일을 업로드합니다.
- * @throws Error - 호출부에서 catch하여 사용자에게 표시할 메시지
- */
-async function uploadDocument(file: File): Promise<UploadedDocument> {
+async function getDocumentsByWorkspace(
+  workspaceId: string,
+): Promise<DocumentItem[]> {
+  if (!workspaceId) {
+    throw new Error('워크스페이스 정보가 없습니다.')
+  }
+
   try {
-    const { uploadUrl, fileKey, fileUrl } = await documentApi.getPresignedUrl({
-      fileName: file.name,
-      contentType: file.type || 'application/octet-stream',
-    })
-
-    await documentApi.uploadFile(uploadUrl, file)
-
-    return { fileKey, fileUrl }
+    return await documentApi.fetchDocumentsByWorkspace(workspaceId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === 401) {
-      throw new Error('인증이 만료되었습니다. 다시 로그인해 주세요.')
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 401) {
+        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
+      }
+
+      if (status === 403) {
+        throw new Error('문서 목록을 조회할 권한이 없습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('해당 워크스페이스의 문서 목록을 찾을 수 없습니다.')
+      }
     }
 
-    throw new Error('파일 업로드에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+    throw new Error('문서 목록을 불러오지 못했습니다.')
+  }
+}
+
+async function getDocumentDetail(documentId: string): Promise<DocumentItem> {
+  if (!documentId) {
+    throw new Error('문서 정보가 없습니다.')
+  }
+
+  try {
+    return await documentApi.fetchDocumentDetail(documentId)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 401) {
+        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
+      }
+
+      if (status === 403) {
+        throw new Error('문서 상세 정보를 조회할 권한이 없습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('해당 문서를 찾을 수 없습니다.')
+      }
+    }
+
+    throw new Error('문서 상세 정보를 불러오지 못했습니다.')
+  }
+}
+
+async function uploadDocument(file: File): Promise<UploadDocumentResult> {
+  if (!file) {
+    throw new Error('업로드할 파일이 없습니다.')
+  }
+
+  return {
+    fileUrl: URL.createObjectURL(file),
   }
 }
 
 export const documentService = {
+  getDocumentsByWorkspace,
+  getDocumentDetail,
   uploadDocument,
 }
