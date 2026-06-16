@@ -58,7 +58,13 @@ function goToSchedule() {
   router.push(`/workspaces/${currentWorkspaceId.value}/schedule`)
 }
 
-function isActiveMenu(menu: 'dashboard' | 'tasks' | 'documents' | 'schedule') {
+function goToSettings() {
+  router.push('/settings/profile')
+}
+
+function isActiveMenu(
+  menu: 'dashboard' | 'tasks' | 'documents' | 'schedule' | 'settings',
+) {
   if (menu === 'dashboard') {
     return route.name === 'workspace-dashboard'
   }
@@ -73,6 +79,10 @@ function isActiveMenu(menu: 'dashboard' | 'tasks' | 'documents' | 'schedule') {
 
   if (menu === 'schedule') {
     return route.name === 'workspace-schedule'
+  }
+
+  if (menu === 'settings') {
+    return route.name === 'settings-profile'
   }
 
   return false
@@ -149,7 +159,12 @@ function isActiveMenu(menu: 'dashboard' | 'tasks' | 'documents' | 'schedule') {
         <span>Schedule</span>
       </button>
 
-      <button type="button" class="nav-item disabled" disabled>
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('settings') }"
+        @click="goToSettings"
+      >
         <span class="nav-icon">P</span>
         <span>Settings</span>
       </button>

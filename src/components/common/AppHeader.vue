@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { workspaceService } from '@/services/workspaceService'
 import type { Workspace } from '@/api/workspaceApi'
 import { useAuthStore } from '@/state/authStore'
+import { authService } from '@/services/authService'
 
 defineEmits<{
   toggleSidebar: []
@@ -149,12 +150,41 @@ function goToWorkspaceList() {
   router.push('/workspace')
 }
 
+const isProfileMenuOpen = ref(false)
+const profileContainerRef = ref<HTMLElement | null>(null)
+
+function toggleProfileMenu(event: Event) {
+  event.stopPropagation()
+  isProfileMenuOpen.value = !isProfileMenuOpen.value
+}
+
+function closeProfileMenu(event: Event) {
+  if (
+    profileContainerRef.value &&
+    !profileContainerRef.value.contains(event.target as Node)
+  ) {
+    isProfileMenuOpen.value = false
+  }
+}
+
 function goToProfile() {
+  isProfileMenuOpen.value = false
   router.push('/settings/profile')
+}
+
+async function handleLogout() {
+  isProfileMenuOpen.value = false
+  await authService.executeLogout()
+  router.push('/login')
 }
 
 onMounted(() => {
   void fetchWorkspaces()
+  document.addEventListener('click', closeProfileMenu)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', closeProfileMenu)
 })
 </script>
 
@@ -221,14 +251,33 @@ onMounted(() => {
           placeholder="Search workspace"
         />
 
-        <button
-          type="button"
-          class="profile-button"
-          :title="profileLabel"
-          @click="goToProfile"
-        >
-          {{ profileInitial }}
-        </button>
+        <div ref="profileContainerRef" class="header-profile">
+          <button
+            type="button"
+            class="profile-button"
+            :title="profileLabel"
+            @click="toggleProfileMenu"
+          >
+            {{ profileInitial }}
+          </button>
+
+          <div v-if="isProfileMenuOpen" class="header-profile-menu">
+            <button
+              type="button"
+              class="header-profile-option"
+              @click="goToProfile"
+            >
+              내 프로필
+            </button>
+            <button
+              type="button"
+              class="header-profile-option logout"
+              @click="handleLogout"
+            >
+              로그아웃
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
