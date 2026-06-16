@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import AppLayout from '@/layouts/AppLayout.vue'
 import { settingService } from '@/services/settingService'
 import type { UserProfile } from '@/api/settingApi'
 
@@ -170,7 +171,8 @@ async function handleSave(): Promise<void> {
 </script>
 
 <template>
-  <div class="profile-page">
+  <AppLayout>
+    <div class="profile-page">
     <!-- 배경 장식 -->
     <div class="bg-orb bg-orb--1" />
     <div class="bg-orb bg-orb--2" />
@@ -400,7 +402,8 @@ async function handleSave(): Promise<void> {
 
       </div>
     </div>
-  </div>
+    </div>
+  </AppLayout>
 </template>
 
 <style scoped>
