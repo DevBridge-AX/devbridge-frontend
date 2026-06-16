@@ -2,13 +2,24 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { taskService } from '@/services/taskService'
-import type { Task } from '@/api/taskApi'
+import { useAuthStore } from '@/state/authStore'
+import type { CreateTaskRequest, Task, UpdateTaskRequest } from '@/api/taskApi'
 import AppLayout from '@/layouts/AppLayout.vue'
 import TaskDetailModal from '@/components/task/TaskDetailModal.vue'
 import '@/assets/styles/task-list.css'
 
+type TaskFormMode = 'create' | 'edit'
+
+type TaskFormState = {
+  title: string
+  description: string
+  assigneeId: string
+  dueDate: string
+}
+
 const route = useRoute()
 const router = useRouter()
+const authStore = useAuthStore()
 
 const tasks = ref<Task[]>([])
 const isLoading = ref(false)
@@ -18,10 +29,25 @@ const selectedStatus = ref('ALL')
 const selectedTaskId = ref<string | null>(null)
 const isTaskDetailModalOpen = ref(false)
 
+const isTaskFormOpen = ref(false)
+const taskFormMode = ref<TaskFormMode>('create')
+const editingTaskId = ref<string | null>(null)
+const isSavingTask = ref(false)
+const formErrorMessage = ref('')
+
+const taskForm = ref<TaskFormState>({
+  title: '',
+  description: '',
+  assigneeId: '',
+  dueDate: '',
+})
+
 const workspaceId = computed(() => {
   const value = route.params.workspaceId
   return Array.isArray(value) ? value[0] : value
 })
+
+const currentUserId = computed(() => authStore.currentUser?.id ?? '')
 
 const totalCount = computed(() => tasks.value.length)
 
@@ -86,6 +112,14 @@ const filteredTasks = computed(() => {
   return tasks.value.filter((task) => task.status === selectedStatus.value)
 })
 
+const formTitle = computed(() => {
+  return taskFormMode.value === 'create' ? '업무 추가' : '업무 수정'
+})
+
+const submitButtonLabel = computed(() => {
+  return taskFormMode.value === 'create' ? '업무 생성' : '수정 저장'
+})
+
 async function fetchTasks() {
   if (!workspaceId.value) {
     errorMessage.value = '워크스페이스 정보가 없습니다.'
@@ -127,6 +161,148 @@ function closeTaskDetail() {
 
 function setStatusFilter(status: string) {
   selectedStatus.value = status
+}
+
+function resetTaskForm() {
+  taskForm.value = {
+    title: '',
+    description: '',
+    assigneeId: '',
+    dueDate: '',
+  }
+  formErrorMessage.value = ''
+  editingTaskId.value = null
+}
+
+function openCreateTaskForm() {
+  taskFormMode.value = 'create'
+  resetTaskForm()
+  isTaskFormOpen.value = true
+}
+
+function openEditTaskForm(task: Task) {
+  taskFormMode.value = 'edit'
+  editingTaskId.value = task.id
+  formErrorMessage.value = ''
+
+  taskForm.value = {
+    title: task.title,
+    description: task.description ?? '',
+    assigneeId: task.assigneeId ?? '',
+    dueDate: toDateTimeLocalValue(task.dueDate),
+  }
+
+  isTaskFormOpen.value = true
+}
+
+function closeTaskForm() {
+  if (isSavingTask.value) {
+    return
+  }
+
+  isTaskFormOpen.value = false
+  resetTaskForm()
+}
+
+async function submitTaskForm() {
+  if (!workspaceId.value) {
+    formErrorMessage.value = '워크스페이스 정보가 없습니다.'
+    return
+  }
+
+  if (!taskForm.value.title.trim()) {
+    formErrorMessage.value = '업무 제목을 입력해야 합니다.'
+    return
+  }
+
+  isSavingTask.value = true
+  formErrorMessage.value = ''
+
+  try {
+    if (taskFormMode.value === 'create') {
+      if (!currentUserId.value) {
+        formErrorMessage.value =
+          '요청자 정보를 확인할 수 없습니다. 다시 로그인해 주세요.'
+        return
+      }
+
+      const request: CreateTaskRequest = {
+        workspaceId: workspaceId.value,
+        requesterId: currentUserId.value,
+        assigneeId: normalizeNullableValue(taskForm.value.assigneeId),
+        title: taskForm.value.title.trim(),
+        description: normalizeNullableValue(taskForm.value.description),
+        dueDate: normalizeDueDateValue(taskForm.value.dueDate),
+      }
+
+      await taskService.createTask(request)
+    } else {
+      if (!editingTaskId.value) {
+        formErrorMessage.value = '수정할 업무 정보가 없습니다.'
+        return
+      }
+
+      const request: UpdateTaskRequest = {
+        assigneeId: normalizeNullableValue(taskForm.value.assigneeId),
+        title: taskForm.value.title.trim(),
+        description: normalizeNullableValue(taskForm.value.description),
+        dueDate: normalizeDueDateValue(taskForm.value.dueDate),
+      }
+
+      await taskService.updateTask(editingTaskId.value, request)
+    }
+
+    closeTaskForm()
+    await fetchTasks()
+  } catch (error: unknown) {
+    formErrorMessage.value =
+      error instanceof Error ? error.message : '업무 저장에 실패했습니다.'
+  } finally {
+    isSavingTask.value = false
+  }
+}
+
+async function changeTaskStatus(task: Task, status: string) {
+  if (task.status === status) {
+    return
+  }
+
+  try {
+    await taskService.updateTaskStatus(task.id, {
+      status,
+      changedBy: currentUserId.value || null,
+    })
+
+    await fetchTasks()
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '업무 상태를 변경하지 못했습니다.'
+  }
+}
+
+async function removeTask(task: Task) {
+  const confirmed = window.confirm(
+    `"${task.title}" 업무를 삭제할까요?\n삭제된 업무는 목록에서 제외됩니다.`,
+  )
+
+  if (!confirmed) {
+    return
+  }
+
+  try {
+    await taskService.deleteTask(task.id)
+
+    if (selectedTaskId.value === task.id) {
+      closeTaskDetail()
+    }
+
+    await fetchTasks()
+  } catch (error: unknown) {
+    errorMessage.value =
+      error instanceof Error ? error.message : '업무를 삭제하지 못했습니다.'
+  }
 }
 
 function applyStatusQuery() {
@@ -202,6 +378,27 @@ function isOverdue(task: Task) {
   return new Date(task.dueDate) < new Date()
 }
 
+function normalizeNullableValue(value: string) {
+  const trimmedValue = value.trim()
+  return trimmedValue.length > 0 ? trimmedValue : null
+}
+
+function normalizeDueDateValue(value: string) {
+  if (!value) {
+    return null
+  }
+
+  return value
+}
+
+function toDateTimeLocalValue(value: string | null) {
+  if (!value) {
+    return ''
+  }
+
+  return value.slice(0, 16)
+}
+
 onMounted(() => {
   applyStatusQuery()
   void fetchTasks()
@@ -219,6 +416,7 @@ watch(
   () => {
     selectedTaskId.value = null
     isTaskDetailModalOpen.value = false
+    isTaskFormOpen.value = false
     applyStatusQuery()
     void fetchTasks()
   },
@@ -320,9 +518,18 @@ watch(
               </p>
             </div>
 
-            <span class="task-list-count-badge">
-              {{ filteredTasks.length }}개 표시
-            </span>
+            <div class="task-list-content-actions">
+              <span class="task-list-count-badge">
+                {{ filteredTasks.length }}개 표시
+              </span>
+              <button
+                type="button"
+                class="task-list-add-button"
+                @click="openCreateTaskForm"
+              >
+                + 업무 추가
+              </button>
+            </div>
           </div>
 
           <div v-if="isLoading" class="task-list-state-box">
@@ -386,6 +593,67 @@ watch(
                   <dd>{{ formatDate(task.dueDate) }}</dd>
                 </div>
               </dl>
+
+              <div class="task-list-item-footer">
+                <div
+                  class="task-list-status-actions"
+                  aria-label="Task status actions"
+                  @click.stop
+                >
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'ASSIGNED' }"
+                    @click="changeTaskStatus(task, 'ASSIGNED')"
+                  >
+                    배정
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'IN_PROGRESS' }"
+                    @click="changeTaskStatus(task, 'IN_PROGRESS')"
+                  >
+                    진행
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{ active: task.status === 'REVIEW' }"
+                    @click="changeTaskStatus(task, 'REVIEW')"
+                  >
+                    검토
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-status-action"
+                    :class="{
+                      active:
+                        task.status === 'DONE' || task.status === 'COMPLETED',
+                    }"
+                    @click="changeTaskStatus(task, 'DONE')"
+                  >
+                    완료
+                  </button>
+                </div>
+
+                <div class="task-list-row-actions" @click.stop>
+                  <button
+                    type="button"
+                    class="task-list-row-button"
+                    @click="openEditTaskForm(task)"
+                  >
+                    수정
+                  </button>
+                  <button
+                    type="button"
+                    class="task-list-row-button danger"
+                    @click="removeTask(task)"
+                  >
+                    삭제
+                  </button>
+                </div>
+              </div>
             </article>
           </div>
         </section>
@@ -397,5 +665,108 @@ watch(
       :is-open="isTaskDetailModalOpen"
       @close="closeTaskDetail"
     />
+
+    <Teleport to="body">
+      <div
+        v-if="isTaskFormOpen"
+        class="task-list-form-overlay"
+        role="dialog"
+        aria-modal="true"
+      >
+        <section class="task-list-form-modal">
+          <header class="task-list-form-header">
+            <div>
+              <p class="task-list-eyebrow">{{ taskFormMode }}</p>
+              <h2>{{ formTitle }}</h2>
+            </div>
+
+            <button
+              type="button"
+              class="task-list-form-close"
+              aria-label="업무 입력 창 닫기"
+              @click="closeTaskForm"
+            >
+              ×
+            </button>
+          </header>
+
+          <form class="task-list-form-body" @submit.prevent="submitTaskForm">
+            <p class="task-list-form-note">
+              요청자는 현재 로그인 사용자로 자동 설정됩니다. 담당자 ID는 선택
+              입력이며, 멤버 선택 API가 연결되면 드롭다운 방식으로 개선합니다.
+            </p>
+
+            <div v-if="formErrorMessage" class="task-list-form-error">
+              {{ formErrorMessage }}
+            </div>
+
+            <div class="task-list-field">
+              <label for="task-title">업무 제목</label>
+              <input
+                id="task-title"
+                v-model="taskForm.title"
+                type="text"
+                placeholder="예: 문서 업로드 기능 구현"
+                autocomplete="off"
+              />
+            </div>
+
+            <div class="task-list-field">
+              <label for="task-description">업무 설명</label>
+              <textarea
+                id="task-description"
+                v-model="taskForm.description"
+                placeholder="업무 목적, 범위, 필요한 산출물을 입력하세요."
+              />
+            </div>
+
+            <div class="task-list-form-grid">
+              <div class="task-list-field">
+                <label for="task-assignee">담당자 ID</label>
+                <input
+                  id="task-assignee"
+                  v-model="taskForm.assigneeId"
+                  type="text"
+                  placeholder="선택 입력"
+                  autocomplete="off"
+                />
+              </div>
+
+              <div class="task-list-field">
+                <label for="task-due-date">마감일</label>
+                <input
+                  id="task-due-date"
+                  v-model="taskForm.dueDate"
+                  type="datetime-local"
+                />
+              </div>
+            </div>
+
+            <footer class="task-list-form-footer">
+              <div class="task-list-form-footer-left">
+                <button
+                  type="button"
+                  class="task-list-ghost-button"
+                  :disabled="isSavingTask"
+                  @click="closeTaskForm"
+                >
+                  취소
+                </button>
+              </div>
+
+              <div class="task-list-form-footer-right">
+                <button
+                  type="submit"
+                  class="task-list-danger-button"
+                  :disabled="isSavingTask"
+                >
+                  {{ isSavingTask ? '저장 중...' : submitButtonLabel }}
+                </button>
+              </div>
+            </footer>
+          </form>
+        </section>
+      </div>
+    </Teleport>
   </AppLayout>
 </template>

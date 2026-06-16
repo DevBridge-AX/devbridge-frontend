@@ -11,6 +11,27 @@ export interface Task {
   dueDate: string | null
 }
 
+export interface CreateTaskRequest {
+  workspaceId: string
+  requesterId: string
+  assigneeId: string | null
+  title: string
+  description: string | null
+  dueDate: string | null
+}
+
+export interface UpdateTaskRequest {
+  assigneeId: string | null
+  title: string
+  description: string | null
+  dueDate: string | null
+}
+
+export interface UpdateTaskStatusRequest {
+  status: string
+  changedBy: string | null
+}
+
 export interface RelatedDocumentPreview {
   id: string
   title: string
@@ -95,6 +116,31 @@ export const taskApi = {
   fetchTaskDetail(taskId: string): Promise<TaskDetail> {
     return axiosClient
       .get<TaskDetail>(`/api/tasks/${taskId}`)
+      .then((res) => res.data)
+  },
+
+  createTask(request: CreateTaskRequest): Promise<Task> {
+    return axiosClient.post<Task>('/api/tasks', request).then((res) => res.data)
+  },
+
+  updateTask(taskId: string, request: UpdateTaskRequest): Promise<Task> {
+    return axiosClient
+      .put<Task>(`/api/tasks/${taskId}`, request)
+      .then((res) => res.data)
+  },
+
+  updateTaskStatus(
+    taskId: string,
+    request: UpdateTaskStatusRequest,
+  ): Promise<void> {
+    return axiosClient
+      .put<void>(`/api/tasks/${taskId}/status`, request)
+      .then((res) => res.data)
+  },
+
+  deleteTask(taskId: string): Promise<void> {
+    return axiosClient
+      .delete<void>(`/api/tasks/${taskId}`)
       .then((res) => res.data)
   },
 }
