@@ -2,7 +2,7 @@
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 120px);
+  height: 100%; /* Changed from calc(100vh - 120px) to support flex container */
   background: #f8fafc;
 }
 
