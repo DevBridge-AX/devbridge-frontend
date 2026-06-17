@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { ChatSession } from '@/api/chatApi'
 
 export interface MessageCitation {
   sourceType: 'document' | 'git_commit' | 'db_schema'
@@ -55,11 +56,25 @@ export const useChatStore = defineStore('chat', () => {
   const streamingMessage = ref<{ id: string; text: string } | null>(null)
   const isSearching = ref(false)
   const pendingOwnerConfirmation = ref<PendingOwnerConfirmation | null>(null)
+  const sessions = ref<ChatSession[]>([])
+  const activeSessionId = ref<string | null>(null)
   
   // 김개발 등 담당자 매핑 저장용 (original_message_id -> ownerName)
   const messageOwnerMap = ref<Record<string, string>>({})
 
   // ── Actions ────────────────────────────────────────────────────────────
+
+  function setSessions(newSessions: ChatSession[]): void {
+    sessions.value = newSessions
+  }
+
+  function setActiveSessionId(id: string | null): void {
+    activeSessionId.value = id
+  }
+
+  function setMessages(newMessages: ChatMessage[]): void {
+    messages.value = newMessages
+  }
 
   function addMessage(message: ChatMessage): void {
     messages.value.push(message)
@@ -167,6 +182,11 @@ export const useChatStore = defineStore('chat', () => {
     isSearching,
     pendingOwnerConfirmation,
     messageOwnerMap,
+    sessions,
+    activeSessionId,
+    setSessions,
+    setActiveSessionId,
+    setMessages,
     addMessage,
     appendToken,
     finalizeMessage,
