@@ -2,7 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { useChatStore } from '@/state/chatStore'
 
 // Define custom event emitters or dispatch mechanisms
-export function useWebSocket(sessionId: string) {
+export function useWebSocket(sessionId: string | (() => string)) {
   const chatStore = useChatStore()
   const socket = ref<WebSocket | null>(null)
   const isConnected = ref(false)
@@ -15,6 +15,8 @@ export function useWebSocket(sessionId: string) {
 
   const isMock = import.meta.env.VITE_WS_MOCK === 'true'
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/chat'
+
+  const getSessionId = () => typeof sessionId === 'function' ? sessionId() : sessionId
 
   function connect() {
     if (isConnected.value || socket.value) return
@@ -120,7 +122,7 @@ export function useWebSocket(sessionId: string) {
     if (socket.value) {
       const payload = {
         type: 'chat_message',
-        session_id: sessionId,
+        session_id: getSessionId(),
         content: content,
       }
       socket.value.send(JSON.stringify(payload))
@@ -147,7 +149,7 @@ export function useWebSocket(sessionId: string) {
     if (socket.value) {
       socket.value.send(JSON.stringify({
         type: 'owner_confirmation_request',
-        session_id: sessionId,
+        session_id: getSessionId(),
         message_id: messageId,
         owner_id: ownerId,
       }))

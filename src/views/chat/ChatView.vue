@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, inject, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import OwnerConfirmationCard from '@/components/chat/OwnerConfirmationCard.vue'
 import OwnerAnswerToast from '@/components/chat/OwnerAnswerToast.vue'
-import { useWebSocket } from '@/composables/useWebSocket'
 import { useChatStore } from '@/state/chatStore'
 import '@/assets/styles/chat.css'
 
@@ -18,25 +17,29 @@ const workspaceId = computed(() => {
   return Array.isArray(value) ? value[0] : value || 'default'
 })
 
-// Session ID manages chat history boundary
-const sessionId = `session-${workspaceId.value}-${Date.now()}`
+// Inject the global shared WebSocket connection
+const ws = inject<{
+  isConnected: { value: boolean }
+  error: { value: string | null }
+  sendMessage: (content: string) => void
+  sendOwnerConfirmation: (messageId: string, ownerId: string) => void
+}>('workspace-websocket')
 
-// Instantiate WebSocket composable
-const { isConnected, error, connect, disconnect, sendMessage, sendOwnerConfirmation } =
-  useWebSocket(sessionId)
+const isConnected = computed(() => ws?.isConnected.value ?? false)
+const error = computed(() => ws?.error.value ?? null)
 
 const inputText = ref('')
 
 function handleSend() {
-  if (!inputText.value.trim()) return
-  sendMessage(inputText.value.trim())
+  if (!inputText.value.trim() || !ws) return
+  ws.sendMessage(inputText.value.trim())
   inputText.value = ''
 }
 
 function handleOwnerConfirm() {
   const pending = chatStore.pendingOwnerConfirmation
-  if (pending) {
-    sendOwnerConfirmation(pending.messageId, pending.ownerId)
+  if (pending && ws) {
+    ws.sendOwnerConfirmation(pending.messageId, pending.ownerId)
     chatStore.clearPendingOwnerConfirmation()
   }
 }
@@ -46,12 +49,7 @@ function handleOwnerCancel() {
 }
 
 onMounted(() => {
-  chatStore.resetChat()
-  connect()
-})
-
-onUnmounted(() => {
-  disconnect()
+  // Chat history is preserved when navigating within the same workspace
 })
 </script>
 

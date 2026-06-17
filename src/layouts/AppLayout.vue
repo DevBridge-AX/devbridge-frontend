@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, provide, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
+import FloatingChatWidget from '@/components/chat/FloatingChatWidget.vue'
+import { useWebSocket } from '@/composables/useWebSocket'
 import '@/assets/styles/app-layout.css'
 
 const route = useRoute()
@@ -16,6 +18,49 @@ const isDarkTheme = computed(() => {
 function toggleSidebar() {
   isSidebarCollapsed.value = !isSidebarCollapsed.value
 }
+
+// ── Shared WebSocket Connection Setup ─────────────────────────────────────
+const currentWorkspaceId = computed<string>(() => {
+  const value = route.params.workspaceId
+  if (Array.isArray(value)) {
+    return value[0] || ''
+  }
+  return value || ''
+})
+
+const currentSessionId = ref(`session-${currentWorkspaceId.value || 'default'}-${Date.now()}`)
+
+const { isConnected, error, connect, disconnect, sendMessage, sendOwnerConfirmation } =
+  useWebSocket(() => currentSessionId.value)
+
+watch(
+  () => currentWorkspaceId.value,
+  (newId) => {
+    if (newId) {
+      disconnect()
+      currentSessionId.value = `session-${newId}-${Date.now()}`
+      connect()
+    }
+  }
+)
+
+onMounted(() => {
+  if (currentWorkspaceId.value) {
+    connect()
+  }
+})
+
+onUnmounted(() => {
+  disconnect()
+})
+
+// Share WebSocket controls with children views
+provide('workspace-websocket', {
+  isConnected,
+  error,
+  sendMessage,
+  sendOwnerConfirmation,
+})
 </script>
 
 <template>
@@ -40,5 +85,10 @@ function toggleSidebar() {
 
       <AppFooter />
     </div>
+
+    <!-- Floating PIP Chat Widget (Persists across workspace pages, hidden in full chat page) -->
+    <FloatingChatWidget
+      v-if="route.name !== 'workspace-chat' && currentWorkspaceId"
+    />
   </div>
 </template>
