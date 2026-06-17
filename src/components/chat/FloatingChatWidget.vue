@@ -15,6 +15,7 @@ const chatStore = useChatStore()
 // State
 const isOpen = ref(false)
 const isMaximized = ref(false)
+const showSidebar = ref(true)
 const inputText = ref('')
 const hasNewAnswer = ref(false)
 
@@ -46,6 +47,9 @@ function toggleWidget() {
 
 function toggleMaximize() {
   isMaximized.value = !isMaximized.value
+  if (isMaximized.value) {
+    showSidebar.value = true
+  }
 }
 
 function handleSend() {
@@ -115,13 +119,26 @@ onUnmounted(() => {
     <div
       v-if="isOpen"
       class="chat-pip-panel"
-      :class="{ maximized: isMaximized }"
+      :class="{ maximized: isMaximized, 'sidebar-open': isMaximized && showSidebar }"
     >
       <!-- PIP Header -->
       <header class="chat-pip-header">
-        <div class="chat-pip-title">
-          <strong>AI Assistant</strong>
-          <span>{{ isConnected ? '🟢 실시간 연동 중' : '🔴 연결 끊김' }}</span>
+        <div class="chat-pip-title-wrapper">
+          <!-- Sidebar Toggle Menu Button -->
+          <button
+            v-if="isMaximized"
+            type="button"
+            class="chat-pip-btn sidebar-toggle-btn"
+            :class="{ 'sidebar-active': showSidebar }"
+            title="대화 기록 토글"
+            @click="showSidebar = !showSidebar"
+          >
+            ☰
+          </button>
+          <div class="chat-pip-title">
+            <strong>AI Assistant</strong>
+            <span>{{ isConnected ? '🟢 실시간 연동 중' : '🔴 연결 끊김' }}</span>
+          </div>
         </div>
         <div class="chat-pip-controls">
           <!-- Size Toggle Button -->
@@ -159,6 +176,7 @@ onUnmounted(() => {
         <ChatHistorySidebar 
           v-if="isMaximized" 
           class="pip-sidebar" 
+          :class="{ 'pip-sidebar-collapsed': !showSidebar }"
           @select-session="handleSidebarSelectSession"
         />
 
