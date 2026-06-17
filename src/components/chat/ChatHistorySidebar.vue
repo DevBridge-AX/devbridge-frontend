@@ -11,26 +11,27 @@ const chatStore = useChatStore()
 const sessions = computed(() => chatStore.sessions)
 const activeSessionId = computed(() => chatStore.activeSessionId)
 
+const emit = defineEmits<{
+  (e: 'select-session', sessionId: string): void
+}>()
+
 async function handleNewChat() {
   const newSession = await chatService.createSession()
-  // URL Query 업데이트
-  router.push({ query: { ...route.query, session: newSession.id } })
+  emit('select-session', newSession.id)
 }
 
 function handleSelectSession(sessionId: string) {
   if (activeSessionId.value === sessionId) return
-  router.push({ query: { ...route.query, session: sessionId } })
+  emit('select-session', sessionId)
 }
 
 async function handleDeleteSession(sessionId: string, event: Event) {
   event.stopPropagation() // 클릭 이벤트 전파 방지
   if (confirm('이 대화 기록을 삭제하시겠습니까?')) {
     await chatService.deleteSession(sessionId)
-    // 만약 현재 활성화된 세션이 삭제되었다면 URL Query 제거
+    // 만약 현재 활성화된 세션이 삭제되었다면 URL Query 제어 등은 부모에서 처리할 수 있도록 null emit (또는 부모가 알아서 처리)
     if (activeSessionId.value === null) {
-      const query = { ...route.query }
-      delete query.session
-      router.push({ query })
+      emit('select-session', '')
     }
   }
 }

@@ -73,13 +73,23 @@ watch(() => route.query.session, async (newSessionId) => {
     chatStore.resetChat()
   }
 })
+
+function handleSidebarSelectSession(sessionId: string) {
+  if (sessionId) {
+    router.push({ query: { ...route.query, session: sessionId } })
+  } else {
+    const query = { ...route.query }
+    delete query.session
+    router.push({ query })
+  }
+}
 </script>
 
 <template>
   <AppLayout>
     <div class="chat-container-layout">
       <!-- Sidebar for Chat History -->
-      <ChatHistorySidebar />
+      <ChatHistorySidebar @select-session="handleSidebarSelectSession" />
 
       <!-- Main Chat Area -->
       <div class="chat-page">

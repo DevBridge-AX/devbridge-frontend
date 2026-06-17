@@ -588,6 +588,26 @@
   opacity: 1;
 }
 
+.chat-pip-panel .chat-pip-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+.chat-pip-panel .chat-pip-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.chat-pip-panel .pip-sidebar {
+  width: 250px;
+  border-right: 1px solid #e2e8f0;
+  border-bottom-left-radius: 20px;
+}
+
 .chat-pip-panel .chat-viewport {
   padding: 16px;
   gap: 16px;

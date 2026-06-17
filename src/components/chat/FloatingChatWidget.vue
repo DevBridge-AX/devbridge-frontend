@@ -2,9 +2,11 @@
 import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatStore } from '@/state/chatStore'
+import { chatService } from '@/services/chatService'
 import MessageList from './MessageList.vue'
 import OwnerConfirmationCard from './OwnerConfirmationCard.vue'
 import OwnerAnswerToast from './OwnerAnswerToast.vue'
+import ChatHistorySidebar from './ChatHistorySidebar.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -77,6 +79,15 @@ function handleAnswerReceived() {
   }
 }
 
+async function handleSidebarSelectSession(sessionId: string) {
+  if (sessionId) {
+    await chatService.loadSessionMessages(sessionId)
+  } else {
+    chatStore.setActiveSessionId(null)
+    chatStore.resetChat()
+  }
+}
+
 onMounted(() => {
   window.addEventListener('owner-answer', handleAnswerReceived)
 })
@@ -143,39 +154,50 @@ onUnmounted(() => {
         </div>
       </header>
 
-      <!-- Message Viewport -->
-      <MessageList
-        :messages="chatStore.messages"
-        :streaming-message="chatStore.streamingMessage"
-        :is-searching="chatStore.isSearching"
-      />
+      <!-- PIP Body Wrapper -->
+      <div class="chat-pip-body">
+        <ChatHistorySidebar 
+          v-if="isMaximized" 
+          class="pip-sidebar" 
+          @select-session="handleSidebarSelectSession"
+        />
 
-      <!-- Floating Owner Confirmation suggestion inside PIP -->
-      <OwnerConfirmationCard
-        :owner-name="chatStore.pendingOwnerConfirmation?.ownerName || null"
-        @confirm="handleOwnerConfirm"
-        @cancel="handleOwnerCancel"
-      />
-
-      <!-- Message Input Form Panel inside PIP -->
-      <footer class="chat-footer">
-        <form class="chat-input-container" @submit.prevent="handleSend">
-          <input
-            v-model="inputText"
-            type="text"
-            class="chat-input-box"
-            placeholder="AI에게 질문해보세요..."
-            aria-label="채팅 입력창"
+        <div class="chat-pip-main">
+          <!-- Message Viewport -->
+          <MessageList
+            :messages="chatStore.messages"
+            :streaming-message="chatStore.streamingMessage"
+            :is-searching="chatStore.isSearching"
           />
-          <button
-            type="submit"
-            class="chat-send-button"
-            :disabled="!inputText.trim() || !isConnected"
-          >
-            전송
-          </button>
-        </form>
-      </footer>
+
+          <!-- Floating Owner Confirmation suggestion inside PIP -->
+          <OwnerConfirmationCard
+            :owner-name="chatStore.pendingOwnerConfirmation?.ownerName || null"
+            @confirm="handleOwnerConfirm"
+            @cancel="handleOwnerCancel"
+          />
+
+          <!-- Message Input Form Panel inside PIP -->
+          <footer class="chat-footer">
+            <form class="chat-input-container" @submit.prevent="handleSend">
+              <input
+                v-model="inputText"
+                type="text"
+                class="chat-input-box"
+                placeholder="AI에게 질문해보세요..."
+                aria-label="채팅 입력창"
+              />
+              <button
+                type="submit"
+                class="chat-send-button"
+                :disabled="!inputText.trim() || !isConnected"
+              >
+                전송
+              </button>
+            </form>
+          </footer>
+        </div>
+      </div>
     </div>
 
     <!-- Background Toast Overlay (Triggered on other pages) -->
