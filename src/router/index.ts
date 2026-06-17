@@ -53,6 +53,18 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/workspaces/:workspaceId/chat',
+      name: 'workspace-chat',
+      component: () => import('@/views/chat/ChatView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/workspaces/:workspaceId/datasources',
+      name: 'workspace-datasources',
+      component: () => import('@/views/dataSource/DataSourceView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/workspaces/:workspaceId/schedule',
       name: 'workspace-schedule',
       component: () => import('@/views/schedule/ScheduleView.vue'),
