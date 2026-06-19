@@ -13,6 +13,16 @@ const email = ref('')
 const authCode = ref('')
 const password = ref('')
 const passwordConfirm = ref('')
+const jobRole = ref('')
+
+const JOB_ROLE_OPTIONS = [
+  { value: 'PLANNER', label: '기획자' },
+  { value: 'DEVELOPER', label: '개발자' },
+  { value: 'QA', label: 'QA' },
+  { value: 'DESIGNER', label: '디자이너' },
+  { value: 'OPERATOR', label: '운영자' },
+  { value: 'NEWCOMER', label: '신규투입자' },
+] as const
 
 // ─── 단계별 상태 ──────────────────────────────────────────────────────────
 const isHrVerified = ref(false)
@@ -45,7 +55,8 @@ const canSubmit = computed(
     isHrVerified.value &&
     isEmailVerified.value &&
     password.value.length >= 8 &&
-    password.value === passwordConfirm.value,
+    password.value === passwordConfirm.value &&
+    jobRole.value !== '',
 )
 
 const passwordMismatch = computed(
@@ -127,7 +138,7 @@ async function handleSubmit(): Promise<void> {
   isSubmitting.value = true
   submitStatus.value = 'idle'
   try {
-    await authService.registerUser(employeeId.value.trim(), email.value.trim(), password.value)
+    await authService.registerUser(employeeId.value.trim(), email.value.trim(), password.value, jobRole.value)
     await router.push('/login')
   } catch {
     submitStatus.value = 'error'
@@ -334,7 +345,36 @@ async function handleSubmit(): Promise<void> {
           </div>
         </fieldset>
 
-        <!-- ── Step 7: 최종 가입 버튼 ─────────────────────────────── -->
+        <!-- ── Step 4: 직무 선택 ──────────────────────────────────── -->
+        <fieldset class="form-section" :class="{ 'section--disabled': !isEmailVerified }">
+          <legend class="section-label">
+            <span class="step-badge">4</span> 직무 선택
+          </legend>
+
+          <div class="field">
+            <label class="field-label" for="jobRole">직무</label>
+            <select
+              id="jobRole"
+              v-model="jobRole"
+              class="field-input"
+              :class="{ 'input--error': isEmailVerified && jobRole === '' && password.length >= 8 }"
+              :disabled="!isEmailVerified"
+            >
+              <option value="" disabled>직무를 선택해 주세요</option>
+              <option v-for="opt in JOB_ROLE_OPTIONS" :key="opt.value" :value="opt.value">
+                {{ opt.label }}
+              </option>
+            </select>
+            <p
+              v-if="isEmailVerified && jobRole === '' && password.length >= 8"
+              class="status-msg msg--error"
+            >
+              직무를 선택해 주세요.
+            </p>
+          </div>
+        </fieldset>
+
+        <!-- ── Step 5: 최종 가입 버튼 ─────────────────────────────── -->
         <button
           type="submit"
           class="submit-btn"
@@ -552,6 +592,22 @@ async function handleSubmit(): Promise<void> {
   letter-spacing: 6px;
   font-weight: 600;
   text-align: center;
+}
+
+select.field-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a493e8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+select.field-input:disabled {
+  cursor: not-allowed;
+}
+select.field-input option {
+  background: #1a1a24;
+  color: #f0eeff;
 }
 
 /* ── 입력 + 버튼 묶음 ─────────────────────────────────────────────── */

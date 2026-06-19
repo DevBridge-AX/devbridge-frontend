@@ -18,8 +18,23 @@ const isVerifying = ref(false)
 const verifyError = ref('')
 const verifiedCurrentPassword = ref('') // 임시 보관용 현재 비밀번호
 
+// ─── 직무 옵션 ────────────────────────────────────────────────────────────
+const JOB_ROLE_OPTIONS = [
+  { value: 'PLANNER', label: '기획자' },
+  { value: 'DEVELOPER', label: '개발자' },
+  { value: 'QA', label: 'QA' },
+  { value: 'DESIGNER', label: '디자이너' },
+  { value: 'OPERATOR', label: '운영자' },
+  { value: 'NEWCOMER', label: '신규투입자' },
+] as const
+
+function getJobRoleLabel(value: string): string {
+  return JOB_ROLE_OPTIONS.find((opt) => opt.value === value)?.label ?? '—'
+}
+
 // ─── 편집 폼 필드 ──────────────────────────────────────────────────────────
 const editName = ref('')
+const editJobRole = ref('')
 const newPassword = ref('')
 const confirmNewPassword = ref('')
 
@@ -33,6 +48,7 @@ onMounted(async () => {
   try {
     profile.value = await settingService.getProfile()
     editName.value = profile.value.name
+    editJobRole.value = profile.value.jobRole ?? ''
   } catch {
     loadError.value = '프로필 정보를 불러오지 못했습니다. 페이지를 새로고침해 주세요.'
   } finally {
@@ -81,6 +97,7 @@ function cancelEdit(): void {
   mode.value = 'read'
   // 값 초기화
   editName.value = profile.value?.name ?? ''
+  editJobRole.value = profile.value?.jobRole ?? ''
   newPassword.value = ''
   confirmNewPassword.value = ''
   verifiedCurrentPassword.value = ''
@@ -93,9 +110,10 @@ async function handleSave(): Promise<void> {
   saveStatus.value = 'idle'
 
   const nameChanged = editName.value.trim() && editName.value.trim() !== profile.value?.name
+  const jobRoleChanged = editJobRole.value && editJobRole.value !== profile.value?.jobRole
   const isChangingPassword = !!(newPassword.value || confirmNewPassword.value)
 
-  if (!nameChanged && !isChangingPassword) {
+  if (!nameChanged && !jobRoleChanged && !isChangingPassword) {
     saveStatus.value = 'error'
     saveMessage.value = '변경된 정보가 없습니다.'
     return
@@ -124,10 +142,14 @@ async function handleSave(): Promise<void> {
     }
 
     // 1. 프로필 정보 수정
-    if (nameChanged) {
-      await settingService.modifyProfile(userId, { name: editName.value.trim() })
+    if (nameChanged || jobRoleChanged) {
+      const payload: Record<string, string> = {}
+      if (nameChanged) payload.name = editName.value.trim()
+      if (jobRoleChanged) payload.jobRole = editJobRole.value
+      await settingService.modifyProfile(userId, payload)
       if (profile.value) {
-        profile.value.name = editName.value.trim()
+        if (nameChanged) profile.value.name = editName.value.trim()
+        if (jobRoleChanged) profile.value.jobRole = editJobRole.value
       }
     }
 
@@ -141,9 +163,10 @@ async function handleSave(): Promise<void> {
 
     // 성공 처리
     saveStatus.value = 'success'
-    if (nameChanged && isChangingPassword) {
+    const profileChanged = nameChanged || jobRoleChanged
+    if (profileChanged && isChangingPassword) {
       saveMessage.value = '프로필 정보와 비밀번호가 성공적으로 업데이트되었습니다.'
-    } else if (nameChanged) {
+    } else if (profileChanged) {
       saveMessage.value = '프로필 정보가 성공적으로 업데이트되었습니다.'
     } else {
       saveMessage.value = '비밀번호가 성공적으로 변경되었습니다.'
@@ -243,6 +266,10 @@ async function handleSave(): Promise<void> {
               <label class="field-label">직급</label>
               <div class="field-readonly">{{ profile.position ?? '—' }}</div>
             </div>
+            <div class="field">
+              <label class="field-label">직무</label>
+              <div class="field-readonly">{{ getJobRoleLabel(profile.jobRole) }}</div>
+            </div>
           </div>
         </div>
 
@@ -316,6 +343,22 @@ async function handleSave(): Promise<void> {
                 :disabled="isSaving"
                 autocomplete="name"
               />
+            </div>
+
+            <!-- 직무 -->
+            <div class="field">
+              <label class="field-label" for="edit-jobRole">직무</label>
+              <select
+                id="edit-jobRole"
+                v-model="editJobRole"
+                class="field-input"
+                :disabled="isSaving"
+              >
+                <option value="" disabled>직무를 선택해 주세요</option>
+                <option v-for="opt in JOB_ROLE_OPTIONS" :key="opt.value" :value="opt.value">
+                  {{ opt.label }}
+                </option>
+              </select>
             </div>
 
             <!-- 구분선 -->
@@ -662,6 +705,22 @@ async function handleSave(): Promise<void> {
 }
 .text-warn {
   color: #f56565 !important;
+}
+
+select.field-input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a493e8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 32px;
+  cursor: pointer;
+}
+select.field-input:disabled {
+  cursor: not-allowed;
+}
+select.field-input option {
+  background: #1a1a24;
+  color: #f0eeff;
 }
 
 /* ── 구분선 ────────────────────────────────────────────────────────── */

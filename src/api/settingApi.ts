@@ -9,12 +9,14 @@ export interface UserProfile {
   email: string
   department: string
   position: string
+  jobRole: string
 }
 
 export interface UpdateProfilePayload {
   name?: string
   department?: string
   position?: string
+  jobRole?: string
 }
 
 export interface UpdatePasswordPayload {
