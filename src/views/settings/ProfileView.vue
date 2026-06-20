@@ -63,17 +63,11 @@ async function handleVerifyPassword(): Promise<void> {
     return
   }
 
-  const userId = profile.value?.id
-  if (!userId) {
-    verifyError.value = '사용자 정보를 찾을 수 없습니다.'
-    return
-  }
-
   isVerifying.value = true
   verifyError.value = ''
 
   try {
-    await settingService.verifyPassword(userId, verifyInputPassword.value)
+    await settingService.verifyPassword(verifyInputPassword.value)
     // 인증 성공 시 현재 비밀번호 보관 후 수정 모드로 전환
     verifiedCurrentPassword.value = verifyInputPassword.value
     mode.value = 'edit'
@@ -136,17 +130,12 @@ async function handleSave(): Promise<void> {
   isSaving.value = true
 
   try {
-    const userId = profile.value?.id
-    if (!userId) {
-      throw new Error('사용자 정보를 찾을 수 없습니다.')
-    }
-
     // 1. 프로필 정보 수정
     if (nameChanged || jobRoleChanged) {
       const payload: Record<string, string> = {}
       if (nameChanged) payload.name = editName.value.trim()
       if (jobRoleChanged) payload.jobRole = editJobRole.value
-      await settingService.modifyProfile(userId, payload)
+      await settingService.modifyProfile(payload)
       if (profile.value) {
         if (nameChanged) profile.value.name = editName.value.trim()
         if (jobRoleChanged) profile.value.jobRole = editJobRole.value
@@ -155,7 +144,7 @@ async function handleSave(): Promise<void> {
 
     // 2. 비밀번호 변경
     if (isChangingPassword) {
-      await settingService.changePassword(userId, {
+      await settingService.changePassword({
         currentPassword: verifiedCurrentPassword.value,
         newPassword: newPassword.value,
       })
