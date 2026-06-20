@@ -22,6 +22,10 @@ export interface DocumentItem {
 
   summary: string | null
   keywords: string | null
+  riskLevel: string | null
+  nextAction: string | null
+  analysisModel: string | null
+  analysisMode: string | null
   analysisStatus: string | null
   analyzedAt: string | null
 
@@ -78,6 +82,12 @@ export const documentApi = {
   ): Promise<DocumentItem> {
     return axiosClient
       .put<DocumentItem>(`/api/documents/${documentId}`, request)
+      .then((res) => res.data)
+  },
+
+  analyzeDocument(documentId: string): Promise<DocumentItem> {
+    return axiosClient
+      .post<DocumentItem>(`/api/documents/${documentId}/analyze`)
       .then((res) => res.data)
   },
 

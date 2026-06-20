@@ -270,6 +270,38 @@ async function deleteDocument(documentId: string): Promise<void> {
   }
 }
 
+async function analyzeDocument(documentId: string): Promise<DocumentItem> {
+  if (!documentId) {
+    throw new Error('문서 정보가 없습니다.')
+  }
+
+  try {
+    return await documentApi.analyzeDocument(documentId)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 401) {
+        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
+      }
+
+      if (status === 403) {
+        throw new Error('문서 AI 분석 권한이 없습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('분석할 문서를 찾을 수 없습니다.')
+      }
+
+      if (status === 500) {
+        throw new Error('AI Engine 분석 중 서버 오류가 발생했습니다.')
+      }
+    }
+
+    throw new Error('문서 AI 분석에 실패했습니다.')
+  }
+}
+
 export const documentService = {
   getDocumentsByWorkspace,
   getDocumentDetail,
@@ -278,5 +310,6 @@ export const documentService = {
   getDocumentPreviewObjectUrl,
   getDocumentDownloadObjectUrl,
   updateDocument,
+  analyzeDocument,
   deleteDocument,
 }
