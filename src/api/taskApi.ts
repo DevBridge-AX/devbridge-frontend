@@ -36,7 +36,13 @@ export interface RelatedDocumentPreview {
   id: string
   title: string
   summary: string | null
+  keywords: string | null
+  riskLevel: string | null
+  nextAction: string | null
   analysisStatus: string | null
+  analysisModel: string | null
+  analysisMode: string | null
+  analyzedAt: string | null
   uploadedAt: string | null
 }
 

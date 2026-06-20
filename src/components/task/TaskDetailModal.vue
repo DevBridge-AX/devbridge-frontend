@@ -29,6 +29,7 @@ const isUploadingDocument = ref(false)
 const errorMessage = ref('')
 const gitErrorMessage = ref('')
 const uploadErrorMessage = ref('')
+const analysisErrorMessage = ref('')
 
 const taskDetail = ref<TaskDetail | null>(null)
 const recentGitCommits = ref<GitCommitItem[]>([])
@@ -36,6 +37,8 @@ const recentGitCommits = ref<GitCommitItem[]>([])
 const uploadFile = ref<File | null>(null)
 const uploadDocumentType = ref('SPEC')
 const uploadDescription = ref('')
+
+const analyzingDocumentId = ref<string | null>(null)
 
 const statusLabel = computed(() => {
   const status = taskDetail.value?.status
@@ -172,6 +175,27 @@ async function submitTaskDocumentUpload() {
   }
 }
 
+async function analyzeTaskDocument(documentId: string) {
+  if (!documentId) {
+    analysisErrorMessage.value = '분석할 문서 정보가 없습니다.'
+    return
+  }
+
+  analyzingDocumentId.value = documentId
+  analysisErrorMessage.value = ''
+
+  try {
+    await documentService.analyzeDocument(documentId)
+    await fetchTaskDetail()
+    activeTab.value = 'documents'
+  } catch (error: unknown) {
+    analysisErrorMessage.value =
+      error instanceof Error ? error.message : '문서 AI 분석에 실패했습니다.'
+  } finally {
+    analyzingDocumentId.value = null
+  }
+}
+
 watch(
   () => [props.taskId, props.isOpen],
   () => {
@@ -179,6 +203,8 @@ watch(
       activeTab.value = 'overview'
       recentGitCommits.value = []
       gitErrorMessage.value = ''
+      analysisErrorMessage.value = ''
+      analyzingDocumentId.value = null
       resetUploadForm()
       void fetchTaskDetail()
     }
@@ -408,15 +434,73 @@ onMounted(() => {
                 </div>
               </article>
 
+              <div v-if="analysisErrorMessage" class="upload-error">
+                {{ analysisErrorMessage }}
+              </div>
+
               <article
                 v-for="document in taskDetail.recentDocuments"
                 :key="document.id"
-                class="linked-item"
+                class="linked-item document-analysis-item"
               >
-                <strong>{{ document.title }}</strong>
-                <p>{{ document.summary || '아직 분석 요약이 없습니다.' }}</p>
-                <small>
-                  분석 상태: {{ document.analysisStatus || '상태 없음' }}
+                <div class="document-analysis-header">
+                  <div>
+                    <strong>{{ document.title }}</strong>
+                    <p>
+                      {{ document.summary || '아직 분석 요약이 없습니다.' }}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    class="task-mini-button"
+                    :disabled="analyzingDocumentId === document.id"
+                    @click="analyzeTaskDocument(document.id)"
+                  >
+                    {{
+                      analyzingDocumentId === document.id
+                        ? '분석 중...'
+                        : document.analysisStatus === 'COMPLETED'
+                          ? 'AI 재분석'
+                          : 'AI 분석 실행'
+                    }}
+                  </button>
+                </div>
+
+                <div class="document-analysis-meta">
+                  <span>
+                    분석 상태:
+                    <strong>{{
+                      document.analysisStatus || '상태 없음'
+                    }}</strong>
+                  </span>
+
+                  <span v-if="document.riskLevel">
+                    위험도:
+                    <strong>{{ document.riskLevel }}</strong>
+                  </span>
+
+                  <span v-if="document.analysisModel">
+                    모델:
+                    <strong>{{ document.analysisModel }}</strong>
+                  </span>
+
+                  <span v-if="document.analysisMode">
+                    모드:
+                    <strong>{{ document.analysisMode }}</strong>
+                  </span>
+                </div>
+
+                <p v-if="document.keywords" class="document-keywords">
+                  Keywords: {{ document.keywords }}
+                </p>
+
+                <p v-if="document.nextAction" class="document-next-action">
+                  Next Action: {{ document.nextAction }}
+                </p>
+
+                <small v-if="document.analyzedAt">
+                  분석 시각: {{ document.analyzedAt }}
                 </small>
               </article>
 
@@ -922,6 +1006,54 @@ onMounted(() => {
   opacity: 0.6;
 }
 
+.document-analysis-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.document-analysis-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.document-analysis-header > div {
+  min-width: 0;
+}
+
+.document-analysis-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.document-analysis-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: 999px;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 5px 9px;
+  font-size: 12px;
+}
+
+.document-analysis-meta strong {
+  color: #172033;
+}
+
+.document-keywords,
+.document-next-action {
+  margin: 0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #475467;
+  padding: 10px 12px;
+  line-height: 1.6;
+}
+
 .git-linked-item {
   border-color: #dbeafe;
   background: #f8fbff;
@@ -982,6 +1114,10 @@ onMounted(() => {
 
   .upload-form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .document-analysis-header {
+    flex-direction: column;
   }
 }
 </style>
