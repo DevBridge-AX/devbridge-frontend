@@ -1,8 +1,9 @@
 import { ref, onUnmounted } from 'vue'
+import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 
-// Define custom event emitters or dispatch mechanisms
 export function useWebSocket(sessionId: string | (() => string)) {
+  const authStore = useAuthStore()
   const chatStore = useChatStore()
   const socket = ref<WebSocket | null>(null)
   const isConnected = ref(false)
@@ -28,9 +29,16 @@ export function useWebSocket(sessionId: string | (() => string)) {
       return
     }
 
-    console.log(`[WS] Connecting to ${wsUrl}...`)
+    const token = authStore.accessToken
+    if (!token) {
+      error.value = '인증이 만료되었습니다. 다시 로그인해주세요.'
+      return
+    }
+
+    const urlWithToken = `${wsUrl}?token=${encodeURIComponent(token)}`
+
     try {
-      socket.value = new WebSocket(wsUrl)
+      socket.value = new WebSocket(urlWithToken)
 
       socket.value.onopen = () => {
         console.log('[WS] Connection established.')
@@ -54,11 +62,15 @@ export function useWebSocket(sessionId: string | (() => string)) {
       }
 
       socket.value.onclose = (event) => {
-        console.log(`[WS] Connection closed. Code: ${event.code}`)
         isConnected.value = false
         socket.value = null
 
-        // 1000 is normal closure
+        if (event.code === 1002 || event.code === 1008 || event.code === 4401) {
+          error.value = '인증이 만료되었습니다. 다시 로그인해주세요.'
+          chatStore.setError('error-ws-auth', '인증이 만료되었습니다. 다시 로그인해주세요.')
+          return
+        }
+
         if (event.code !== 1000 && retryCount < maxRetries) {
           const delay = Math.pow(2, retryCount) * 1000
           console.log(`[WS] Attempting reconnect in ${delay}ms... (Attempt ${retryCount + 1}/${maxRetries})`)
