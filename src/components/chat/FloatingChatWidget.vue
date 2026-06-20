@@ -52,8 +52,11 @@ function toggleMaximize() {
   }
 }
 
-function handleSend() {
+async function handleSend() {
   if (!inputText.value.trim() || !ws) return
+  if (!chatStore.activeSessionId) {
+    await chatService.createSession()
+  }
   ws.sendMessage(inputText.value.trim())
   inputText.value = ''
 }

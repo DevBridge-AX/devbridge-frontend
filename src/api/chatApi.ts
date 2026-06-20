@@ -1,13 +1,24 @@
+import axiosClient from './axiosClient'
 import type { ChatMessage } from '@/state/chatStore'
 
-// ─── Layer 1: Chat API (Mock) ───────────────────────────────────────────
-// 서버 연동 전까지 LocalStorage를 사용하여 세션과 메시지 히스토리를 모킹합니다.
+// ─── Layer 1: Chat API ─────────────────────────────────────────────────
+// VITE_WS_MOCK=true: LocalStorage Mock
+// VITE_WS_MOCK=false: 세션 생성은 백엔드 REST API, 나머지는 LocalStorage 유지
 
 export interface ChatSession {
   id: string
   title: string
   updatedAt: string
 }
+
+interface CreateSessionApiResponse {
+  id: string
+  workspaceId: string
+  employeeId: string
+  sessionTitle: string
+}
+
+const isMock = import.meta.env.VITE_WS_MOCK === 'true'
 
 const SESSIONS_KEY = 'mock_chat_sessions'
 const getMessagesKey = (sessionId: string) => `mock_chat_messages_${sessionId}`
@@ -31,14 +42,32 @@ export const chatApi = {
 
   /**
    * 새로운 세션 생성
+   * Mock 모드: LocalStorage에 저장
+   * 실제 모드: POST /api/chats/sessions 호출
    */
   async createSession(title: string = '새로운 대화'): Promise<ChatSession> {
-    const sessions = await this.getSessions()
-    const newSession: ChatSession = {
-      id: crypto.randomUUID(),
-      title,
-      updatedAt: new Date().toISOString()
+    if (isMock) {
+      const sessions = await this.getSessions()
+      const newSession: ChatSession = {
+        id: crypto.randomUUID(),
+        title,
+        updatedAt: new Date().toISOString(),
+      }
+      sessions.push(newSession)
+      localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions))
+      return newSession
     }
+
+    const res = await axiosClient.post<CreateSessionApiResponse>('/api/chats/sessions', {
+      sessionTitle: title,
+    })
+    const data = res.data
+    const newSession: ChatSession = {
+      id: data.id,
+      title: data.sessionTitle,
+      updatedAt: new Date().toISOString(),
+    }
+    const sessions = await this.getSessions()
     sessions.push(newSession)
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions))
     return newSession

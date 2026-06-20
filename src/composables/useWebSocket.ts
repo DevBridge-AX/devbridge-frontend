@@ -131,10 +131,11 @@ export function useWebSocket(sessionId: string | (() => string)) {
       return
     }
 
-    if (socket.value) {
+    const sessionId = getSessionId()
+    if (socket.value && sessionId) {
       const payload = {
         type: 'chat_message',
-        session_id: getSessionId(),
+        session_id: sessionId,
         content: content,
       }
       socket.value.send(JSON.stringify(payload))
