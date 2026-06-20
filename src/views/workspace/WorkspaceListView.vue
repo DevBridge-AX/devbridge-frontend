@@ -253,7 +253,8 @@ const submitInviteMember = async () => {
     })
 
     alert('멤버 초대를 생성했습니다.')
-    closeInviteModal()
+    isInviteModalOpen.value = false
+    selectedWorkspace.value = null
     await loadReceivedInvitations()
   } catch (error: unknown) {
     console.error(error)
