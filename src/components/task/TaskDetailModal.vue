@@ -2,6 +2,8 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { taskService } from '@/services/taskService'
 import { gitService } from '@/services/gitService'
+import { documentService } from '@/services/documentService'
+import { useAuthStore } from '@/state/authStore'
 import type { TaskDetail } from '@/api/taskApi'
 import type { GitCommitItem } from '@/api/gitApi'
 
@@ -14,26 +16,36 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const authStore = useAuthStore()
+
 const activeTab = ref<
   'overview' | 'documents' | 'changes' | 'deliverables' | 'activity'
 >('overview')
 
 const isLoading = ref(false)
 const isGitLoading = ref(false)
+const isUploadingDocument = ref(false)
 
 const errorMessage = ref('')
 const gitErrorMessage = ref('')
+const uploadErrorMessage = ref('')
 
 const taskDetail = ref<TaskDetail | null>(null)
 const recentGitCommits = ref<GitCommitItem[]>([])
 
+const uploadFile = ref<File | null>(null)
+const uploadDocumentType = ref('SPEC')
+const uploadDescription = ref('')
+
 const statusLabel = computed(() => {
   const status = taskDetail.value?.status
 
-  if (status === 'DONE') return '완료'
+  if (status === 'DONE' || status === 'COMPLETED') return '완료'
   if (status === 'IN_PROGRESS') return '진행 중'
+  if (status === 'REVIEW') return '검토'
   if (status === 'OVERDUE') return '지연'
   if (status === 'ASSIGNED') return '배정'
+  if (status === 'CANCELLED') return '취소'
 
   return status || '상태 없음'
 })
@@ -108,6 +120,58 @@ function handleOverlayClick(event: MouseEvent) {
   }
 }
 
+function handleUploadFileChange(event: Event) {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0] ?? null
+
+  uploadFile.value = file
+}
+
+function resetUploadForm() {
+  uploadFile.value = null
+  uploadDocumentType.value = 'SPEC'
+  uploadDescription.value = ''
+  uploadErrorMessage.value = ''
+}
+
+async function submitTaskDocumentUpload() {
+  if (!taskDetail.value || !props.taskId) {
+    uploadErrorMessage.value = '업무 정보를 확인할 수 없습니다.'
+    return
+  }
+
+  if (!uploadFile.value) {
+    uploadErrorMessage.value = '업로드할 파일을 선택해 주세요.'
+    return
+  }
+
+  isUploadingDocument.value = true
+  uploadErrorMessage.value = ''
+
+  try {
+    await documentService.uploadWorkspaceDocument({
+      workspaceId: taskDetail.value.workspaceId,
+      uploadedById: authStore.currentUser?.id ?? null,
+      taskId: props.taskId,
+      documentType: uploadDocumentType.value,
+      description: uploadDescription.value,
+      file: uploadFile.value,
+    })
+
+    alert('업무 문서를 업로드했습니다.')
+    resetUploadForm()
+    activeTab.value = 'documents'
+    await fetchTaskDetail()
+  } catch (error: unknown) {
+    uploadErrorMessage.value =
+      error instanceof Error
+        ? error.message
+        : '업무 문서 업로드에 실패했습니다.'
+  } finally {
+    isUploadingDocument.value = false
+  }
+}
+
 watch(
   () => [props.taskId, props.isOpen],
   () => {
@@ -115,6 +179,7 @@ watch(
       activeTab.value = 'overview'
       recentGitCommits.value = []
       gitErrorMessage.value = ''
+      resetUploadForm()
       void fetchTaskDetail()
     }
   },
@@ -173,7 +238,7 @@ onMounted(() => {
               <p>
                 {{
                   taskDetail.description ||
-                  '등록된 업무 설명이 없습니다. 관련 문서와 변경 이력을 연결하면 업무 맥락을 더 명확히 확인할 수 있습니다.'
+                  '등록된 업무 설명이 없습니다. 관련 문서와 변경 이력을 연결하면 업무 맥락을 더 명확하게 확인할 수 있습니다.'
                 }}
               </p>
             </div>
@@ -268,7 +333,7 @@ onMounted(() => {
                 <p>
                   {{
                     taskDetail.aiSummary ||
-                    '아직 AI 분석 요약이 없습니다. 문서 분석과 AI Engine 연결 후 이 영역에 요약이 표시됩니다.'
+                    '아직 AI 분석 요약이 없습니다. 문서 분석과 AI Engine 연결 후 이 영역에 업무 요약이 표시됩니다.'
                   }}
                 </p>
               </article>
@@ -285,22 +350,82 @@ onMounted(() => {
             </div>
 
             <div v-else-if="activeTab === 'documents'" class="list-panel">
+              <article class="upload-card">
+                <div class="upload-card-header">
+                  <div>
+                    <strong>이 Task에 문서 업로드</strong>
+                    <p>
+                      업로드한 파일은 현재 업무에 연결되며, 이후 AI 분석 결과가
+                      Documents 탭과 업무 요약에 반영됩니다.
+                    </p>
+                  </div>
+                </div>
+
+                <div v-if="uploadErrorMessage" class="upload-error">
+                  {{ uploadErrorMessage }}
+                </div>
+
+                <div class="upload-form-grid">
+                  <label>
+                    문서 유형
+                    <select v-model="uploadDocumentType">
+                      <option value="SPEC">SPEC</option>
+                      <option value="REPORT">REPORT</option>
+                      <option value="MEETING_NOTE">MEETING_NOTE</option>
+                      <option value="DESIGN">DESIGN</option>
+                      <option value="ETC">ETC</option>
+                    </select>
+                  </label>
+
+                  <label>
+                    파일
+                    <input
+                      type="file"
+                      :disabled="isUploadingDocument"
+                      @change="handleUploadFileChange"
+                    />
+                  </label>
+                </div>
+
+                <label>
+                  설명
+                  <textarea
+                    v-model="uploadDescription"
+                    rows="3"
+                    placeholder="문서 설명 또는 업로드 목적을 입력하세요."
+                  />
+                </label>
+
+                <div class="upload-actions">
+                  <button
+                    type="button"
+                    class="task-mini-button"
+                    :disabled="isUploadingDocument"
+                    @click="submitTaskDocumentUpload"
+                  >
+                    {{ isUploadingDocument ? '업로드 중...' : '문서 업로드' }}
+                  </button>
+                </div>
+              </article>
+
               <article
                 v-for="document in taskDetail.recentDocuments"
                 :key="document.id"
                 class="linked-item"
               >
                 <strong>{{ document.title }}</strong>
-                <p>{{ document.summary || '요약 정보가 없습니다.' }}</p>
-                <small>{{ document.analysisStatus || '분석 상태 없음' }}</small>
+                <p>{{ document.summary || '아직 분석 요약이 없습니다.' }}</p>
+                <small>
+                  분석 상태: {{ document.analysisStatus || '상태 없음' }}
+                </small>
               </article>
 
               <p
                 v-if="taskDetail.recentDocuments.length === 0"
                 class="empty-panel"
               >
-                아직 연결된 문서가 없습니다. 이후 Task-Document 연결 기능을
-                추가하면 이 영역에 관련 문서가 표시됩니다.
+                아직 이 Task에 연결된 문서가 없습니다. 위 업로드 영역에서 업무
+                관련 파일을 등록하세요.
               </p>
             </div>
 
@@ -309,8 +434,9 @@ onMounted(() => {
                 <div>
                   <strong>최근 Git 변경사항</strong>
                   <p>
-                    현재는 taskId 직접 매핑 전 단계이므로 로컬 저장소의 최근
-                    commit 5개를 표시합니다.
+                    현재는 Task 직접 매핑 전 단계이므로 최근 commit 5개를
+                    표시합니다. 이후 task_git_links를 통해 업무별 변경사항으로
+                    전환합니다.
                   </p>
                 </div>
 
@@ -370,7 +496,7 @@ onMounted(() => {
                   class="empty-panel"
                 >
                   아직 연결된 Git 변경사항이 없습니다. 이후 commit 수집과 Task
-                  연결 기능을 추가하면 작업별 변경 이력이 표시됩니다.
+                  연결 기능이 추가되면 이 영역에 업무별 변경 이력이 표시됩니다.
                 </p>
               </template>
             </div>
@@ -393,7 +519,7 @@ onMounted(() => {
                 class="empty-panel"
               >
                 아직 등록된 산출물이 없습니다. 이후 문서 업로드와 산출물 제출
-                기능으로 연결됩니다.
+                기능을 연결합니다.
               </p>
             </div>
 
@@ -412,8 +538,8 @@ onMounted(() => {
                 v-if="taskDetail.recentActivities.length === 0"
                 class="empty-panel"
               >
-                아직 활동 이력이 없습니다. 상태 변경, 문서 연결, commit 연결
-                이력이 이곳에 표시됩니다.
+                아직 활동 이력이 없습니다. 상태 변경, 문서 업로드, commit 연결
+                이력이 누적되면 이 영역에 표시됩니다.
               </p>
             </div>
           </section>
@@ -512,7 +638,8 @@ onMounted(() => {
 .task-hero-meta,
 .detail-card,
 .task-summary-grid article,
-.linked-item {
+.linked-item,
+.upload-card {
   border: 1px solid #e5e7eb;
   border-radius: 20px;
   background: white;
@@ -545,7 +672,8 @@ onMounted(() => {
   font-weight: 900;
 }
 
-.status-badge.DONE {
+.status-badge.DONE,
+.status-badge.COMPLETED {
   background: #ecfdf3;
   color: #027a48;
 }
@@ -553,6 +681,11 @@ onMounted(() => {
 .status-badge.IN_PROGRESS {
   background: #eff6ff;
   color: #2563eb;
+}
+
+.status-badge.REVIEW {
+  background: #fffaeb;
+  color: #b54708;
 }
 
 .status-badge.OVERDUE {
@@ -687,6 +820,69 @@ onMounted(() => {
   background: #fff1f2;
 }
 
+.upload-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+}
+
+.upload-card-header strong {
+  color: #172033;
+  font-size: 16px;
+}
+
+.upload-card-header p {
+  margin: 6px 0 0;
+  color: #667085;
+  line-height: 1.6;
+}
+
+.upload-form-grid {
+  display: grid;
+  grid-template-columns: 180px 1fr;
+  gap: 12px;
+}
+
+.upload-card label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #344054;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.upload-card input,
+.upload-card select,
+.upload-card textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #d0d5dd;
+  border-radius: 12px;
+  color: #172033;
+  font: inherit;
+  padding: 10px 12px;
+}
+
+.upload-card textarea {
+  resize: vertical;
+}
+
+.upload-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.upload-error {
+  border: 1px solid #fecaca;
+  border-radius: 12px;
+  background: #fff7f7;
+  color: #b42318;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
 .task-git-header {
   display: flex;
   justify-content: space-between;
@@ -782,6 +978,10 @@ onMounted(() => {
   .task-git-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .upload-form-grid {
+    grid-template-columns: 1fr;
   }
 }
 </style>

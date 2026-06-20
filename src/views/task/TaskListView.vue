@@ -252,7 +252,8 @@ async function submitTaskForm() {
       await taskService.updateTask(editingTaskId.value, request)
     }
 
-    closeTaskForm()
+    isTaskFormOpen.value = false
+    resetTaskForm()
     await fetchTasks()
   } catch (error: unknown) {
     formErrorMessage.value =
