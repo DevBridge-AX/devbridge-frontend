@@ -50,8 +50,9 @@ async function registerUser(
   employeeId: string,
   email: string,
   password: string,
+  jobRole: string,
 ): Promise<void> {
-  await authApi.signup({ employeeId, email, password })
+  await authApi.signup({ employeeId, email, password, jobRole })
 }
 
 /**

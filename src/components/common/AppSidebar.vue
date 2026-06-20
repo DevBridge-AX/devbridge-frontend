@@ -49,6 +49,24 @@ function goToDocuments() {
   router.push(`/workspaces/${currentWorkspaceId.value}/documents`)
 }
 
+function goToChat() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/chat`)
+}
+
+function goToDataSources() {
+  if (!currentWorkspaceId.value) {
+    router.push('/workspace')
+    return
+  }
+
+  router.push(`/workspaces/${currentWorkspaceId.value}/datasources`)
+}
+
 function goToSchedule() {
   if (!currentWorkspaceId.value) {
     router.push('/workspace')
@@ -63,7 +81,14 @@ function goToSettings() {
 }
 
 function isActiveMenu(
-  menu: 'dashboard' | 'tasks' | 'documents' | 'schedule' | 'settings',
+  menu:
+    | 'dashboard'
+    | 'tasks'
+    | 'documents'
+    | 'chat'
+    | 'datasources'
+    | 'schedule'
+    | 'settings',
 ) {
   if (menu === 'dashboard') {
     return route.name === 'workspace-dashboard'
@@ -75,6 +100,14 @@ function isActiveMenu(
 
   if (menu === 'documents') {
     return route.name === 'workspace-documents'
+  }
+
+  if (menu === 'chat') {
+    return route.name === 'workspace-chat'
+  }
+
+  if (menu === 'datasources') {
+    return route.name === 'workspace-datasources'
   }
 
   if (menu === 'schedule') {
@@ -144,9 +177,24 @@ function isActiveMenu(
         <span>Documents</span>
       </button>
 
-      <button type="button" class="nav-item disabled" disabled>
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('chat') }"
+        @click="goToChat"
+      >
         <span class="nav-icon">C</span>
         <span>Chat</span>
+      </button>
+
+      <button
+        type="button"
+        class="nav-item"
+        :class="{ active: isActiveMenu('datasources') }"
+        @click="goToDataSources"
+      >
+        <span class="nav-icon">I</span>
+        <span>Data Sources</span>
       </button>
 
       <button

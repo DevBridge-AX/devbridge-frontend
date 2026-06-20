@@ -28,4 +28,12 @@ export const dataSourceApi = {
       .get<DataSourceItem>(`/api/datasources/${dataSourceId}`)
       .then((res) => res.data)
   },
+
+  fetchDataSources(workspaceId: string): Promise<DataSourceItem[]> {
+    return axiosClient
+      .get<DataSourceItem[]>('/api/datasources', {
+        params: { workspaceId },
+      })
+      .then((res) => res.data)
+  },
 }
