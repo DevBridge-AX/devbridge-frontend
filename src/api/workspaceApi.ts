@@ -1,49 +1,117 @@
-import axiosClient from './axiosClient'
+import axiosClient from '@/api/axiosClient'
+
+export type WorkspacePermission = 'OWNER' | 'MEMBER' | 'GUEST'
 
 export interface Workspace {
   id: string
   name: string
   description: string | null
+  myPermission: WorkspacePermission | null
 }
 
-export const workspaceApi = {
-  fetchMyWorkspaces(): Promise<Workspace[]> {
-    return axiosClient
-      .get<Workspace[]>('/api/workspaces')
-      .then((res) => res.data)
-  },
+export interface CreateWorkspacePayload {
+  name: string
+  description?: string | null
+}
 
-  updateWorkspaceAccess(workspaceId: string): Promise<void> {
-    return axiosClient
-      .patch<void>(`/api/workspaces/${workspaceId}/access`)
-      .then(() => undefined)
-  },
+export interface InviteMemberPayload {
+  email: string
+  role: WorkspacePermission
+}
 
-  searchMembers(keyword: string): Promise<WorkspaceMemberResponse[]> {
-    const trimmed = keyword.trim()
-    if (!trimmed) {
-      return Promise.resolve([])
-    }
-    const filtered = MOCK_MEMBERS.filter((member) =>
-      member.name.includes(trimmed)
-    )
-    return Promise.resolve(filtered)
-  },
+export interface WorkspaceInvitation {
+  invitationId: string
+  workspaceId: string
+  workspaceName: string
+  invitedEmail: string
+  assignedPermission: WorkspacePermission
+  status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | string
+}
+
+export interface CurrentUserResponse {
+  id: string
+  employeeId: string
+  email: string
+  name: string
+  department: string | null
+  position: string | null
+  jobRole: string | null
+  systemRole: string | null
 }
 
 export interface WorkspaceMemberResponse {
   userId: string
   employeeId: string
   name: string
-  department: string
-  position: string
+  department: string | null
+  position: string | null
+  permission?: WorkspacePermission
 }
 
-// ─── 임시 Mock 데이터베이스 (인사 시스템 시드 데이터 기준) ────────────────────
-// EMP004(본인)는 검색에서 제외됩니다.
-const MOCK_MEMBERS: WorkspaceMemberResponse[] = [
-  { userId: '1', employeeId: 'EMP001', name: '김현수', department: '인사팀', position: '팀장' },
-  { userId: '2', employeeId: 'EMP002', name: '이원빈', department: '개발팀', position: '사원' },
-  { userId: '3', employeeId: 'EMP003', name: '최형수', department: '기획팀', position: '팀장' },
-  { userId: '5', employeeId: 'EMP005', name: '김현수', department: '기획팀', position: '대리' },
-]
+export const fetchCurrentUser = async (): Promise<CurrentUserResponse> => {
+  const response = await axiosClient.get<CurrentUserResponse>('/api/users/me')
+  return response.data
+}
+
+export const fetchMyWorkspaces = async (): Promise<Workspace[]> => {
+  const response = await axiosClient.get<Workspace[]>('/api/workspaces')
+  return response.data
+}
+
+export const createWorkspace = async (
+  payload: CreateWorkspacePayload,
+): Promise<Workspace> => {
+  const response = await axiosClient.post<Workspace>('/api/workspaces', payload)
+  return response.data
+}
+
+export const inviteMember = async (
+  workspaceId: string,
+  payload: InviteMemberPayload,
+): Promise<void> => {
+  await axiosClient.post<void>('/api/workspaces/invite', payload, {
+    headers: {
+      'X-Workspace-Id': workspaceId,
+    },
+  })
+}
+
+export const fetchReceivedInvitations = async (): Promise<
+  WorkspaceInvitation[]
+> => {
+  const response = await axiosClient.get<WorkspaceInvitation[]>(
+    '/api/workspaces/invitations/received',
+  )
+  return response.data
+}
+
+export const acceptInvitation = async (invitationId: string): Promise<void> => {
+  await axiosClient.post<void>(
+    `/api/workspaces/invitations/${invitationId}/accept`,
+  )
+}
+
+export const updateWorkspaceAccess = async (
+  workspaceId: string,
+): Promise<void> => {
+  await axiosClient.patch<void>(`/api/workspaces/${workspaceId}/access`)
+}
+
+export const searchMembers = async (
+  workspaceId: string,
+  keyword: string,
+): Promise<WorkspaceMemberResponse[]> => {
+  const response = await axiosClient.get<WorkspaceMemberResponse[]>(
+    '/api/workspaces/members',
+    {
+      params: {
+        keyword,
+      },
+      headers: {
+        'X-Workspace-Id': workspaceId,
+      },
+    },
+  )
+
+  return response.data
+}
