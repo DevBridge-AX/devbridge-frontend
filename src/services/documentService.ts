@@ -10,6 +10,7 @@ export interface UploadDocumentResult {
 export interface UploadWorkspaceDocumentRequest {
   workspaceId: string
   uploadedById?: string | null
+  taskId?: string | null
   documentType?: string | null
   description?: string | null
   file: File
@@ -93,9 +94,10 @@ async function uploadDocument(file: File): Promise<UploadDocumentResult> {
 }
 
 /**
- * Documents 페이지에서 사용하는 실제 문서 업로드 함수.
+ * Documents 페이지와 Task 상세 Documents 탭에서 사용하는 실제 문서 업로드 함수.
  * 1. DOC DataSource 생성
  * 2. 생성된 dataSourceId로 실제 파일 업로드
+ * 3. taskId가 있으면 해당 Task에 문서 연결
  */
 async function uploadWorkspaceDocument(
   request: UploadWorkspaceDocumentRequest,
@@ -119,6 +121,7 @@ async function uploadWorkspaceDocument(
       workspaceId: request.workspaceId,
       dataSourceId: dataSource.id,
       uploadedById: request.uploadedById,
+      taskId: request.taskId,
       documentType: request.documentType,
       description: request.description,
       file: request.file,
@@ -137,6 +140,12 @@ async function uploadWorkspaceDocument(
 
       if (status === 413) {
         throw new Error('업로드 파일 크기가 너무 큽니다.')
+      }
+
+      if (status === 404) {
+        throw new Error(
+          '문서 업로드에 필요한 워크스페이스, Task 또는 데이터소스를 찾을 수 없습니다.',
+        )
       }
     }
 

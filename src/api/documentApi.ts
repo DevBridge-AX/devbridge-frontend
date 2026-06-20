@@ -11,6 +11,9 @@ export interface DocumentItem {
   sourceType: string
   sourceStatus: string
 
+  taskId: string | null
+  taskTitle: string | null
+
   title: string
   documentType: string | null
   description: string | null
@@ -42,6 +45,7 @@ export interface UploadDocumentRequest {
   workspaceId: string
   dataSourceId: string
   uploadedById?: string | null
+  taskId?: string | null
   documentType?: string | null
   description?: string | null
   file: File
@@ -86,6 +90,10 @@ export const documentApi = {
 
     if (request.uploadedById) {
       formData.append('uploadedById', request.uploadedById)
+    }
+
+    if (request.taskId) {
+      formData.append('taskId', request.taskId)
     }
 
     if (request.documentType) {
