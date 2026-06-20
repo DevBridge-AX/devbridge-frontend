@@ -9,12 +9,14 @@ export interface UserProfile {
   email: string
   department: string
   position: string
+  jobRole: string
 }
 
 export interface UpdateProfilePayload {
   name?: string
   department?: string
   position?: string
+  jobRole?: string
 }
 
 export interface UpdatePasswordPayload {
@@ -41,9 +43,9 @@ export const settingApi = {
   /**
    * 프로필 정보(이름, 부서, 직급 등)를 부분 수정합니다.
    */
-  updateProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
+  updateProfile(payload: UpdateProfilePayload): Promise<void> {
     return axiosClient
-      .patch<void>(`/api/users/${userId}/profile`, payload)
+      .patch<void>('/api/users/me/profile', payload)
       .then(() => undefined)
   },
 
@@ -51,18 +53,18 @@ export const settingApi = {
    * 비밀번호를 변경합니다.
    * @throws AxiosError (400: 현재 비밀번호 불일치 혹은 입력 유효성 검증 실패 등)
    */
-  updatePassword(userId: string, payload: UpdatePasswordPayload): Promise<void> {
+  updatePassword(payload: UpdatePasswordPayload): Promise<void> {
     return axiosClient
-      .put<void>(`/api/users/${userId}/password`, payload)
+      .put<void>('/api/users/me/password', payload)
       .then(() => undefined)
   },
 
   /**
    * 현재 비밀번호를 검증합니다.
    */
-  verifyPassword(userId: string, password: string): Promise<void> {
+  verifyPassword(password: string): Promise<void> {
     return axiosClient
-      .post<void>(`/api/users/${userId}/password/verify`, { password })
+      .post<void>('/api/users/me/password/verify', { password })
       .then(() => undefined)
   },
 }

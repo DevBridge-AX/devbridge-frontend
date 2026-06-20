@@ -17,9 +17,9 @@ async function getProfile(): Promise<UserProfile> {
  * 프로필 정보(이름, 부서, 직급 등)를 수정합니다.
  * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
  */
-async function modifyProfile(userId: string, payload: UpdateProfilePayload): Promise<void> {
+async function modifyProfile(payload: UpdateProfilePayload): Promise<void> {
   try {
-    await settingApi.updateProfile(userId, payload)
+    await settingApi.updateProfile(payload)
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status
@@ -43,9 +43,9 @@ async function modifyProfile(userId: string, payload: UpdateProfilePayload): Pro
  * 비밀번호를 변경합니다.
  * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
  */
-async function changePassword(userId: string, payload: UpdatePasswordPayload): Promise<void> {
+async function changePassword(payload: UpdatePasswordPayload): Promise<void> {
   try {
-    await settingApi.updatePassword(userId, payload)
+    await settingApi.updatePassword(payload)
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status
@@ -70,9 +70,9 @@ async function changePassword(userId: string, payload: UpdatePasswordPayload): P
  * 현재 비밀번호를 검증합니다.
  * @throws Error - View에서 catch하여 사용자에게 표시할 메시지
  */
-async function verifyPassword(userId: string, password: string): Promise<void> {
+async function verifyPassword(password: string): Promise<void> {
   try {
-    await settingApi.verifyPassword(userId, password)
+    await settingApi.verifyPassword(password)
   } catch (error: unknown) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status

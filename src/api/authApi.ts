@@ -11,6 +11,7 @@ export interface SignupRequest {
   employeeId: string
   email: string
   password: string
+  jobRole: string
 }
 
 export interface SigninRequest {
@@ -41,6 +42,7 @@ export interface CurrentUserResponse {
   name: string
   department: string
   position: string
+  jobRole: string
   systemRole: string
 }
 
