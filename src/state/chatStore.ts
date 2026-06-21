@@ -58,7 +58,9 @@ export const useChatStore = defineStore('chat', () => {
   const pendingOwnerConfirmation = ref<PendingOwnerConfirmation | null>(null)
   const sessions = ref<ChatSession[]>([])
   const activeSessionId = ref<string | null>(null)
-  
+  const inputText = ref('')
+  const sessionMessageCache = ref<Record<string, ChatMessage[]>>({})
+
   // 김개발 등 담당자 매핑 저장용 (original_message_id -> ownerName)
   const messageOwnerMap = ref<Record<string, string>>({})
 
@@ -70,6 +72,24 @@ export const useChatStore = defineStore('chat', () => {
 
   function setActiveSessionId(id: string | null): void {
     activeSessionId.value = id
+  }
+
+  function setInputText(text: string): void {
+    inputText.value = text
+  }
+
+  function cacheCurrentSession(): void {
+    if (activeSessionId.value && messages.value.length > 0) {
+      sessionMessageCache.value[activeSessionId.value] = [...messages.value]
+    }
+  }
+
+  function getCachedMessages(sessionId: string): ChatMessage[] | null {
+    return sessionMessageCache.value[sessionId] ?? null
+  }
+
+  function clearSessionCache(sessionId: string): void {
+    delete sessionMessageCache.value[sessionId]
   }
 
   function setMessages(newMessages: ChatMessage[]): void {
@@ -181,10 +201,12 @@ export const useChatStore = defineStore('chat', () => {
     isSearching.value = false
     pendingOwnerConfirmation.value = null
     messageOwnerMap.value = {}
+    inputText.value = ''
   }
 
   function deleteSessionLocal(sessionId: string): void {
     sessions.value = sessions.value.filter((s) => s.id !== sessionId)
+    delete sessionMessageCache.value[sessionId]
     if (activeSessionId.value === sessionId) {
       activeSessionId.value = null
       resetChat()
@@ -199,8 +221,11 @@ export const useChatStore = defineStore('chat', () => {
     messageOwnerMap,
     sessions,
     activeSessionId,
+    inputText,
+    sessionMessageCache,
     setSessions,
     setActiveSessionId,
+    setInputText,
     setMessages,
     addMessage,
     appendToken,
@@ -212,5 +237,8 @@ export const useChatStore = defineStore('chat', () => {
     setError,
     resetChat,
     deleteSessionLocal,
+    cacheCurrentSession,
+    getCachedMessages,
+    clearSessionCache,
   }
 })

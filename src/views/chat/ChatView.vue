@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import MessageList from '@/components/chat/MessageList.vue'
@@ -25,20 +25,22 @@ const ws = inject<{
 const isConnected = computed(() => ws?.isConnected.value ?? false)
 const error = computed(() => ws?.error.value ?? null)
 
-const inputText = ref('')
+const inputText = computed({
+  get: () => chatStore.inputText,
+  set: (val: string) => { chatStore.setInputText(val) },
+})
 
 async function handleSend() {
-  if (!inputText.value.trim() || !ws) return
-  
-  // 만약 현재 활성화된 세션이 없다면 새로 생성 (첫 메시지 전송 시)
+  const text = inputText.value.trim()
+  if (!text || !ws) return
+
   if (!chatStore.activeSessionId) {
     const newSession = await chatService.createSession()
-    // URL 업데이트 (동기적으로 처리하여 사용자 경험 향상)
     router.replace({ query: { ...route.query, session: newSession.id } })
   }
 
-  ws.sendMessage(inputText.value.trim())
-  inputText.value = ''
+  ws.sendMessage(text)
+  chatStore.setInputText('')
 }
 
 function handleOwnerConfirm() {
@@ -54,21 +56,21 @@ function handleOwnerCancel() {
 }
 
 onMounted(async () => {
-  // 세션 목록 로드 및 자동 저장 설정
   await chatService.loadSessions()
   chatService.initAutoSave()
-  
+
   if (route.query.session) {
     await chatService.loadSessionMessages(route.query.session as string)
+  } else if (chatStore.activeSessionId) {
+    router.replace({ query: { ...route.query, session: chatStore.activeSessionId } })
   }
 })
 
-// Query Params의 session 변경 감지하여 데이터 로드
 watch(() => route.query.session, async (newSessionId) => {
   if (newSessionId) {
     await chatService.loadSessionMessages(newSessionId as string)
   } else {
-    // 세션이 선택되지 않았을 경우 상태 초기화
+    chatStore.cacheCurrentSession()
     chatStore.setActiveSessionId(null)
     chatStore.resetChat()
   }
