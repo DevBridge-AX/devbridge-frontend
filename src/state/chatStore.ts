@@ -90,9 +90,10 @@ export const useChatStore = defineStore('chat', () => {
 
   function finalizeMessage(doneEvent: DoneEventPayload): void {
     isSearching.value = false
-    
-    // streamingMessage가 있으면 messages에 추가
-    if (streamingMessage.value && streamingMessage.value.id === doneEvent.messageId) {
+
+    const hasStreamedText = streamingMessage.value && streamingMessage.value.id === doneEvent.messageId
+
+    if (hasStreamedText) {
       const citations: MessageCitation[] = doneEvent.citations.map((c) => ({
         sourceType: c.source_type,
         sourceId: c.source_id,
@@ -101,13 +102,19 @@ export const useChatStore = defineStore('chat', () => {
       }))
 
       addMessage({
-        id: streamingMessage.value.id,
+        id: streamingMessage.value!.id,
         role: 'assistant',
-        text: streamingMessage.value.text,
+        text: streamingMessage.value!.text,
         citations,
       })
 
       streamingMessage.value = null
+    } else if (doneEvent.needs_owner_confirmation) {
+      addMessage({
+        id: doneEvent.messageId,
+        role: 'assistant',
+        text: '관련 문서 근거를 찾지 못했습니다. 담당자 확인이 필요합니다.',
+      })
     }
   }
 
