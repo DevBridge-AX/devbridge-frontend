@@ -12,6 +12,12 @@ const sessions = computed(() => chatStore.sessions)
 const activeSessionId = computed(() => chatStore.activeSessionId)
 const confirmingDeleteSessionId = ref<string | null>(null)
 
+const confirmingSessionTitle = computed(() => {
+  if (!confirmingDeleteSessionId.value) return ''
+  const session = sessions.value.find(s => s.id === confirmingDeleteSessionId.value)
+  return session?.title ?? ''
+})
+
 const emit = defineEmits<{
   (e: 'select-session', sessionId: string): void
 }>()
@@ -26,29 +32,28 @@ function handleSelectSession(sessionId: string) {
   emit('select-session', sessionId)
 }
 
-function triggerDeleteConfirm(sessionId: string, event: Event) {
-  event.stopPropagation() // 클릭 이벤트 전파 방지
+function triggerDeleteConfirm(sessionId: string) {
   confirmingDeleteSessionId.value = sessionId
 }
 
-async function handleConfirmDelete(sessionId: string) {
-  // TODO: 채팅 삭제 API 호출 연결
+async function handleConfirmDelete() {
+  const sessionId = confirmingDeleteSessionId.value
+  if (!sessionId) return
+
   chatStore.deleteSessionLocal(sessionId)
   confirmingDeleteSessionId.value = null
-  
-  // 만약 현재 활성화된 세션이 삭제되었다면 URL Query 제어 등은 부모에서 처리할 수 있도록 null emit (또는 부모가 알아서 처리)
+
   if (chatStore.activeSessionId === null) {
     emit('select-session', '')
   }
 }
 
-// 날짜 포맷팅 함수 (ex: "오늘", "어제", "2023.10.12")
 function formatSessionDate(dateString: string) {
   const date = new Date(dateString)
   const today = new Date()
-  
+
   const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()
-  
+
   if (isToday) {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
@@ -78,24 +83,18 @@ function formatSessionDate(dateString: string) {
           v-for="session in sessions"
           :key="session.id"
           class="session-item"
-          :class="{ 
-            active: activeSessionId === session.id, 
-            'confirming-delete': confirmingDeleteSessionId === session.id 
-          }"
+          :class="{ active: activeSessionId === session.id }"
           @click="handleSelectSession(session.id)"
         >
-          <!-- normal session info -->
           <div class="session-info">
             <div class="session-title">{{ session.title }}</div>
             <div class="session-date">{{ formatSessionDate(session.updatedAt) }}</div>
           </div>
-          
-          <!-- delete button -->
-          <button 
-            class="delete-btn" 
-            @click="(e) => triggerDeleteConfirm(session.id, e)"
+
+          <button
+            class="delete-btn"
+            @click.stop="triggerDeleteConfirm(session.id)"
             aria-label="세션 삭제"
-            title="삭제"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"></polyline>
@@ -107,34 +106,42 @@ function formatSessionDate(dateString: string) {
     </div>
   </aside>
 
-  <!-- Modal Portal / Dialog Overlay -->
-  <Transition name="modal-fade">
-    <div v-if="confirmingDeleteSessionId !== null" class="modal-overlay" @click="confirmingDeleteSessionId = null">
-      <div class="modal-content" @click.stop>
-        <div class="modal-header">
-          <div class="warning-icon-wrapper">
-            <svg class="warning-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
+  <!-- Delete Confirmation Modal -->
+  <Teleport to="body">
+    <Transition name="delete-modal">
+      <div
+        v-if="confirmingDeleteSessionId !== null"
+        class="modal-overlay"
+        @click="confirmingDeleteSessionId = null"
+      >
+        <div class="modal-card" @click.stop>
+          <div class="modal-icon-area">
+            <div class="modal-icon-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+            </div>
           </div>
-          <h3 class="modal-title">대화 기록 삭제</h3>
-        </div>
-        <div class="modal-body">
-          <p class="modal-text">이 대화 기록을 정말 삭제하시겠습니까?</p>
-          <p class="modal-subtext">삭제된 대화는 복구할 수 없습니다.</p>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-cancel" @click="confirmingDeleteSessionId = null">취소</button>
-          <button class="btn btn-delete" @click="handleConfirmDelete(confirmingDeleteSessionId)">삭제</button>
+          <h3 class="modal-title">대화를 삭제할까요?</h3>
+          <p v-if="confirmingSessionTitle" class="modal-session-name">
+            "{{ confirmingSessionTitle }}"
+          </p>
+          <p class="modal-description">삭제된 대화는 복구할 수 없습니다.</p>
+          <div class="modal-actions">
+            <button class="btn-modal btn-cancel" @click="confirmingDeleteSessionId = null">취소</button>
+            <button class="btn-modal btn-delete" @click="handleConfirmDelete">삭제</button>
+          </div>
         </div>
       </div>
-    </div>
-  </Transition>
+    </Transition>
+  </Teleport>
 </template>
 
 <style scoped>
+/* ── Sidebar Layout ──────────────────────────────────────────── */
 .chat-history-sidebar {
   width: 280px;
   background-color: var(--color-surface, #ffffff);
@@ -185,6 +192,23 @@ function formatSessionDate(dateString: string) {
   padding: 0.5rem;
 }
 
+.session-list-container::-webkit-scrollbar {
+  width: 4px;
+}
+
+.session-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.session-list-container::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.25);
+  border-radius: 2px;
+}
+
+.session-list-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.45);
+}
+
 .session-list {
   position: relative;
 }
@@ -196,15 +220,16 @@ function formatSessionDate(dateString: string) {
   font-size: 0.875rem;
 }
 
+/* ── Session Items ───────────────────────────────────────────── */
 .session-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0.75rem 1rem;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-bottom: 0.25rem;
+  transition: background-color 0.2s ease;
+  margin-bottom: 2px;
 }
 
 .session-item:hover {
@@ -216,14 +241,9 @@ function formatSessionDate(dateString: string) {
   border-left: 3px solid var(--color-primary, #3b82f6);
 }
 
-.session-item.confirming-delete {
-  background-color: #fef2f2 !important;
-  border-left: 3px solid #ef4444 !important;
-}
-
 .session-info {
   flex: 1;
-  min-width: 0; /* for text truncation */
+  min-width: 0;
 }
 
 .session-title {
@@ -246,193 +266,201 @@ function formatSessionDate(dateString: string) {
   color: var(--color-text-light, #94a3b8);
 }
 
+/* ── Stealth Delete Button ───────────────────────────────────── */
 .delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
   background: none;
   border: none;
+  border-radius: 6px;
   color: var(--color-text-light, #94a3b8);
-  padding: 0.25rem;
   cursor: pointer;
+  flex-shrink: 0;
   opacity: 0;
-  transition: opacity 0.2s ease, color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
-  border-radius: 4px;
-  transform: scale(0.9);
+  transform: translateX(6px);
   pointer-events: none;
+  transition:
+    opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    transform 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .session-item:hover .delete-btn {
   opacity: 1;
-  transform: scale(1);
+  transform: translateX(0);
   pointer-events: auto;
 }
 
 .delete-btn:hover {
   color: #ef4444;
-  background-color: #fee2e2;
-  transform: scale(1.05);
+  background-color: #fef2f2;
 }
 
-/* Modal Overlay & Dialog styles */
+.delete-btn:active {
+  background-color: #fee2e2;
+  transform: translateX(0) scale(0.92);
+}
+
+/* ── Delete Confirmation Modal ───────────────────────────────── */
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background-color: rgba(15, 23, 42, 0.35); /* Slate 900 tint */
-  backdrop-filter: blur(8px); /* smooth premium blur */
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(6px);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 1000;
+  z-index: 9000;
 }
 
-.modal-content {
-  background-color: var(--color-surface, #ffffff);
-  border-radius: 16px; /* modern rounded corners */
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.03);
+.modal-card {
+  background: var(--color-surface, #ffffff);
+  border-radius: 20px;
+  padding: 1.75rem 1.5rem 1.25rem;
   width: 90%;
-  max-width: 340px;
-  overflow: hidden; /* to contain top header band backgrounds */
-  border: 1px solid var(--color-border, #e2e8f0);
+  max-width: 320px;
+  text-align: center;
+  box-shadow:
+    0 24px 48px -12px rgba(0, 0, 0, 0.18),
+    0 0 0 1px rgba(0, 0, 0, 0.03);
 }
 
-.modal-header {
+.modal-icon-area {
   display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  padding: 0.75rem 1.25rem; /* reduced padding */
-  background-color: var(--color-primary-light, #eff6ff); /* main color light tint */
-  border-bottom: 1px solid rgba(59, 130, 246, 0.15);
-}
-
-.warning-icon-wrapper {
-  display: flex;
-  align-items: center;
   justify-content: center;
-  width: 30px; /* reduced size */
-  height: 30px;
-  background-color: #fee2e2;
-  border-radius: 50%;
-  flex-shrink: 0;
+  margin-bottom: 0.875rem;
 }
 
-.warning-icon {
+.modal-icon-circle {
+  width: 52px;
+  height: 52px;
+  background: #fef2f2;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
   color: #ef4444;
 }
 
 .modal-title {
-  font-size: 0.95rem; /* reduced font size */
+  font-size: 1rem;
   font-weight: 700;
-  color: var(--color-primary-dark, #2563eb); /* utilize main color dark variant */
-  margin: 0;
-}
-
-.modal-body {
-  padding: 1.25rem; /* tighter spacing */
-}
-
-.modal-text {
-  font-size: 0.9rem;
-  color: #334155;
-  font-weight: 600;
+  color: var(--color-text, #1e293b);
   margin: 0 0 0.35rem 0;
 }
 
-.modal-subtext {
-  font-size: 0.775rem;
-  color: #64748b;
-  margin: 0;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.5rem;
-  padding: 0.25rem 1.25rem 0.75rem 1.25rem; /* blend with body and add bottom spacing */
-  background-color: var(--color-surface, #ffffff); /* match body background */
-}
-
-.btn {
+.modal-session-name {
   font-size: 0.8rem;
+  color: var(--color-text-light, #64748b);
+  margin: 0 0 0.25rem 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 0.25rem;
+}
+
+.modal-description {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0 0 1.25rem 0;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-modal {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  font-size: 0.85rem;
   font-weight: 600;
-  padding: 0.4rem 0.85rem; /* slightly tighter button spacing */
-  border-radius: 6px;
   cursor: pointer;
   border: none;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-cancel {
-  background-color: #ffffff;
-  color: var(--color-primary, #3b82f6); /* utilize main color */
-  border: 1px solid rgba(59, 130, 246, 0.25);
+  background: #f1f5f9;
+  color: #475569;
 }
 
 .btn-cancel:hover {
-  background-color: var(--color-primary-light, #eff6ff);
-  color: var(--color-primary-dark, #2563eb);
-  border-color: var(--color-primary, #3b82f6);
+  background: #e2e8f0;
+  color: #334155;
 }
 
 .btn-delete {
-  background-color: #dc2626;
-  color: white;
-  box-shadow: 0 2px 4px rgba(220, 38, 38, 0.15);
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.25);
 }
 
 .btn-delete:hover {
-  background-color: #b91c1c;
-  box-shadow: 0 4px 6px rgba(185, 28, 28, 0.2);
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
   transform: translateY(-1px);
 }
 
 .btn-delete:active {
   transform: translateY(0);
+  box-shadow: 0 1px 4px rgba(220, 38, 38, 0.2);
 }
 
-/* Modal Fade Animation */
-.modal-fade-enter-active,
-.modal-fade-leave-active {
+/* ── Modal Transition ────────────────────────────────────────── */
+.delete-modal-enter-active,
+.delete-modal-leave-active {
   transition: opacity 0.25s ease;
 }
 
-.modal-fade-enter-from,
-.modal-fade-leave-to {
+.delete-modal-enter-from,
+.delete-modal-leave-to {
   opacity: 0;
 }
 
-.modal-fade-enter-active .modal-content,
-.modal-fade-leave-active .modal-content {
-  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+.delete-modal-enter-active .modal-card {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.modal-fade-enter-from .modal-content {
-  transform: scale(0.9) translateY(10px);
+.delete-modal-leave-active .modal-card {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1);
 }
 
-.modal-fade-leave-to .modal-content {
-  transform: scale(0.95) translateY(5px);
+.delete-modal-enter-from .modal-card {
+  transform: scale(0.85) translateY(12px);
 }
 
-/* Transition Group Animations */
-.session-list-enter-active,
-.session-list-leave-active {
-  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+.delete-modal-leave-to .modal-card {
+  transform: scale(0.92) translateY(6px);
 }
 
-.session-list-enter-from,
-.session-list-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
+/* ── TransitionGroup List Animation ──────────────────────────── */
+.session-list-enter-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .session-list-leave-active {
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: absolute;
   width: calc(100% - 1rem);
   z-index: 0;
 }
 
+.session-list-enter-from {
+  opacity: 0;
+  transform: translateX(-16px);
+}
+
+.session-list-leave-to {
+  opacity: 0;
+  transform: translateX(-30px) scale(0.95);
+}
+
 .session-list-move {
-  transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 </style>
