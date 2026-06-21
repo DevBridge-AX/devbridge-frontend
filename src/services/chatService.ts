@@ -13,8 +13,16 @@ export const chatService = {
   async loadSessions(force = false) {
     if (!force && sessionsLoaded) return
     const chatStore = useChatStore()
-    const sessions = await chatApi.getSessions()
-    chatStore.setSessions(sessions)
+    const allSessions = await chatApi.getSessions()
+
+    const hasMessages = await Promise.all(
+      allSessions.map(async (session) => {
+        const messages = await chatApi.getMessages(session.id)
+        return messages.length > 0
+      })
+    )
+
+    chatStore.setSessions(allSessions.filter((_, i) => hasMessages[i]))
     sessionsLoaded = true
   },
 
@@ -24,7 +32,6 @@ export const chatService = {
     chatStore.cacheCurrentSession()
 
     const newSession = await chatApi.createSession(title)
-    await this.loadSessions(true)
 
     chatStore.resetChat()
     chatStore.setActiveSessionId(newSession.id)

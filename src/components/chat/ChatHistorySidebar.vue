@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
 import { useChatStore } from '@/state/chatStore'
-import { chatService } from '@/services/chatService'
 
-const router = useRouter()
-const route = useRoute()
 const chatStore = useChatStore()
 
 const sessions = computed(() => chatStore.sessions)
@@ -22,9 +18,8 @@ const emit = defineEmits<{
   (e: 'select-session', sessionId: string): void
 }>()
 
-async function handleNewChat() {
-  const newSession = await chatService.createSession()
-  emit('select-session', newSession.id)
+function handleNewChat() {
+  emit('select-session', '')
 }
 
 function handleSelectSession(sessionId: string) {
