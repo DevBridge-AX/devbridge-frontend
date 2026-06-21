@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, inject, onMounted, onUnmounted } from 'vue'
+import { ref, computed, inject, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
@@ -19,6 +19,8 @@ const isMaximized = ref(false)
 const showSidebar = ref(true)
 const inputText = ref('')
 const hasNewAnswer = ref(false)
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isComposing = ref(false)
 
 const workspaceId = computed<string>(() => {
   const value = route.params.workspaceId
@@ -53,6 +55,20 @@ function toggleMaximize() {
   }
 }
 
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
+    event.preventDefault()
+    handleSend()
+  }
+}
+
+function resizeTextarea() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
 async function handleSend() {
   if (!inputText.value.trim() || !ws) return
   if (!chatStore.activeSessionId) {
@@ -60,6 +76,7 @@ async function handleSend() {
   }
   ws.sendMessage(inputText.value.trim())
   inputText.value = ''
+  nextTick(resizeTextarea)
 }
 
 function handleOwnerConfirm() {
@@ -203,13 +220,18 @@ onUnmounted(() => {
           <!-- Message Input Form Panel inside PIP -->
           <footer class="chat-footer">
             <form class="chat-input-container" @submit.prevent="handleSend">
-              <input
+              <textarea
+                ref="textareaRef"
                 v-model="inputText"
-                type="text"
                 class="chat-input-box"
+                rows="1"
                 placeholder="AI에게 질문해보세요..."
                 aria-label="채팅 입력창"
-              />
+                @keydown="handleKeydown"
+                @compositionstart="isComposing = true"
+                @compositionend="isComposing = false"
+                @input="resizeTextarea"
+              ></textarea>
               <button
                 type="submit"
                 class="chat-send-button"

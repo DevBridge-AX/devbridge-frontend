@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import MessageList from '@/components/chat/MessageList.vue'
@@ -28,6 +28,27 @@ const error = computed(() => ws?.error.value ?? null)
 const inputText = computed({
   get: () => chatStore.inputText,
   set: (val: string) => { chatStore.setInputText(val) },
+})
+
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isComposing = ref(false)
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
+    event.preventDefault()
+    handleSend()
+  }
+}
+
+function resizeTextarea() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+watch(() => chatStore.inputText, () => {
+  nextTick(resizeTextarea)
 })
 
 async function handleSend() {
@@ -130,13 +151,18 @@ function handleSidebarSelectSession(sessionId: string) {
         <!-- Message Input Form Panel -->
         <footer class="chat-footer">
           <form class="chat-input-container" @submit.prevent="handleSend">
-            <input
+            <textarea
+              ref="textareaRef"
               v-model="inputText"
-              type="text"
               class="chat-input-box"
+              rows="1"
               placeholder="동기화된 지식에 대해 물어보세요... ('담당자' 또는 'owner' 입력 시 호출 시나리오 시작)"
               aria-label="채팅 입력창"
-            />
+              @keydown="handleKeydown"
+              @compositionstart="isComposing = true"
+              @compositionend="isComposing = false"
+              @input="resizeTextarea"
+            ></textarea>
             <button
               type="submit"
               class="chat-send-button"
