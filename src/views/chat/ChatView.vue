@@ -64,6 +64,14 @@ async function handleSend() {
   chatStore.setInputText('')
 }
 
+function handleSuggestionClick(text: string) {
+  chatStore.setInputText(text)
+  nextTick(() => {
+    textareaRef.value?.focus()
+    resizeTextarea()
+  })
+}
+
 function handleOwnerConfirm() {
   const pending = chatStore.pendingOwnerConfirmation
   if (pending && ws) {
@@ -116,20 +124,37 @@ function handleSidebarSelectSession(sessionId: string) {
 
       <!-- Main Chat Area -->
       <div class="chat-page">
-        <!-- Chat Hero Header (only show when no messages to give focus to input) -->
-        <section v-if="chatStore.messages.length === 0" class="chat-hero">
-          <div>
-            <h1>RAG 동기화 지식 챗봇</h1>
-            <p>
-              워크스페이스에 연동된 문서, Git 커밋, DB 스키마 지식을 실시간으로
-              검색하여 답변을 구성합니다.
+        <!-- Welcome Empty State -->
+        <section v-if="chatStore.messages.length === 0" class="chat-welcome">
+          <div class="welcome-content">
+            <div class="welcome-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="10" x2="15" y2="10"></line>
+                <line x1="9" y1="13" x2="13" y2="13"></line>
+              </svg>
+            </div>
+            <h1 class="welcome-title">어떤 도움이 필요하신가요?</h1>
+            <p class="welcome-description">
+              워크스페이스에 연동된 문서, Git 커밋, DB 스키마 지식을<br>
+              실시간으로 검색하여 답변을 구성합니다.
             </p>
-          </div>
-          <div v-if="error" class="connection-status error" style="font-size: 12px; color: #fca5a5; font-weight: 800;">
-            ⚠️ {{ error }}
-          </div>
-          <div v-else class="connection-status" style="font-size: 12px; opacity: 0.8; font-weight: 800;">
-            {{ isConnected ? '🟢 실시간 연동 중' : '🔴 연결되지 않음' }}
+            <div v-if="error" class="welcome-status welcome-status-error">{{ error }}</div>
+            <div v-else class="welcome-status">
+              <span class="status-dot" :class="{ active: isConnected }"></span>
+              {{ isConnected ? '실시간 연동 중' : '연결되지 않음' }}
+            </div>
+            <div class="suggestion-chips">
+              <button class="suggestion-chip" @click="handleSuggestionClick('프로젝트 문서 요약해 줘')">
+                프로젝트 문서 요약해 줘
+              </button>
+              <button class="suggestion-chip" @click="handleSuggestionClick('최근 커밋 변경사항이 뭐야?')">
+                최근 커밋 변경사항이 뭐야?
+              </button>
+              <button class="suggestion-chip" @click="handleSuggestionClick('DB 스키마 구조 알려줘')">
+                DB 스키마 구조 알려줘
+              </button>
+            </div>
           </div>
         </section>
 

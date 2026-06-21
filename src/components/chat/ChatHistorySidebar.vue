@@ -71,7 +71,13 @@ function formatSessionDate(dateString: string) {
 
     <div class="session-list-container">
       <div v-if="sessions.length === 0" class="empty-state">
-        이전 대화 내역이 없습니다.
+        <div class="empty-state-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+        </div>
+        <p class="empty-state-title">아직 대화 내역이 없습니다</p>
+        <p class="empty-state-subtitle">새 대화를 시작해 보세요</p>
       </div>
       <TransitionGroup v-else name="session-list" tag="div" class="session-list">
         <div
@@ -209,10 +215,37 @@ function formatSessionDate(dateString: string) {
 }
 
 .empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 3rem 1.5rem;
   text-align: center;
-  padding: 2rem 1rem;
-  color: var(--color-text-light, #94a3b8);
+  gap: 0.5rem;
+}
+
+.empty-state-icon {
+  width: 56px;
+  height: 56px;
+  background: var(--color-bg, #f1f5f9);
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  margin-bottom: 0.25rem;
+}
+
+.empty-state-title {
   font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  margin: 0;
+}
+
+.empty-state-subtitle {
+  font-size: 0.8rem;
+  color: #94a3b8;
+  margin: 0;
 }
 
 /* ── Session Items ───────────────────────────────────────────── */
