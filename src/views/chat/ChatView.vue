@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, inject, onMounted, ref, watch } from 'vue'
+import { computed, inject, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
 import MessageList from '@/components/chat/MessageList.vue'
@@ -25,20 +25,51 @@ const ws = inject<{
 const isConnected = computed(() => ws?.isConnected.value ?? false)
 const error = computed(() => ws?.error.value ?? null)
 
-const inputText = ref('')
+const inputText = computed({
+  get: () => chatStore.inputText,
+  set: (val: string) => { chatStore.setInputText(val) },
+})
+
+const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isComposing = ref(false)
+
+function handleKeydown(event: KeyboardEvent) {
+  if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
+    event.preventDefault()
+    handleSend()
+  }
+}
+
+function resizeTextarea() {
+  const el = textareaRef.value
+  if (!el) return
+  el.style.height = 'auto'
+  el.style.height = el.scrollHeight + 'px'
+}
+
+watch(() => chatStore.inputText, () => {
+  nextTick(resizeTextarea)
+})
 
 async function handleSend() {
-  if (!inputText.value.trim() || !ws) return
-  
-  // 만약 현재 활성화된 세션이 없다면 새로 생성 (첫 메시지 전송 시)
+  const text = inputText.value.trim()
+  if (!text || !ws) return
+
   if (!chatStore.activeSessionId) {
     const newSession = await chatService.createSession()
-    // URL 업데이트 (동기적으로 처리하여 사용자 경험 향상)
     router.replace({ query: { ...route.query, session: newSession.id } })
   }
 
-  ws.sendMessage(inputText.value.trim())
-  inputText.value = ''
+  ws.sendMessage(text)
+  chatStore.setInputText('')
+}
+
+function handleSuggestionClick(text: string) {
+  chatStore.setInputText(text)
+  nextTick(() => {
+    textareaRef.value?.focus()
+    resizeTextarea()
+  })
 }
 
 function handleOwnerConfirm() {
@@ -54,21 +85,21 @@ function handleOwnerCancel() {
 }
 
 onMounted(async () => {
-  // 세션 목록 로드 및 자동 저장 설정
   await chatService.loadSessions()
   chatService.initAutoSave()
-  
+
   if (route.query.session) {
     await chatService.loadSessionMessages(route.query.session as string)
+  } else if (chatStore.activeSessionId) {
+    router.replace({ query: { ...route.query, session: chatStore.activeSessionId } })
   }
 })
 
-// Query Params의 session 변경 감지하여 데이터 로드
 watch(() => route.query.session, async (newSessionId) => {
   if (newSessionId) {
     await chatService.loadSessionMessages(newSessionId as string)
   } else {
-    // 세션이 선택되지 않았을 경우 상태 초기화
+    chatStore.cacheCurrentSession()
     chatStore.setActiveSessionId(null)
     chatStore.resetChat()
   }
@@ -93,20 +124,37 @@ function handleSidebarSelectSession(sessionId: string) {
 
       <!-- Main Chat Area -->
       <div class="chat-page">
-        <!-- Chat Hero Header (only show when no messages to give focus to input) -->
-        <section v-if="chatStore.messages.length === 0" class="chat-hero">
-          <div>
-            <h1>RAG 동기화 지식 챗봇</h1>
-            <p>
-              워크스페이스에 연동된 문서, Git 커밋, DB 스키마 지식을 실시간으로
-              검색하여 답변을 구성합니다.
+        <!-- Welcome Empty State -->
+        <section v-if="chatStore.messages.length === 0" class="chat-welcome">
+          <div class="welcome-content">
+            <div class="welcome-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                <line x1="9" y1="10" x2="15" y2="10"></line>
+                <line x1="9" y1="13" x2="13" y2="13"></line>
+              </svg>
+            </div>
+            <h1 class="welcome-title">어떤 도움이 필요하신가요?</h1>
+            <p class="welcome-description">
+              워크스페이스에 연동된 문서, Git 커밋, DB 스키마 지식을<br>
+              실시간으로 검색하여 답변을 구성합니다.
             </p>
-          </div>
-          <div v-if="error" class="connection-status error" style="font-size: 12px; color: #fca5a5; font-weight: 800;">
-            ⚠️ {{ error }}
-          </div>
-          <div v-else class="connection-status" style="font-size: 12px; opacity: 0.8; font-weight: 800;">
-            {{ isConnected ? '🟢 실시간 연동 중' : '🔴 연결되지 않음' }}
+            <div v-if="error" class="welcome-status welcome-status-error">{{ error }}</div>
+            <div v-else class="welcome-status">
+              <span class="status-dot" :class="{ active: isConnected }"></span>
+              {{ isConnected ? '실시간 연동 중' : '연결되지 않음' }}
+            </div>
+            <div class="suggestion-chips">
+              <button class="suggestion-chip" @click="handleSuggestionClick('프로젝트 문서 요약해 줘')">
+                프로젝트 문서 요약해 줘
+              </button>
+              <button class="suggestion-chip" @click="handleSuggestionClick('최근 커밋 변경사항이 뭐야?')">
+                최근 커밋 변경사항이 뭐야?
+              </button>
+              <button class="suggestion-chip" @click="handleSuggestionClick('DB 스키마 구조 알려줘')">
+                DB 스키마 구조 알려줘
+              </button>
+            </div>
           </div>
         </section>
 
@@ -128,13 +176,18 @@ function handleSidebarSelectSession(sessionId: string) {
         <!-- Message Input Form Panel -->
         <footer class="chat-footer">
           <form class="chat-input-container" @submit.prevent="handleSend">
-            <input
+            <textarea
+              ref="textareaRef"
               v-model="inputText"
-              type="text"
               class="chat-input-box"
+              rows="1"
               placeholder="동기화된 지식에 대해 물어보세요... ('담당자' 또는 'owner' 입력 시 호출 시나리오 시작)"
               aria-label="채팅 입력창"
-            />
+              @keydown="handleKeydown"
+              @compositionstart="isComposing = true"
+              @compositionend="isComposing = false"
+              @input="resizeTextarea"
+            ></textarea>
             <button
               type="submit"
               class="chat-send-button"

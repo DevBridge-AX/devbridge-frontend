@@ -17,12 +17,12 @@ const emit = defineEmits<{
 
 const viewportRef = ref<HTMLDivElement | null>(null)
 
-function scrollToBottom() {
+function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
   nextTick(() => {
     if (viewportRef.value) {
       viewportRef.value.scrollTo({
         top: viewportRef.value.scrollHeight,
-        behavior: 'smooth',
+        behavior,
       })
     }
   })
@@ -32,7 +32,6 @@ function handleSelectCitation(citation: MessageCitation) {
   emit('selectCitation', citation)
 }
 
-// Auto scroll triggers
 watch(
   () => props.messages.length,
   () => {
@@ -57,7 +56,7 @@ watch(
 )
 
 onMounted(() => {
-  scrollToBottom()
+  scrollToBottom('instant')
 })
 </script>
 
