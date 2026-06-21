@@ -1,4 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import CitationPanel from './CitationPanel.vue'
 import type { MessageCitation } from './CitationPanel.vue'
 
@@ -15,6 +18,14 @@ const props = defineProps<{
 const emit = defineEmits<{
   selectCitation: [citation: MessageCitation]
 }>()
+
+marked.setOptions({ breaks: true, gfm: true })
+
+const renderedHtml = computed(() => {
+  if (props.role === 'user') return ''
+  const raw = marked.parse(props.text) as string
+  return DOMPurify.sanitize(raw)
+})
 
 function handleSelectCitation(citation: MessageCitation) {
   emit('selectCitation', citation)
@@ -36,9 +47,13 @@ function handleSelectCitation(citation: MessageCitation) {
       </div>
 
       <!-- Text Content -->
-      <div :class="{ 'streaming-text': props.isStreaming }">
-        {{ props.text }}
-      </div>
+      <div v-if="props.role === 'user'">{{ props.text }}</div>
+      <div
+        v-else
+        class="markdown-body"
+        :class="{ 'streaming-text': props.isStreaming }"
+        v-html="renderedHtml"
+      ></div>
 
       <!-- Citations Panel -->
       <CitationPanel

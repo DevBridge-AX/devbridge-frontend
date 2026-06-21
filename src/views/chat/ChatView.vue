@@ -62,6 +62,12 @@ async function handleSend() {
 
   ws.sendMessage(text)
   chatStore.setInputText('')
+
+  const el = textareaRef.value
+  if (el) {
+    el.style.height = 'auto'
+    el.blur()
+  }
 }
 
 function handleSuggestionClick(text: string) {
@@ -164,6 +170,7 @@ function handleSidebarSelectSession(sessionId: string) {
           :messages="chatStore.messages"
           :streaming-message="chatStore.streamingMessage"
           :is-searching="chatStore.isSearching"
+          :is-generating="chatStore.isGenerating"
         />
 
         <!-- Floating Owner Confirmation suggestion -->

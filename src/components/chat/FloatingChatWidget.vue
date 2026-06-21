@@ -76,6 +76,7 @@ async function handleSend() {
   }
   ws.sendMessage(inputText.value.trim())
   inputText.value = ''
+  textareaRef.value?.blur()
   nextTick(resizeTextarea)
 }
 
@@ -208,6 +209,7 @@ onUnmounted(() => {
             :messages="chatStore.messages"
             :streaming-message="chatStore.streamingMessage"
             :is-searching="chatStore.isSearching"
+            :is-generating="chatStore.isGenerating"
           />
 
           <!-- Floating Owner Confirmation suggestion inside PIP -->
