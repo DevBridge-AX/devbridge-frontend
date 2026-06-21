@@ -183,6 +183,14 @@ export const useChatStore = defineStore('chat', () => {
     messageOwnerMap.value = {}
   }
 
+  function deleteSessionLocal(sessionId: string): void {
+    sessions.value = sessions.value.filter((s) => s.id !== sessionId)
+    if (activeSessionId.value === sessionId) {
+      activeSessionId.value = null
+      resetChat()
+    }
+  }
+
   return {
     messages,
     streamingMessage,
@@ -203,5 +211,6 @@ export const useChatStore = defineStore('chat', () => {
     setSearching,
     setError,
     resetChat,
+    deleteSessionLocal,
   }
 })
