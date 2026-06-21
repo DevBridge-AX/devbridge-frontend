@@ -7,6 +7,7 @@ import MessageList from './MessageList.vue'
 import OwnerConfirmationCard from './OwnerConfirmationCard.vue'
 import OwnerAnswerToast from './OwnerAnswerToast.vue'
 import ChatHistorySidebar from './ChatHistorySidebar.vue'
+import '@/assets/styles/chat.css'
 
 const route = useRoute()
 const router = useRouter()
@@ -105,7 +106,8 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="floating-chat-widget">
+  <Teleport to="body">
+    <div class="floating-chat-widget">
     <!-- Floating Action Button (FAB) -->
     <button
       type="button"
@@ -224,4 +226,5 @@ onUnmounted(() => {
     <!-- Background Toast Overlay (Triggered on other pages) -->
     <OwnerAnswerToast v-if="!isOpen" />
   </div>
+  </Teleport>
 </template>
