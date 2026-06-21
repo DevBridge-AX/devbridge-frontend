@@ -40,10 +40,28 @@
   position: relative;
 }
 
+.chat-viewport::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-viewport::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-viewport::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 3px;
+}
+
+.chat-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+}
+
 .chat-inner {
   max-width: 900px;
   width: 100%;
   margin: 0 auto;
+  margin-top: auto;
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -746,6 +764,14 @@
 
 .dark-theme .chat-pip-panel .chat-viewport {
   background: #09090b;
+}
+
+.dark-theme .chat-viewport::-webkit-scrollbar-thumb {
+  background: rgba(161, 161, 170, 0.3);
+}
+
+.dark-theme .chat-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(161, 161, 170, 0.5);
 }
 
 .dark-theme .chat-pip-header {
