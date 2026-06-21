@@ -75,8 +75,13 @@ export const chatApi = {
 
   /**
    * 세션 삭제
+   * Mock 모드: LocalStorage에서만 제거
+   * 실제 모드: DELETE /api/chats/sessions/{sessionId} 호출 후 LocalStorage 정리
    */
   async deleteSession(sessionId: string): Promise<void> {
+    if (!isMock) {
+      await axiosClient.delete(`/api/chats/sessions/${sessionId}`)
+    }
     const sessions = await this.getSessions()
     const filtered = sessions.filter(s => s.id !== sessionId)
     localStorage.setItem(SESSIONS_KEY, JSON.stringify(filtered))

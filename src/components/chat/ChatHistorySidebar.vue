@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useChatStore } from '@/state/chatStore'
+import { chatService } from '@/services/chatService'
 
 const chatStore = useChatStore()
 
 const sessions = computed(() => chatStore.sessions)
 const activeSessionId = computed(() => chatStore.activeSessionId)
 const confirmingDeleteSessionId = ref<string | null>(null)
+const isDeleting = ref(false)
+const deleteErrorToast = ref(false)
 
 const confirmingSessionTitle = computed(() => {
   if (!confirmingDeleteSessionId.value) return ''
@@ -35,12 +38,27 @@ async function handleConfirmDelete() {
   const sessionId = confirmingDeleteSessionId.value
   if (!sessionId) return
 
-  chatStore.deleteSessionLocal(sessionId)
-  confirmingDeleteSessionId.value = null
+  isDeleting.value = true
+  try {
+    await chatService.deleteSession(sessionId)
+    confirmingDeleteSessionId.value = null
 
-  if (chatStore.activeSessionId === null) {
-    emit('select-session', '')
+    if (chatStore.activeSessionId === null) {
+      emit('select-session', '')
+    }
+  } catch {
+    confirmingDeleteSessionId.value = null
+    showDeleteErrorToast()
+  } finally {
+    isDeleting.value = false
   }
+}
+
+function showDeleteErrorToast() {
+  deleteErrorToast.value = true
+  setTimeout(() => {
+    deleteErrorToast.value = false
+  }, 3000)
 }
 
 function formatSessionDate(dateString: string) {
@@ -107,6 +125,20 @@ function formatSessionDate(dateString: string) {
     </div>
   </aside>
 
+  <!-- Delete Error Toast -->
+  <Teleport to="body">
+    <Transition name="toast-fade">
+      <div v-if="deleteErrorToast" class="delete-error-toast" role="alert">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="15" y1="9" x2="9" y2="15"></line>
+          <line x1="9" y1="9" x2="15" y2="15"></line>
+        </svg>
+        <span>채팅방 삭제에 실패했습니다.</span>
+      </div>
+    </Transition>
+  </Teleport>
+
   <!-- Delete Confirmation Modal -->
   <Teleport to="body">
     <Transition name="delete-modal">
@@ -132,8 +164,10 @@ function formatSessionDate(dateString: string) {
           </p>
           <p class="modal-description">삭제된 대화는 복구할 수 없습니다.</p>
           <div class="modal-actions">
-            <button class="btn-modal btn-cancel" @click="confirmingDeleteSessionId = null">취소</button>
-            <button class="btn-modal btn-delete" @click="handleConfirmDelete">삭제</button>
+            <button class="btn-modal btn-cancel" :disabled="isDeleting" @click="confirmingDeleteSessionId = null">취소</button>
+            <button class="btn-modal btn-delete" :disabled="isDeleting" @click="handleConfirmDelete">
+              {{ isDeleting ? '삭제 중...' : '삭제' }}
+            </button>
           </div>
         </div>
       </div>
@@ -490,5 +524,36 @@ function formatSessionDate(dateString: string) {
 
 .session-list-move {
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ── Delete Error Toast ─────────────────────────────────��──────── */
+.delete-error-toast {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  border-radius: 10px;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  z-index: 9999;
+}
+
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translateX(-50%) translateY(12px);
 }
 </style>
