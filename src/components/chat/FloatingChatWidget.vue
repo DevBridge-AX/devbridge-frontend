@@ -21,6 +21,7 @@ const inputText = ref('')
 const hasNewAnswer = ref(false)
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isComposing = ref(false)
+const isInputFocused = ref(false)
 
 const workspaceId = computed<string>(() => {
   const value = route.params.workspaceId
@@ -224,25 +225,40 @@ onUnmounted(() => {
           <!-- Message Input Form Panel inside PIP -->
           <footer class="chat-footer">
             <form class="chat-input-container" @submit.prevent="handleSend">
-              <textarea
-                ref="textareaRef"
-                v-model="inputText"
-                class="chat-input-box"
-                rows="1"
-                placeholder="AI에게 질문해보세요..."
-                aria-label="채팅 입력창"
-                @keydown="handleKeydown"
-                @compositionstart="isComposing = true"
-                @compositionend="isComposing = false"
-                @input="resizeTextarea"
-              ></textarea>
-              <button
-                type="submit"
-                class="chat-send-button"
-                :disabled="!inputText.trim() || !isConnected"
-              >
-                전송
-              </button>
+              <div class="chat-input-wrapper" :class="{ focused: isInputFocused, disconnected: !isConnected }">
+                <textarea
+                  ref="textareaRef"
+                  v-model="inputText"
+                  class="chat-input-box"
+                  rows="1"
+                  placeholder="AI에게 질문해보세요..."
+                  aria-label="채팅 입력창"
+                  @keydown="handleKeydown"
+                  @compositionstart="isComposing = true"
+                  @compositionend="isComposing = false"
+                  @input="resizeTextarea"
+                  @focus="isInputFocused = true"
+                  @blur="isInputFocused = false"
+                ></textarea>
+                <div class="chat-input-bottom-bar">
+                  <div class="chat-connection-status" :class="{ connected: isConnected }">
+                    <span class="status-dot" :class="{ active: isConnected }"></span>
+                    <span v-if="error" class="status-label error">{{ error }}</span>
+                    <span v-else class="status-label">{{ isConnected ? '연동 중' : '연결 끊김' }}</span>
+                  </div>
+                  <button
+                    type="submit"
+                    class="chat-send-button"
+                    :disabled="!inputText.trim() || !isConnected"
+                    aria-label="전송"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="12" y1="19" x2="12" y2="5"></line>
+                      <polyline points="5 12 12 5 19 12"></polyline>
+                    </svg>
+                  </button>
+                </div>
+              </div>
             </form>
           </footer>
         </div>
