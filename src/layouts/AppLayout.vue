@@ -82,7 +82,7 @@ provide('workspace-websocket', {
         <slot />
       </main>
 
-      <AppFooter />
+      <AppFooter v-if="route.name !== 'workspace-chat'" />
     </div>
 
     <!-- Floating PIP Chat Widget (Persists across workspace pages, hidden in full chat page) -->

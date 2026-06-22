@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
+
+marked.setOptions({ breaks: true, gfm: true })
 
 const emit = defineEmits<{
   clickToast: [messageId: string]
@@ -9,6 +13,11 @@ const visible = ref(false)
 const ownerName = ref('')
 const content = ref('')
 const originalMessageId = ref('')
+
+const parsedContent = computed(() => {
+  const raw = marked.parse(content.value) as string
+  return DOMPurify.sanitize(raw)
+})
 
 let autoHideTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -83,7 +92,7 @@ onUnmounted(() => {
       </div>
       <div class="toast-body">
         <strong>{{ ownerName }}</strong>님의 답변이 도착했습니다:
-        <p style="margin: 4px 0 0; opacity: 0.9;">{{ content }}</p>
+        <div class="markdown-body" style="margin: 4px 0 0; opacity: 0.9;" v-html="parsedContent"></div>
       </div>
       <div class="toast-hint">클릭하면 답변으로 이동합니다.</div>
     </div>

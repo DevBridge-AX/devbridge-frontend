@@ -9,6 +9,7 @@ const props = defineProps<{
   messages: ChatMessage[]
   streamingMessage: { id: string; text: string } | null
   isSearching: boolean
+  isGenerating?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -79,7 +80,7 @@ onMounted(() => {
 
       <!-- Streaming Assistant Message Bubble -->
       <MessageBubble
-        v-if="props.streamingMessage"
+        v-if="props.streamingMessage && props.isGenerating"
         :role="'assistant'"
         :text="props.streamingMessage.text"
         :is-streaming="true"

@@ -1,6 +1,6 @@
 import { chatApi } from '@/api/chatApi'
 import { useChatStore } from '@/state/chatStore'
-import { watch } from 'vue'
+import { watch, nextTick } from 'vue'
 import { storeToRefs } from 'pinia'
 
 // ─── Layer 3: Chat Service ─────────────────────────────────────────────────
@@ -8,6 +8,7 @@ import { storeToRefs } from 'pinia'
 
 let sessionsLoaded = false
 let autoSaveInitialized = false
+let isLoadingSession = false
 
 export const chatService = {
   async loadSessions(force = false) {
@@ -58,6 +59,8 @@ export const chatService = {
       return
     }
 
+    isLoadingSession = true
+
     chatStore.cacheCurrentSession()
 
     const cached = chatStore.getCachedMessages(sessionId)
@@ -65,6 +68,8 @@ export const chatService = {
       chatStore.resetChat()
       chatStore.setActiveSessionId(sessionId)
       chatStore.setMessages(cached)
+      await nextTick()
+      isLoadingSession = false
       return
     }
 
@@ -73,6 +78,8 @@ export const chatService = {
 
     const messages = await chatApi.getMessages(sessionId)
     chatStore.setMessages(messages)
+    await nextTick()
+    isLoadingSession = false
   },
 
   async saveCurrentSessionMessages() {
@@ -92,7 +99,7 @@ export const chatService = {
     const { messages } = storeToRefs(chatStore)
 
     watch(messages, () => {
-      if (chatStore.activeSessionId && chatStore.messages.length > 0) {
+      if (!isLoadingSession && chatStore.activeSessionId && chatStore.messages.length > 0) {
         this.saveCurrentSessionMessages()
       }
     }, { deep: true })

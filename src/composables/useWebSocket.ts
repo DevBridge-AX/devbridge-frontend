@@ -125,6 +125,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
       role: 'user',
       text: content,
     })
+    chatStore.setGenerating(true)
 
     if (isMock) {
       runMockScenario(content)

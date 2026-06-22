@@ -55,6 +55,7 @@ export const useChatStore = defineStore('chat', () => {
   const messages = ref<ChatMessage[]>([])
   const streamingMessage = ref<{ id: string; text: string } | null>(null)
   const isSearching = ref(false)
+  const isGenerating = ref(false)
   const pendingOwnerConfirmation = ref<PendingOwnerConfirmation | null>(null)
   const sessions = ref<ChatSession[]>([])
   const activeSessionId = ref<string | null>(null)
@@ -102,6 +103,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function appendToken(text: string, messageId: string): void {
     isSearching.value = false
+    isGenerating.value = true
     if (!streamingMessage.value || streamingMessage.value.id !== messageId) {
       streamingMessage.value = { id: messageId, text: '' }
     }
@@ -110,6 +112,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function finalizeMessage(doneEvent: DoneEventPayload): void {
     isSearching.value = false
+    isGenerating.value = false
 
     const hasStreamedText = streamingMessage.value && streamingMessage.value.id === doneEvent.messageId
 
@@ -121,14 +124,17 @@ export const useChatStore = defineStore('chat', () => {
         similarityScore: c.similarity_score,
       }))
 
-      addMessage({
-        id: streamingMessage.value!.id,
-        role: 'assistant',
-        text: streamingMessage.value!.text,
-        citations,
-      })
+      const finalId = streamingMessage.value!.id
+      const finalText = streamingMessage.value!.text
 
       streamingMessage.value = null
+
+      addMessage({
+        id: finalId,
+        role: 'assistant',
+        text: finalText,
+        citations,
+      })
     } else if (doneEvent.needs_owner_confirmation) {
       addMessage({
         id: doneEvent.messageId,
@@ -140,6 +146,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function setOwnerConfirmation(event: OwnerConfirmationPayload): void {
     isSearching.value = false
+    isGenerating.value = false
     
     // 스트리밍 중이던 메시지가 있다면 먼저 저장
     if (streamingMessage.value && streamingMessage.value.id === event.messageId) {
@@ -185,6 +192,7 @@ export const useChatStore = defineStore('chat', () => {
 
   function setError(messageId: string, errorText: string): void {
     isSearching.value = false
+    isGenerating.value = false
     streamingMessage.value = null
     
     addMessage({
@@ -199,6 +207,7 @@ export const useChatStore = defineStore('chat', () => {
     messages.value = []
     streamingMessage.value = null
     isSearching.value = false
+    isGenerating.value = false
     pendingOwnerConfirmation.value = null
     messageOwnerMap.value = {}
     inputText.value = ''
@@ -213,10 +222,15 @@ export const useChatStore = defineStore('chat', () => {
     }
   }
 
+  function setGenerating(generating: boolean): void {
+    isGenerating.value = generating
+  }
+
   return {
     messages,
     streamingMessage,
     isSearching,
+    isGenerating,
     pendingOwnerConfirmation,
     messageOwnerMap,
     sessions,
@@ -226,6 +240,7 @@ export const useChatStore = defineStore('chat', () => {
     setSessions,
     setActiveSessionId,
     setInputText,
+    setGenerating,
     setMessages,
     addMessage,
     appendToken,
