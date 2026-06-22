@@ -4,7 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { workspaceService } from '@/services/workspaceService'
 import type { Workspace } from '@/api/workspaceApi'
 import { useAuthStore } from '@/state/authStore'
+import { useNotificationStore } from '@/state/notificationStore'
 import { authService } from '@/services/authService'
+import { notificationApi } from '@/api/notificationApi'
 
 defineEmits<{
   toggleSidebar: []
@@ -13,7 +15,9 @@ defineEmits<{
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const notificationStore = useNotificationStore()
 
+const isDrawerOpen = ref(false)
 const isWorkspaceMenuOpen = ref(false)
 const workspaces = ref<Workspace[]>([])
 const workspaceErrorMessage = ref('')
@@ -52,6 +56,32 @@ const profileLabel = computed(() => {
 
   return `${currentUser.value.name} · ${currentUser.value.position}`
 })
+
+const unreadBadgeText = computed(() => {
+  const count = notificationStore.unreadCount
+  if (count <= 0) return ''
+  return count > 99 ? '99+' : String(count)
+})
+
+async function loadUnreadCount() {
+  const employeeId = authStore.currentUser?.employeeId
+  if (!employeeId) return
+
+  try {
+    const page = await notificationApi.getNotifications(employeeId, {
+      isRead: false,
+      page: 0,
+      size: 1,
+    })
+    notificationStore.setNotifications([], page.totalElements)
+  } catch {
+    // 알림 개수 로드 실패는 무시하고 0으로 유지
+  }
+}
+
+function toggleNotificationDrawer() {
+  isDrawerOpen.value = !isDrawerOpen.value
+}
 
 const pageTitle = computed(() => {
   if (route.name === 'workspace-dashboard') {
@@ -180,6 +210,7 @@ async function handleLogout() {
 
 onMounted(() => {
   void fetchWorkspaces()
+  void loadUnreadCount()
   document.addEventListener('click', closeProfileMenu)
 })
 
@@ -250,6 +281,22 @@ onUnmounted(() => {
           type="search"
           placeholder="Search workspace"
         />
+
+        <button
+          type="button"
+          class="header-notification-button"
+          aria-label="알림"
+          @click="toggleNotificationDrawer"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span
+            v-if="unreadBadgeText"
+            class="notification-badge"
+          >{{ unreadBadgeText }}</span>
+        </button>
 
         <div ref="profileContainerRef" class="header-profile">
           <button
