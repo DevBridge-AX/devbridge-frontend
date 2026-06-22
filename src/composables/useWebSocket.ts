@@ -2,6 +2,7 @@ import { ref, onUnmounted } from 'vue'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
+import { notificationApi } from '@/api/notificationApi'
 
 export function useWebSocket(sessionId: string | (() => string)) {
   const authStore = useAuthStore()
@@ -20,6 +21,20 @@ export function useWebSocket(sessionId: string | (() => string)) {
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/chat'
 
   const getSessionId = () => typeof sessionId === 'function' ? sessionId() : sessionId
+
+  function syncUnreadCount() {
+    const employeeId = authStore.currentUser?.employeeId
+    if (!employeeId) return
+
+    notificationApi
+      .getNotifications(employeeId, { isRead: false, page: 0, size: 1 })
+      .then((res) => {
+        notificationStore.setNotifications([], res.totalElements)
+      })
+      .catch(() => {
+        console.warn('[WS] Failed to sync unread notification count.')
+      })
+  }
 
   function connect() {
     if (isConnected.value || socket.value) return
@@ -47,6 +62,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
         isConnected.value = true
         error.value = null
         retryCount = 0 // Reset retry count on successful connection
+        syncUnreadCount()
       }
 
       socket.value.onmessage = (event) => {
