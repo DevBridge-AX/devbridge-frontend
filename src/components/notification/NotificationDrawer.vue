@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
 import { useNotificationStore } from '@/state/notificationStore'
-import type { Notification } from '@/state/notificationStore'
+import type { Notification, NotificationType } from '@/state/notificationStore'
 import { notificationApi } from '@/api/notificationApi'
 import type { NotificationResponse } from '@/api/notificationApi'
 
@@ -14,6 +15,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const router = useRouter()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
@@ -40,6 +42,7 @@ function mapResponse(r: NotificationResponse): Notification {
     id: r.notificationId,
     notificationType: r.notificationType,
     referenceId: r.referenceId,
+    workspaceId: r.workspaceId,
     title: r.title,
     message: r.message,
     createdAt: r.createdAt,
@@ -88,19 +91,44 @@ async function loadMore() {
   isLoadingMore.value = false
 }
 
-async function handleItemClick(item: Notification) {
-  if (item.isRead) return
+function buildRoute(type: NotificationType, workspaceId: string, referenceId: string): string | null {
+  const base = `/workspaces/${workspaceId}/schedule`
 
-  try {
-    await notificationApi.markAsRead(item.id)
-    notificationStore.markAsRead(item.id)
-    const target = items.value.find((n) => n.id === item.id)
-    if (target) {
-      target.isRead = true
-    }
-  } catch {
-    // 읽음 처리 실패 시 무시
+  switch (type) {
+    case 'MEETING_INVITED':
+      return `${base}?scheduleId=${referenceId}&action=respond`
+    case 'MEETING_UPDATED':
+      return `${base}?scheduleId=${referenceId}`
+    case 'MEETING_CANCELLED':
+      return base
+    case 'QUESTION_ASSIGNED':
+      return `/workspaces/${workspaceId}/chat`
+    default:
+      return null
   }
+}
+
+async function handleItemClick(item: Notification) {
+  if (!item.isRead) {
+    try {
+      await notificationApi.markAsRead(item.id)
+      notificationStore.markAsRead(item.id)
+      const target = items.value.find((n) => n.id === item.id)
+      if (target) {
+        target.isRead = true
+      }
+    } catch {
+      // 읽음 처리 실패 시 무시
+    }
+  }
+
+  if (!item.workspaceId) return
+
+  const path = buildRoute(item.notificationType, item.workspaceId, item.referenceId)
+  if (!path) return
+
+  emit('close')
+  router.push(path)
 }
 
 function switchTab(tab: TabKey) {

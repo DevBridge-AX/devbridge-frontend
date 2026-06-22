@@ -11,6 +11,7 @@ export interface Notification {
   id: string
   notificationType: NotificationType
   referenceId: string
+  workspaceId: string | null
   title: string
   message: string
   createdAt: string
@@ -21,6 +22,7 @@ export interface NotificationPayload {
   notification_id: string
   notification_type: NotificationType
   reference_id: string
+  workspace_id?: string
   title: string
   message: string
   created_at: string
@@ -40,6 +42,7 @@ export const useNotificationStore = defineStore('notification', () => {
       id: payload.notification_id,
       notificationType: payload.notification_type,
       referenceId: payload.reference_id,
+      workspaceId: payload.workspace_id ?? null,
       title: payload.title,
       message: payload.message,
       createdAt: payload.created_at,

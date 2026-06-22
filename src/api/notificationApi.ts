@@ -7,6 +7,7 @@ export interface NotificationResponse {
   notificationId: string
   notificationType: NotificationType
   referenceId: string
+  workspaceId: string | null
   title: string
   message: string
   isRead: boolean
