@@ -7,6 +7,7 @@ import { useAuthStore } from '@/state/authStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import { authService } from '@/services/authService'
 import { notificationApi } from '@/api/notificationApi'
+import NotificationDrawer from '@/components/notification/NotificationDrawer.vue'
 
 defineEmits<{
   toggleSidebar: []
@@ -328,4 +329,9 @@ onUnmounted(() => {
       </div>
     </div>
   </header>
+
+  <NotificationDrawer
+    :open="isDrawerOpen"
+    @close="isDrawerOpen = false"
+  />
 </template>

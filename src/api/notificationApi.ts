@@ -40,4 +40,10 @@ export const notificationApi = {
       )
       .then((res) => res.data)
   },
+
+  markAsRead(notificationId: string): Promise<void> {
+    return axiosClient
+      .put<void>(`/api/notifications/${encodeURIComponent(notificationId)}/read`)
+      .then(() => undefined)
+  },
 }
