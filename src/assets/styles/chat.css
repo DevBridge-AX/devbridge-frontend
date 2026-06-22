@@ -2,7 +2,7 @@
 .chat-page {
   display: flex;
   flex-direction: column;
-  height: 100%; /* Changed from calc(100vh - 120px) to support flex container */
+  min-height: 0;
   background: #f8fafc;
 }
 
@@ -116,6 +116,7 @@
 /* Chat Main Viewport */
 .chat-viewport {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   padding: 24px;
   display: flex;

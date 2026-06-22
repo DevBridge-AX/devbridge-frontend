@@ -64,8 +64,11 @@ async function handleSend() {
   const el = textareaRef.value
   if (el) {
     el.style.height = 'auto'
-    el.blur()
   }
+
+  nextTick(() => {
+    textareaRef.value?.focus()
+  })
 }
 
 function handleSuggestionClick(text: string) {
@@ -211,8 +214,8 @@ function handleSidebarSelectSession(sessionId: string) {
 <style scoped>
 .chat-container-layout {
   display: flex;
-  height: 100%;
-  width: 100%;
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   background-color: var(--color-bg, #f8fafc);
 }

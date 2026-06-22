@@ -76,8 +76,10 @@ async function handleSend() {
   }
   ws.sendMessage(inputText.value.trim())
   inputText.value = ''
-  textareaRef.value?.blur()
-  nextTick(resizeTextarea)
+  nextTick(() => {
+    resizeTextarea()
+    textareaRef.value?.focus()
+  })
 }
 
 function handleOwnerConfirm() {
