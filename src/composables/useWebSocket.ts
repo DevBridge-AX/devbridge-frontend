@@ -1,10 +1,12 @@
 import { ref, onUnmounted } from 'vue'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
+import { useNotificationStore } from '@/state/notificationStore'
 
 export function useWebSocket(sessionId: string | (() => string)) {
   const authStore = useAuthStore()
   const chatStore = useChatStore()
+  const notificationStore = useNotificationStore()
   const socket = ref<WebSocket | null>(null)
   const isConnected = ref(false)
   const error = ref<string | null>(null)
@@ -210,6 +212,12 @@ export function useWebSocket(sessionId: string | (() => string)) {
         break
       case 'error':
         chatStore.setError(data.message_id || `err-${Date.now()}`, data.message || '오류가 발생했습니다.')
+        break
+      case 'notification':
+        notificationStore.addNotification(data)
+        window.dispatchEvent(
+          new CustomEvent('notification-received', { detail: data })
+        )
         break
       default:
         console.warn('[WS] Unknown message type:', data.type)

@@ -5,6 +5,7 @@ import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget.vue'
+import NotificationToast from '@/components/notification/NotificationToast.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useChatStore } from '@/state/chatStore'
 import '@/assets/styles/app-layout.css'
@@ -89,5 +90,8 @@ provide('workspace-websocket', {
     <FloatingChatWidget
       v-if="route.name !== 'workspace-chat' && currentWorkspaceId"
     />
+
+    <!-- Global Notification Toast -->
+    <NotificationToast />
   </div>
 </template>
