@@ -14,7 +14,7 @@ import {
   type WorkspaceInvitation,
   type WorkspaceMemberResponse,
 } from '@/api/workspaceApi'
-import { DUMMY_WORKSPACE_ID, WORKSPACE_ID_KEY } from '@/state/workspaceStore'
+import { WORKSPACE_ID_KEY } from '@/state/workspaceStore'
 
 export const workspaceService = {
   async getCurrentUser(): Promise<CurrentUserResponse> {
@@ -98,8 +98,12 @@ export const workspaceService = {
   ): Promise<WorkspaceMemberResponse[]> {
     const resolvedWorkspaceId =
       keyword === undefined
-        ? (localStorage.getItem(WORKSPACE_ID_KEY) ?? DUMMY_WORKSPACE_ID)
+        ? localStorage.getItem(WORKSPACE_ID_KEY)
         : workspaceIdOrKeyword
+
+    if (!resolvedWorkspaceId) {
+      throw new Error('워크스페이스 정보가 없습니다.')
+    }
 
     const resolvedKeyword =
       keyword === undefined ? workspaceIdOrKeyword : keyword

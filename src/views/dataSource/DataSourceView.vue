@@ -26,16 +26,19 @@ const feedbackMessage = ref('')
 const workspaceId = computed<string>(() => {
   const value = route.params.workspaceId
   if (Array.isArray(value)) {
-    return value[0] || 'default'
+    return value[0] || ''
   }
-  return value || 'default'
+  return value || ''
 })
 
 const currentUser = computed(() => authStore.currentUser)
 
 // Fetch all data sources for workspace
 async function fetchSources() {
-  if (!workspaceId.value) return
+  if (!workspaceId.value) {
+    showFeedback('error', '워크스페이스 정보가 없습니다.')
+    return
+  }
   try {
     sources.value = await dataSourceService.fetchDataSources(workspaceId.value)
   } catch (err) {

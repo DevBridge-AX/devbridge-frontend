@@ -75,7 +75,7 @@ function formatSessionDate(dateString: string) {
 </script>
 
 <template>
-  <aside class="chat-history-sidebar">
+  <aside class="chat-history-sidebar" v-bind="$attrs">
     <div class="sidebar-header">
       <h2 class="sidebar-title">대화 기록</h2>
       <button class="new-chat-btn" @click="handleNewChat" aria-label="새로운 대화 시작">

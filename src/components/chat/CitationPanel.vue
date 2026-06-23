@@ -3,8 +3,8 @@ import { computed } from 'vue'
 
 // Rule: types are co-located at the top of the component or service.
 export interface MessageCitation {
-  sourceType: 'document' | 'git_commit' | 'db_schema'
-  sourceId: number
+  sourceType: 'document' | 'git_commit' | 'db_schema' | 'owner_answer'
+  sourceId: number | string
   title: string
   similarityScore: number
 }
@@ -17,7 +17,7 @@ const emit = defineEmits<{
   selectCitation: [citation: MessageCitation]
 }>()
 
-function getIcon(type: 'document' | 'git_commit' | 'db_schema'): string {
+function getIcon(type: MessageCitation['sourceType']): string {
   switch (type) {
     case 'document':
       return '📄'
@@ -25,12 +25,14 @@ function getIcon(type: 'document' | 'git_commit' | 'db_schema'): string {
       return '🔀'
     case 'db_schema':
       return '🗄️'
+    case 'owner_answer':
+      return '👤'
     default:
       return '🔗'
   }
 }
 
-function getTypeName(type: 'document' | 'git_commit' | 'db_schema'): string {
+function getTypeName(type: MessageCitation['sourceType']): string {
   switch (type) {
     case 'document':
       return '문서'
@@ -38,6 +40,8 @@ function getTypeName(type: 'document' | 'git_commit' | 'db_schema'): string {
       return 'Git 커밋'
     case 'db_schema':
       return 'DB 스키마'
+    case 'owner_answer':
+      return '담당자 답변'
     default:
       return '출처'
   }

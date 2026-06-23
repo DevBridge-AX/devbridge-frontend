@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { scheduleService } from '@/services/scheduleService'
 import { workspaceService } from '@/services/workspaceService'
 import { useAuthStore } from '@/state/authStore'
@@ -19,6 +20,9 @@ import MeetingList from '@/components/domain/schedule/MeetingList.vue'
 import MeetingCreateModal from '@/components/domain/schedule/MeetingCreateModal.vue'
 import MeetingResponseModal from '@/components/domain/schedule/MeetingResponseModal.vue'
 import MeetingDetailModal from '@/components/domain/schedule/MeetingDetailModal.vue'
+
+const route = useRoute()
+const router = useRouter()
 
 // ─── 데이터 상태 ────────────────────────────────────────────────────────────
 const meetings = ref<MeetingSummaryResponse[]>([])
@@ -115,7 +119,31 @@ onMounted(async () => {
       schedulesResult.reason instanceof Error ? schedulesResult.reason.message : '확정 일정을 불러오지 못했습니다.'
   }
   isLoadingSchedules.value = false
+
+  handleQueryParams()
 })
+
+// ─── 쿼리 파라미터 기반 모달 자동 오픈 ────────────────────────────────────────
+function handleQueryParams() {
+  const scheduleId = route.query.scheduleId as string | undefined
+  const action = route.query.action as string | undefined
+  if (!scheduleId) return
+
+  if (action === 'respond') {
+    handleOpenResponse(scheduleId)
+  } else {
+    openMeetingDetail(scheduleId)
+  }
+
+  router.replace({ query: {} })
+}
+
+watch(
+  () => route.query.scheduleId,
+  (val) => {
+    if (val) handleQueryParams()
+  },
+)
 
 // ─── 이벤트 핸들러 ───────────────────────────────────────────────────────────
 function handleSelectMeeting(meetingId: string): void {
