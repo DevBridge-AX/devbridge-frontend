@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { WORKSPACE_ID_KEY, DUMMY_WORKSPACE_ID } from '@/state/workspaceStore'
+import { WORKSPACE_ID_KEY } from '@/state/workspaceStore'
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL as string,
@@ -21,9 +21,10 @@ axiosClient.interceptors.request.use(
       config.headers['X-Workspace-Id'] !== null &&
       config.headers['X-Workspace-Id'] !== ''
 
-    if (!hasExplicitWorkspaceId) {
-      config.headers['X-Workspace-Id'] =
-        localStorage.getItem(WORKSPACE_ID_KEY) ?? DUMMY_WORKSPACE_ID
+    const workspaceId = localStorage.getItem(WORKSPACE_ID_KEY)
+
+    if (!hasExplicitWorkspaceId && workspaceId) {
+      config.headers['X-Workspace-Id'] = workspaceId
     }
 
     console.log(
@@ -33,6 +34,7 @@ axiosClient.interceptors.request.use(
       '[Axios Interceptor] token:',
       token ? `${token.slice(0, 20)}...` : 'none',
     )
+    console.log('[Axios Interceptor] workspaceId:', workspaceId ?? 'none')
     console.log('[Axios Interceptor] headers:', config.headers)
 
     return config

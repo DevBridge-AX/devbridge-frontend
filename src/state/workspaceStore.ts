@@ -3,17 +3,14 @@ import { ref } from 'vue'
 
 export const WORKSPACE_ID_KEY = 'currentWorkspaceId'
 
-// TODO: 워크스페이스 기능(팀원 작업) 완료 후 제거.
-// 로그인 → 워크스페이스 자동 연결 흐름이 붙으면 그 시점에서 setWorkspaceId를 호출하도록 연동.
-export const DUMMY_WORKSPACE_ID = 'dummy-workspace-id'
-
 // ─── Layer 2: Global Workspace State (Pinia) ──────────────────────────────
-// 순수 메모리 상태만 관리합니다. api 직접 호출 금지.
+// 현재 선택된 workspaceId만 관리합니다.
+// 임시 워크스페이스 fallback을 사용하지 않습니다.
 
 export const useWorkspaceStore = defineStore('workspace', () => {
   // ── State ──────────────────────────────────────────────────────────────
   const currentWorkspaceId = ref<string | null>(
-    localStorage.getItem(WORKSPACE_ID_KEY) ?? DUMMY_WORKSPACE_ID,
+    localStorage.getItem(WORKSPACE_ID_KEY),
   )
 
   // ── Actions ────────────────────────────────────────────────────────────
@@ -22,8 +19,14 @@ export const useWorkspaceStore = defineStore('workspace', () => {
    * 워크스페이스 선택/전환 시 ID를 상태와 localStorage에 저장합니다.
    */
   function setWorkspaceId(workspaceId: string): void {
-    currentWorkspaceId.value = workspaceId
-    localStorage.setItem(WORKSPACE_ID_KEY, workspaceId)
+    if (!workspaceId || workspaceId.trim() === '') {
+      clearWorkspaceId()
+      return
+    }
+
+    const normalizedWorkspaceId = workspaceId.trim()
+    currentWorkspaceId.value = normalizedWorkspaceId
+    localStorage.setItem(WORKSPACE_ID_KEY, normalizedWorkspaceId)
   }
 
   /**

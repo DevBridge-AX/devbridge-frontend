@@ -7,10 +7,12 @@ import AppFooter from '@/components/common/AppFooter.vue'
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useChatStore } from '@/state/chatStore'
+import { useWorkspaceStore } from '@/state/workspaceStore'
 import '@/assets/styles/app-layout.css'
 
 const route = useRoute()
 const chatStore = useChatStore()
+const workspaceStore = useWorkspaceStore()
 const isSidebarCollapsed = ref(false)
 
 const isDarkTheme = computed(() => {
@@ -30,21 +32,42 @@ const currentWorkspaceId = computed<string>(() => {
   return value || ''
 })
 
-const { isConnected, error, connect, disconnect, sendMessage, sendOwnerConfirmation } =
-  useWebSocket(() => chatStore.activeSessionId ?? '')
+const {
+  isConnected,
+  error,
+  connect,
+  disconnect,
+  sendMessage,
+  sendOwnerConfirmation,
+} = useWebSocket(() => chatStore.activeSessionId ?? '')
+
+function syncWorkspaceContext(workspaceId: string): void {
+  if (!workspaceId || workspaceId.trim() === '') {
+    return
+  }
+
+  workspaceStore.setWorkspaceId(workspaceId)
+}
 
 watch(
   () => currentWorkspaceId.value,
-  (newId) => {
-    if (newId) {
+  (newId, oldId) => {
+    if (!newId) {
+      return
+    }
+
+    syncWorkspaceContext(newId)
+
+    if (newId !== oldId) {
       disconnect()
       connect()
     }
-  }
+  },
 )
 
 onMounted(() => {
   if (currentWorkspaceId.value) {
+    syncWorkspaceContext(currentWorkspaceId.value)
     connect()
   }
 })
