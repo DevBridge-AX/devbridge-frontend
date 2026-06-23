@@ -3,6 +3,7 @@ import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import { notificationApi } from '@/api/notificationApi'
+import axiosClient from '@/api/axiosClient'
 
 export function useWebSocket(sessionId: string | (() => string)) {
   const authStore = useAuthStore()
@@ -161,11 +162,8 @@ export function useWebSocket(sessionId: string | (() => string)) {
     }
   }
 
-  // 담당자 호출 (UC-04 담당자 호출 REST API or WebSocket)
   function sendOwnerConfirmation(messageId: string, ownerId: string) {
     if (isMock) {
-      console.log(`[Mock WS] Sending owner confirmation request for message: ${messageId}`)
-      // Simulate answer after 2.5 seconds
       const timer = setTimeout(() => {
         handleServerMessage({
           type: 'owner_answer_received',
@@ -180,15 +178,13 @@ export function useWebSocket(sessionId: string | (() => string)) {
       return
     }
 
-    // TODO: Spring UC-04 담당자 호출 엔드포인트 연동 시, WebSocket 메시지 또는 REST API 호출로 변경
-    if (socket.value) {
-      socket.value.send(JSON.stringify({
-        type: 'owner_confirmation_request',
-        session_id: getSessionId(),
-        message_id: messageId,
-        owner_id: ownerId,
-      }))
-    }
+    axiosClient
+      .post(`/api/chats/messages/${encodeURIComponent(messageId)}/owner-confirmation`, {
+        assignedOwnerId: ownerId,
+      })
+      .catch(() => {
+        chatStore.setError(`err-oc-${Date.now()}`, '담당자 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      })
   }
 
   function handleServerMessage(data: any) {
