@@ -16,14 +16,16 @@ const ICON_MAP: Record<string, string> = {
   MEETING_INVITED: '📅',
   MEETING_UPDATED: '🔄',
   MEETING_CANCELLED: '❌',
-  QUESTION_ASSIGNED: '❓',
+  OWNER_CONFIRMATION: '📋',
+  OWNER_ANSWER_RECEIVED: '✅',
 }
 
 const LABEL_MAP: Record<string, string> = {
   MEETING_INVITED: '회의 초대',
   MEETING_UPDATED: '회의 변경',
   MEETING_CANCELLED: '회의 취소',
-  QUESTION_ASSIGNED: '질문 배정',
+  OWNER_CONFIRMATION: '담당자 확인 요청',
+  OWNER_ANSWER_RECEIVED: '담당자 답변',
 }
 
 function handleNotification(e: Event) {
@@ -70,7 +72,7 @@ function getLabel(type: string): string {
 
 function getAccentClass(type: string): string {
   if (type === 'MEETING_CANCELLED') return 'accent-danger'
-  if (type === 'QUESTION_ASSIGNED') return 'accent-question'
+  if (type === 'OWNER_CONFIRMATION' || type === 'OWNER_ANSWER_RECEIVED') return 'accent-question'
   return 'accent-meeting'
 }
 

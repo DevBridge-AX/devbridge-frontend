@@ -34,7 +34,8 @@ const ICON_MAP: Record<string, string> = {
   MEETING_INVITED: '📅',
   MEETING_UPDATED: '🔄',
   MEETING_CANCELLED: '❌',
-  QUESTION_ASSIGNED: '❓',
+  OWNER_CONFIRMATION: '📋',
+  OWNER_ANSWER_RECEIVED: '✅',
 }
 
 function mapResponse(r: NotificationResponse): Notification {
@@ -101,8 +102,6 @@ function buildRoute(type: NotificationType, workspaceId: string, referenceId: st
       return `${base}?scheduleId=${referenceId}`
     case 'MEETING_CANCELLED':
       return base
-    case 'QUESTION_ASSIGNED':
-      return `/workspaces/${workspaceId}/chat`
     default:
       return null
   }
@@ -120,6 +119,16 @@ async function handleItemClick(item: Notification) {
     } catch {
       // 읽음 처리 실패 시 무시
     }
+  }
+
+  if (
+    item.notificationType === 'OWNER_CONFIRMATION' ||
+    item.notificationType === 'OWNER_ANSWER_RECEIVED'
+  ) {
+    const readOnly = item.notificationType === 'OWNER_ANSWER_RECEIVED'
+    notificationStore.openAnswerModal(item.referenceId, readOnly)
+    emit('close')
+    return
   }
 
   if (!item.workspaceId) return

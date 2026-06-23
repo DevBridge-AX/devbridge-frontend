@@ -5,7 +5,8 @@ export type NotificationType =
   | 'MEETING_INVITED'
   | 'MEETING_UPDATED'
   | 'MEETING_CANCELLED'
-  | 'QUESTION_ASSIGNED'
+  | 'OWNER_CONFIRMATION'
+  | 'OWNER_ANSWER_RECEIVED'
 
 export interface Notification {
   id: string
@@ -34,6 +35,8 @@ export interface NotificationPayload {
 export const useNotificationStore = defineStore('notification', () => {
   const notifications = ref<Notification[]>([])
   const unreadCount = ref(0)
+  const pendingAnswerConfirmationId = ref<string | null>(null)
+  const pendingAnswerReadOnly = ref(false)
 
   const hasUnread = computed(() => unreadCount.value > 0)
 
@@ -65,12 +68,26 @@ export const useNotificationStore = defineStore('notification', () => {
     }
   }
 
+  function openAnswerModal(confirmationId: string, readOnly: boolean): void {
+    pendingAnswerConfirmationId.value = confirmationId
+    pendingAnswerReadOnly.value = readOnly
+  }
+
+  function closeAnswerModal(): void {
+    pendingAnswerConfirmationId.value = null
+    pendingAnswerReadOnly.value = false
+  }
+
   return {
     notifications,
     unreadCount,
+    pendingAnswerConfirmationId,
+    pendingAnswerReadOnly,
     hasUnread,
     addNotification,
     setNotifications,
     markAsRead,
+    openAnswerModal,
+    closeAnswerModal,
   }
 })
