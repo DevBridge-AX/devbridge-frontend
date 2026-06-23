@@ -6,6 +6,8 @@ import { useNotificationStore } from '@/state/notificationStore'
 import type { Notification, NotificationType } from '@/state/notificationStore'
 import { notificationApi } from '@/api/notificationApi'
 import type { NotificationResponse } from '@/api/notificationApi'
+import { ownerConfirmationApi } from '@/api/ownerConfirmationApi'
+import type { OwnerConfirmationResponse } from '@/api/ownerConfirmationApi'
 
 const props = defineProps<{
   open: boolean
@@ -19,7 +21,7 @@ const router = useRouter()
 const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
 
-type TabKey = 'all' | 'unread'
+type TabKey = 'all' | 'unread' | 'requests'
 const activeTab = ref<TabKey>('all')
 const items = ref<Notification[]>([])
 const isLoading = ref(false)
@@ -29,6 +31,19 @@ const totalElements = ref(0)
 const PAGE_SIZE = 20
 
 const hasMore = computed(() => items.value.length < totalElements.value)
+
+const requestItems = ref<OwnerConfirmationResponse[]>([])
+const requestLoading = ref(false)
+const requestLoadingMore = ref(false)
+const requestPage = ref(0)
+const requestTotal = ref(0)
+
+const hasMoreRequests = computed(() => requestItems.value.length < requestTotal.value)
+
+const STATUS_LABEL: Record<string, string> = {
+  PENDING: '대기 중',
+  ANSWERED: '답변 완료',
+}
 
 const ICON_MAP: Record<string, string> = {
   MEETING_INVITED: '📅',
@@ -92,6 +107,39 @@ async function loadMore() {
   isLoadingMore.value = false
 }
 
+async function loadRequestPage(page: number, append: boolean) {
+  try {
+    const res = await ownerConfirmationApi.getRequestedList({ page, size: PAGE_SIZE })
+    if (append) {
+      requestItems.value.push(...res.content)
+    } else {
+      requestItems.value = res.content
+    }
+    requestTotal.value = res.totalElements
+    requestPage.value = res.number
+  } catch {
+    // 로드 실패 시 현재 목록 유지
+  }
+}
+
+async function fetchRequestsInitial() {
+  requestLoading.value = true
+  await loadRequestPage(0, false)
+  requestLoading.value = false
+}
+
+async function loadMoreRequests() {
+  if (!hasMoreRequests.value || requestLoadingMore.value) return
+  requestLoadingMore.value = true
+  await loadRequestPage(requestPage.value + 1, true)
+  requestLoadingMore.value = false
+}
+
+function handleRequestItemClick(item: OwnerConfirmationResponse) {
+  notificationStore.openAnswerModal(item.id, true)
+  emit('close')
+}
+
 function buildRoute(type: NotificationType, workspaceId: string, referenceId: string): string | null {
   const base = `/workspaces/${workspaceId}/schedule`
 
@@ -143,7 +191,11 @@ async function handleItemClick(item: Notification) {
 function switchTab(tab: TabKey) {
   if (activeTab.value === tab) return
   activeTab.value = tab
-  void fetchInitial()
+  if (tab === 'requests') {
+    void fetchRequestsInitial()
+  } else {
+    void fetchInitial()
+  }
 }
 
 function handleOverlayClick() {
@@ -236,17 +288,21 @@ watch(
               {{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}
             </span>
           </button>
+          <button
+            type="button"
+            class="drawer-tab"
+            :class="{ active: activeTab === 'requests' }"
+            @click="switchTab('requests')"
+          >내 요청</button>
         </div>
 
-        <!-- Content -->
-        <div class="drawer-content">
-          <!-- Loading -->
+        <!-- Content: Notifications (all / unread) -->
+        <div v-if="activeTab !== 'requests'" class="drawer-content">
           <div v-if="isLoading" class="drawer-empty">
             <div class="drawer-spinner"></div>
             <span>알림을 불러오는 중...</span>
           </div>
 
-          <!-- Empty -->
           <div v-else-if="items.length === 0" class="drawer-empty">
             <div class="drawer-empty-icon">
               <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -257,7 +313,6 @@ watch(
             <span class="drawer-empty-text">알림이 없습니다</span>
           </div>
 
-          <!-- List -->
           <template v-else>
             <div
               v-for="item in items"
@@ -277,7 +332,6 @@ watch(
               <div v-if="!item.isRead" class="notification-item-dot"></div>
             </div>
 
-            <!-- Load More -->
             <button
               v-if="hasMore"
               type="button"
@@ -286,6 +340,59 @@ watch(
               @click="loadMore"
             >
               {{ isLoadingMore ? '불러오는 중...' : '더 보기' }}
+            </button>
+          </template>
+        </div>
+
+        <!-- Content: My Requests -->
+        <div v-else class="drawer-content">
+          <div v-if="requestLoading" class="drawer-empty">
+            <div class="drawer-spinner"></div>
+            <span>요청 목록을 불러오는 중...</span>
+          </div>
+
+          <div v-else-if="requestItems.length === 0" class="drawer-empty">
+            <div class="drawer-empty-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+              </svg>
+            </div>
+            <span class="drawer-empty-text">요청한 확인 건이 없습니다</span>
+          </div>
+
+          <template v-else>
+            <div
+              v-for="req in requestItems"
+              :key="req.id"
+              class="notification-item"
+              @click="handleRequestItemClick(req)"
+            >
+              <div class="notification-item-icon">
+                {{ req.status === 'ANSWERED' ? '✅' : '⏳' }}
+              </div>
+              <div class="notification-item-body">
+                <div class="notification-item-title">
+                  <span>{{ req.assignedOwnerName }}</span>
+                  <span class="request-status-badge" :class="req.status.toLowerCase()">
+                    {{ STATUS_LABEL[req.status] ?? req.status }}
+                  </span>
+                </div>
+                <div class="notification-item-message">{{ req.questionContent }}</div>
+                <div class="notification-item-time">{{ formatRelativeTime(req.createdAt) }}</div>
+              </div>
+            </div>
+
+            <button
+              v-if="hasMoreRequests"
+              type="button"
+              class="drawer-load-more"
+              :disabled="requestLoadingMore"
+              @click="loadMoreRequests"
+            >
+              {{ requestLoadingMore ? '불러오는 중...' : '더 보기' }}
             </button>
           </template>
         </div>
@@ -551,6 +658,27 @@ watch(
   margin-top: 4px;
 }
 
+/* ── Request Status Badge ─────────────────────────────────────── */
+.request-status-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  margin-left: 6px;
+  vertical-align: middle;
+}
+
+.request-status-badge.pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.request-status-badge.answered {
+  background: #d1fae5;
+  color: #065f46;
+}
+
 /* ── Load More ────────────────────────────────────────────────── */
 .drawer-load-more {
   display: block;
@@ -700,5 +828,15 @@ watch(
 
 :global(.dark-theme) .drawer-load-more:hover:not(:disabled) {
   background: #1e293b;
+}
+
+:global(.dark-theme) .request-status-badge.pending {
+  background: #422006;
+  color: #fbbf24;
+}
+
+:global(.dark-theme) .request-status-badge.answered {
+  background: #064e3b;
+  color: #34d399;
 }
 </style>

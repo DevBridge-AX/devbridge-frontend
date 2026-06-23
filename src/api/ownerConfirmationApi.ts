@@ -21,6 +21,18 @@ export interface OwnerConfirmationResponse {
   relatedDocumentTitle: string | null
 }
 
+export interface OwnerConfirmationPageResponse {
+  content: OwnerConfirmationResponse[]
+  totalElements: number
+  number: number
+  size: number
+}
+
+export interface OwnerConfirmationListParams {
+  page?: number
+  size?: number
+}
+
 export interface SubmitAnswerRequest {
   answerContent: string
 }
@@ -45,6 +57,18 @@ export const ownerConfirmationApi = {
         `/api/owner-confirmations/${encodeURIComponent(confirmationId)}/answer`,
         payload,
       )
+      .then((res) => res.data)
+  },
+
+  getRequestedList(params: OwnerConfirmationListParams): Promise<OwnerConfirmationPageResponse> {
+    return axiosClient
+      .get<OwnerConfirmationPageResponse>('/api/owner-confirmations/requested', { params })
+      .then((res) => res.data)
+  },
+
+  getAssignedList(params: OwnerConfirmationListParams): Promise<OwnerConfirmationPageResponse> {
+    return axiosClient
+      .get<OwnerConfirmationPageResponse>('/api/owner-confirmations/assigned', { params })
       .then((res) => res.data)
   },
 }
