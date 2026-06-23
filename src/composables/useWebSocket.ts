@@ -1,4 +1,5 @@
 import { ref, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
@@ -6,6 +7,7 @@ import { notificationApi } from '@/api/notificationApi'
 import axiosClient from '@/api/axiosClient'
 
 export function useWebSocket(sessionId: string | (() => string)) {
+  const route = useRoute()
   const authStore = useAuthStore()
   const chatStore = useChatStore()
   const notificationStore = useNotificationStore()
@@ -164,6 +166,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
 
   function sendOwnerConfirmation(messageId: string, ownerId: string) {
     if (isMock) {
+      const workspaceId = (route.params.workspaceId as string) || 'unknown-workspace'
       const timer = setTimeout(() => {
         handleServerMessage({
           type: 'owner_answer_received',
@@ -171,7 +174,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
           confirmation_id: `mock-oc-${Date.now()}`,
           content: '네, 김개발입니다. 해당 매입 처리 규격 API의 경우 기존 레거시 시스템과의 동기화 문제로 인해 매 정각 배치 작업으로 처리되고 있습니다. 자세한 배치 스케줄은 내부 배치 시스템 문서를 참조해 주세요.',
           owner_name: '김개발',
-          workspace_id: 'mock-ws',
+          workspace_id: workspaceId,
         })
       }, 2500)
       mockTimerIds.push(timer)
