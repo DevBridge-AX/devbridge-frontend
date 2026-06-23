@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
+import { useWorkspaceStore } from '@/state/workspaceStore'
 import { authService } from '@/services/authService'
 
 declare module 'vue-router' {
@@ -84,6 +85,14 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
     return { name: 'login' }
+  }
+
+  const workspaceId = to.params.workspaceId
+  if (workspaceId && !Array.isArray(workspaceId)) {
+    const workspaceStore = useWorkspaceStore()
+    workspaceStore.setWorkspaceId(workspaceId)
+  } else if (to.path.startsWith('/workspaces/') && !workspaceId) {
+    return { name: 'workspace' }
   }
 
   if (authStore.isAuthenticated && !authStore.currentUser) {
