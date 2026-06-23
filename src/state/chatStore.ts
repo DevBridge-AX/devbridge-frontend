@@ -45,6 +45,8 @@ export interface OwnerConfirmationPayload {
 export interface OwnerAnswerPayload {
   originalMessageId: string
   content: string
+  confirmationId?: string
+  ownerName?: string
 }
 
 // ─── Layer 2: Chat State (Pinia) ───────────────────────────────────────────
@@ -170,9 +172,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function receiveOwnerAnswer(event: OwnerAnswerPayload): void {
-    const ownerName = messageOwnerMap.value[event.originalMessageId] || '담당자'
-    
-    // 1. 해당 메시지 아래에 새로운 답변 메시지로 추가하거나 수정
+    const ownerName = event.ownerName || messageOwnerMap.value[event.originalMessageId] || '담당자'
+
     addMessage({
       id: `${event.originalMessageId}-answer`,
       role: 'assistant',

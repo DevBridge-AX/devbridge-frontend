@@ -170,7 +170,10 @@ export function useWebSocket(sessionId: string | (() => string)) {
         handleServerMessage({
           type: 'owner_answer_received',
           original_message_id: messageId,
+          confirmation_id: `mock-oc-${Date.now()}`,
           content: '네, 김개발입니다. 해당 매입 처리 규격 API의 경우 기존 레거시 시스템과의 동기화 문제로 인해 매 정각 배치 작업으로 처리되고 있습니다. 자세한 배치 스케줄은 내부 배치 시스템 문서를 참조해 주세요.',
+          owner_name: '김개발',
+          workspace_id: 'mock-ws',
         })
       }, 2500)
       mockTimerIds.push(timer)
@@ -214,14 +217,16 @@ export function useWebSocket(sessionId: string | (() => string)) {
         chatStore.receiveOwnerAnswer({
           originalMessageId: data.original_message_id,
           content: data.content,
+          confirmationId: data.confirmation_id,
+          ownerName: data.owner_name,
         })
-        // Dispatch custom DOM event for toast overlay to pick up
         window.dispatchEvent(
           new CustomEvent('owner-answer', {
             detail: {
               originalMessageId: data.original_message_id,
               content: data.content,
-              ownerName: chatStore.messageOwnerMap[data.original_message_id] || '김개발',
+              ownerName: data.owner_name || chatStore.messageOwnerMap[data.original_message_id] || '담당자',
+              confirmationId: data.confirmation_id,
             },
           })
         )
