@@ -348,7 +348,7 @@ function handleOpenResponse(meetingId: string): void {
           <h4 class="section-title">참석자 응답 현황</h4>
           <ul v-if="meeting.participants.length > 0" class="participant-list">
             <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
-              <span class="participant-id">{{ p.employeeId }}</span>
+              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
               <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
               <span class="participant-badge" :class="PARTICIPANT_STATUS_BADGE_CLASSES[p.status]">
                 {{ PARTICIPANT_STATUS_LABELS[p.status] }}
