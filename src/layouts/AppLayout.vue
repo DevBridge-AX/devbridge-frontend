@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, provide, watch, onMounted, onUnmounted } from 'vue'
+import { computed, ref, provide, watch, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
@@ -10,11 +10,13 @@ import OwnerAnswerModal from '@/components/notification/OwnerAnswerModal.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
+import { useWorkspaceStore } from '@/state/workspaceStore'
 import '@/assets/styles/app-layout.css'
 
 const route = useRoute()
 const chatStore = useChatStore()
 const notificationStore = useNotificationStore()
+const workspaceStore = useWorkspaceStore()
 const isSidebarCollapsed = ref(false)
 
 const isDarkTheme = computed(() => {
@@ -41,17 +43,13 @@ watch(
   () => currentWorkspaceId.value,
   (newId) => {
     if (newId) {
+      workspaceStore.setWorkspaceId(newId)
       disconnect()
       connect()
     }
-  }
+  },
+  { immediate: true },
 )
-
-onMounted(() => {
-  if (currentWorkspaceId.value) {
-    connect()
-  }
-})
 
 onUnmounted(() => {
   disconnect()
