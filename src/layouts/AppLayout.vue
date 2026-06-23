@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, provide, watch, onUnmounted } from 'vue'
+import { computed, ref, provide, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
@@ -36,20 +36,45 @@ const currentWorkspaceId = computed<string>(() => {
   return value || ''
 })
 
-const { isConnected, error, connect, disconnect, sendMessage, sendOwnerConfirmation } =
-  useWebSocket(() => chatStore.activeSessionId ?? '')
+const {
+  isConnected,
+  error,
+  connect,
+  disconnect,
+  sendMessage,
+  sendOwnerConfirmation,
+} = useWebSocket(() => chatStore.activeSessionId ?? '')
+
+function syncWorkspaceContext(workspaceId: string): void {
+  if (!workspaceId || workspaceId.trim() === '') {
+    return
+  }
+
+  workspaceStore.setWorkspaceId(workspaceId)
+}
 
 watch(
   () => currentWorkspaceId.value,
-  (newId) => {
-    if (newId) {
-      workspaceStore.setWorkspaceId(newId)
+  (newId, oldId) => {
+    if (!newId) {
+      return
+    }
+
+    syncWorkspaceContext(newId)
+
+    if (newId !== oldId) {
       disconnect()
       connect()
     }
   },
-  { immediate: true },
 )
+
+onMounted(() => {
+  if (currentWorkspaceId.value) {
+    syncWorkspaceContext(currentWorkspaceId.value)
+    connect()
+  }
+})
 
 onUnmounted(() => {
   disconnect()
