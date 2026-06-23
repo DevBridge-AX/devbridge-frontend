@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import type { ChatSession } from '@/api/chatApi'
 
 export interface MessageCitation {
-  sourceType: 'document' | 'git_commit' | 'db_schema'
-  sourceId: number
+  sourceType: 'document' | 'git_commit' | 'db_schema' | 'owner_answer'
+  sourceId: number | string
   title: string
   similarityScore: number
 }
@@ -28,8 +28,8 @@ export interface PendingOwnerConfirmation {
 export interface DoneEventPayload {
   messageId: string
   citations: {
-    source_type: 'document' | 'git_commit' | 'db_schema'
-    source_id: number
+    source_type: 'document' | 'git_commit' | 'db_schema' | 'owner_answer'
+    source_id: number | string
     title: string
     similarity_score: number
   }[]
