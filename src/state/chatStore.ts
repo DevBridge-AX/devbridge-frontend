@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import type { ChatSession } from '@/api/chatApi'
 
 export interface MessageCitation {
-  sourceType: 'document' | 'git_commit' | 'db_schema'
-  sourceId: number
+  sourceType: 'document' | 'git_commit' | 'db_schema' | 'owner_answer'
+  sourceId: number | string
   title: string
   similarityScore: number
 }
@@ -28,8 +28,8 @@ export interface PendingOwnerConfirmation {
 export interface DoneEventPayload {
   messageId: string
   citations: {
-    source_type: 'document' | 'git_commit' | 'db_schema'
-    source_id: number
+    source_type: 'document' | 'git_commit' | 'db_schema' | 'owner_answer'
+    source_id: number | string
     title: string
     similarity_score: number
   }[]
@@ -45,6 +45,8 @@ export interface OwnerConfirmationPayload {
 export interface OwnerAnswerPayload {
   originalMessageId: string
   content: string
+  confirmationId?: string
+  ownerName?: string
 }
 
 // ─── Layer 2: Chat State (Pinia) ───────────────────────────────────────────
@@ -170,9 +172,8 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function receiveOwnerAnswer(event: OwnerAnswerPayload): void {
-    const ownerName = messageOwnerMap.value[event.originalMessageId] || '담당자'
-    
-    // 1. 해당 메시지 아래에 새로운 답변 메시지로 추가하거나 수정
+    const ownerName = event.ownerName || messageOwnerMap.value[event.originalMessageId] || '담당자'
+
     addMessage({
       id: `${event.originalMessageId}-answer`,
       role: 'assistant',

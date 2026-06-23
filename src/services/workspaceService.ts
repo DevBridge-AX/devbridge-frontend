@@ -109,11 +109,11 @@ export const workspaceService = {
       resolvedWorkspaceId = storedWorkspaceId.trim()
       resolvedKeyword = workspaceIdOrKeyword
     } else {
-      resolvedWorkspaceId = workspaceIdOrKeyword
+      resolvedWorkspaceId = workspaceIdOrKeyword.trim()
       resolvedKeyword = keyword
     }
 
-    if (!resolvedWorkspaceId.trim()) {
+    if (!resolvedWorkspaceId) {
       throw new Error('워크스페이스 ID가 필요합니다.')
     }
 

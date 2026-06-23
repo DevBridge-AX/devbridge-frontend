@@ -5,13 +5,17 @@ import AppHeader from '@/components/common/AppHeader.vue'
 import AppSidebar from '@/components/common/AppSidebar.vue'
 import AppFooter from '@/components/common/AppFooter.vue'
 import FloatingChatWidget from '@/components/chat/FloatingChatWidget.vue'
+import NotificationToast from '@/components/notification/NotificationToast.vue'
+import OwnerAnswerModal from '@/components/notification/OwnerAnswerModal.vue'
 import { useWebSocket } from '@/composables/useWebSocket'
 import { useChatStore } from '@/state/chatStore'
+import { useNotificationStore } from '@/state/notificationStore'
 import { useWorkspaceStore } from '@/state/workspaceStore'
 import '@/assets/styles/app-layout.css'
 
 const route = useRoute()
 const chatStore = useChatStore()
+const notificationStore = useNotificationStore()
 const workspaceStore = useWorkspaceStore()
 const isSidebarCollapsed = ref(false)
 
@@ -111,6 +115,17 @@ provide('workspace-websocket', {
     <!-- Floating PIP Chat Widget (Persists across workspace pages, hidden in full chat page) -->
     <FloatingChatWidget
       v-if="route.name !== 'workspace-chat' && currentWorkspaceId"
+    />
+
+    <!-- Global Notification Toast -->
+    <NotificationToast />
+
+    <!-- Owner Answer Modal (Global) -->
+    <OwnerAnswerModal
+      :is-open="!!notificationStore.pendingAnswerConfirmationId"
+      :confirmation-id="notificationStore.pendingAnswerConfirmationId"
+      :read-only="notificationStore.pendingAnswerReadOnly"
+      @close="notificationStore.closeAnswerModal()"
     />
   </div>
 </template>

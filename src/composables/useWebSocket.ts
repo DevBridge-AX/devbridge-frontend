@@ -1,10 +1,16 @@
 import { ref, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
+import { useNotificationStore } from '@/state/notificationStore'
+import { notificationApi } from '@/api/notificationApi'
+import axiosClient from '@/api/axiosClient'
 
 export function useWebSocket(sessionId: string | (() => string)) {
+  const route = useRoute()
   const authStore = useAuthStore()
   const chatStore = useChatStore()
+  const notificationStore = useNotificationStore()
   const socket = ref<WebSocket | null>(null)
   const isConnected = ref(false)
   const error = ref<string | null>(null)
@@ -18,6 +24,20 @@ export function useWebSocket(sessionId: string | (() => string)) {
   const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/chat'
 
   const getSessionId = () => typeof sessionId === 'function' ? sessionId() : sessionId
+
+  function syncUnreadCount() {
+    const employeeId = authStore.currentUser?.employeeId
+    if (!employeeId) return
+
+    notificationApi
+      .getNotifications(employeeId, { isRead: false, page: 0, size: 1 })
+      .then((res) => {
+        notificationStore.setNotifications([], res.totalElements)
+      })
+      .catch(() => {
+        console.warn('[WS] Failed to sync unread notification count.')
+      })
+  }
 
   function connect() {
     if (isConnected.value || socket.value) return
@@ -45,6 +65,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
         isConnected.value = true
         error.value = null
         retryCount = 0 // Reset retry count on successful connection
+        syncUnreadCount()
       }
 
       socket.value.onmessage = (event) => {
@@ -143,31 +164,30 @@ export function useWebSocket(sessionId: string | (() => string)) {
     }
   }
 
-  // 담당자 호출 (UC-04 담당자 호출 REST API or WebSocket)
   function sendOwnerConfirmation(messageId: string, ownerId: string) {
     if (isMock) {
-      console.log(`[Mock WS] Sending owner confirmation request for message: ${messageId}`)
-      // Simulate answer after 2.5 seconds
+      const workspaceId = (route.params.workspaceId as string) || 'unknown-workspace'
       const timer = setTimeout(() => {
         handleServerMessage({
           type: 'owner_answer_received',
           original_message_id: messageId,
+          confirmation_id: `mock-oc-${Date.now()}`,
           content: '네, 김개발입니다. 해당 매입 처리 규격 API의 경우 기존 레거시 시스템과의 동기화 문제로 인해 매 정각 배치 작업으로 처리되고 있습니다. 자세한 배치 스케줄은 내부 배치 시스템 문서를 참조해 주세요.',
+          owner_name: '김개발',
+          workspace_id: workspaceId,
         })
       }, 2500)
       mockTimerIds.push(timer)
       return
     }
 
-    // TODO: Spring UC-04 담당자 호출 엔드포인트 연동 시, WebSocket 메시지 또는 REST API 호출로 변경
-    if (socket.value) {
-      socket.value.send(JSON.stringify({
-        type: 'owner_confirmation_request',
-        session_id: getSessionId(),
-        message_id: messageId,
-        owner_id: ownerId,
-      }))
-    }
+    axiosClient
+      .post(`/api/chats/messages/${encodeURIComponent(messageId)}/owner-confirmation`, {
+        assignedOwnerId: ownerId,
+      })
+      .catch(() => {
+        chatStore.setError(`err-oc-${Date.now()}`, '담당자 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+      })
   }
 
   function handleServerMessage(data: any) {
@@ -196,20 +216,28 @@ export function useWebSocket(sessionId: string | (() => string)) {
         chatStore.receiveOwnerAnswer({
           originalMessageId: data.original_message_id,
           content: data.content,
+          confirmationId: data.confirmation_id,
+          ownerName: data.owner_name,
         })
-        // Dispatch custom DOM event for toast overlay to pick up
         window.dispatchEvent(
           new CustomEvent('owner-answer', {
             detail: {
               originalMessageId: data.original_message_id,
               content: data.content,
-              ownerName: chatStore.messageOwnerMap[data.original_message_id] || '김개발',
+              ownerName: data.owner_name || chatStore.messageOwnerMap[data.original_message_id] || '담당자',
+              confirmationId: data.confirmation_id,
             },
           })
         )
         break
       case 'error':
         chatStore.setError(data.message_id || `err-${Date.now()}`, data.message || '오류가 발생했습니다.')
+        break
+      case 'notification':
+        notificationStore.addNotification(data)
+        window.dispatchEvent(
+          new CustomEvent('notification-received', { detail: data })
+        )
         break
       default:
         console.warn('[WS] Unknown message type:', data.type)
