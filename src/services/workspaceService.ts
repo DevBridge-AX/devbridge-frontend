@@ -96,17 +96,26 @@ export const workspaceService = {
     workspaceIdOrKeyword: string,
     keyword?: string,
   ): Promise<WorkspaceMemberResponse[]> {
-    const resolvedWorkspaceId =
-      keyword === undefined
-        ? localStorage.getItem(WORKSPACE_ID_KEY)
-        : workspaceIdOrKeyword
+    let resolvedWorkspaceId: string
+    let resolvedKeyword: string
 
-    if (!resolvedWorkspaceId) {
-      throw new Error('워크스페이스 정보가 없습니다.')
+    if (keyword === undefined) {
+      const storedWorkspaceId = localStorage.getItem(WORKSPACE_ID_KEY)
+
+      if (!storedWorkspaceId || storedWorkspaceId.trim() === '') {
+        throw new Error('현재 워크스페이스 ID가 설정되지 않았습니다.')
+      }
+
+      resolvedWorkspaceId = storedWorkspaceId.trim()
+      resolvedKeyword = workspaceIdOrKeyword
+    } else {
+      resolvedWorkspaceId = workspaceIdOrKeyword.trim()
+      resolvedKeyword = keyword
     }
 
-    const resolvedKeyword =
-      keyword === undefined ? workspaceIdOrKeyword : keyword
+    if (!resolvedWorkspaceId) {
+      throw new Error('워크스페이스 ID가 필요합니다.')
+    }
 
     if (!resolvedKeyword.trim()) {
       return []

@@ -21,11 +21,10 @@ axiosClient.interceptors.request.use(
       config.headers['X-Workspace-Id'] !== null &&
       config.headers['X-Workspace-Id'] !== ''
 
-    if (!hasExplicitWorkspaceId) {
-      const storedWorkspaceId = localStorage.getItem(WORKSPACE_ID_KEY)
-      if (storedWorkspaceId) {
-        config.headers['X-Workspace-Id'] = storedWorkspaceId
-      }
+    const workspaceId = localStorage.getItem(WORKSPACE_ID_KEY)
+
+    if (!hasExplicitWorkspaceId && workspaceId) {
+      config.headers['X-Workspace-Id'] = workspaceId
     }
 
     console.log(
@@ -35,6 +34,7 @@ axiosClient.interceptors.request.use(
       '[Axios Interceptor] token:',
       token ? `${token.slice(0, 20)}...` : 'none',
     )
+    console.log('[Axios Interceptor] workspaceId:', workspaceId ?? 'none')
     console.log('[Axios Interceptor] headers:', config.headers)
 
     return config
