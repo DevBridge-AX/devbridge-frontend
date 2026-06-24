@@ -235,6 +235,49 @@
   color: #b91c1c;
 }
 
+/* Delete Button (stealth hover-reveal) */
+.source-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.source-delete-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: #94a3b8;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.source-item:hover .source-delete-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.source-delete-btn:hover {
+  color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.source-delete-btn:active {
+  background-color: #fee2e2;
+}
+
+.source-delete-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
 /* Feedback messages */
 .feedback-msg {
   padding: 10px 14px;
@@ -321,4 +364,17 @@
 
 .dark-theme .source-name {
   color: #ffffff;
+}
+
+.dark-theme .source-delete-btn {
+  color: #71717a;
+}
+
+.dark-theme .source-delete-btn:hover {
+  color: #ef4444;
+  background-color: rgba(239, 68, 68, 0.1);
+}
+
+.dark-theme .source-delete-btn:active {
+  background-color: rgba(239, 68, 68, 0.15);
 }
