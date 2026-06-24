@@ -123,6 +123,44 @@ onMounted(async () => {
   handleQueryParams()
 })
 
+// ─── 워크스페이스 전환 시 데이터 재조회 ──────────────────────────────────────
+watch(
+  () => route.params.workspaceId,
+  async (newId, oldId) => {
+    if (!newId || newId === oldId) return
+
+    meetingsError.value = ''
+    schedulesError.value = ''
+    isLoadingMeetings.value = true
+    isLoadingSchedules.value = true
+
+    const { startDate, endDate } = getCurrentMonthRange()
+
+    const [meetingsResult, schedulesResult] = await Promise.allSettled([
+      scheduleService.fetchMeetings(),
+      scheduleService.fetchConfirmedSchedules(startDate, endDate),
+    ])
+
+    if (meetingsResult.status === 'fulfilled') {
+      meetings.value = meetingsResult.value
+    } else {
+      meetingsError.value =
+        meetingsResult.reason instanceof Error ? meetingsResult.reason.message : '회의 목록을 불러오지 못했습니다.'
+    }
+    isLoadingMeetings.value = false
+
+    if (schedulesResult.status === 'fulfilled') {
+      confirmedSchedules.value = schedulesResult.value
+    } else {
+      schedulesError.value =
+        schedulesResult.reason instanceof Error ? schedulesResult.reason.message : '확정 일정을 불러오지 못했습니다.'
+    }
+    isLoadingSchedules.value = false
+
+    handleQueryParams()
+  },
+)
+
 // ─── 쿼리 파라미터 기반 모달 자동 오픈 ────────────────────────────────────────
 function handleQueryParams() {
   const scheduleId = route.query.scheduleId as string | undefined

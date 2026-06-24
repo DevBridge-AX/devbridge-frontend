@@ -81,6 +81,9 @@ export interface MeetingSummaryResponse {
 
 export interface MeetingParticipant {
   employeeId: string
+  name: string | null
+  department: string | null
+  position: string | null
   role: ParticipantRole
   status: ParticipantStatus
 }

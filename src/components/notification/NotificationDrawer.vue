@@ -2,6 +2,7 @@
 import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
+import { useWorkspaceStore } from '@/state/workspaceStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import type { Notification, NotificationType } from '@/state/notificationStore'
 import { notificationApi } from '@/api/notificationApi'
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 
 const router = useRouter()
 const authStore = useAuthStore()
+const workspaceStore = useWorkspaceStore()
 const notificationStore = useNotificationStore()
 
 type TabKey = 'all' | 'unread' | 'requests'
@@ -180,6 +182,13 @@ async function handleItemClick(item: Notification) {
   }
 
   if (!item.workspaceId) return
+
+  if (item.workspaceId !== workspaceStore.currentWorkspaceId) {
+    const confirmed = window.confirm(
+      '다른 워크스페이스의 알림입니다. 해당 워크스페이스로 전환하시겠습니까?',
+    )
+    if (!confirmed) return
+  }
 
   const path = buildRoute(item.notificationType, item.workspaceId, item.referenceId)
   if (!path) return
