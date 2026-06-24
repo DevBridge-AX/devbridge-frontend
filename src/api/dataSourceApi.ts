@@ -36,4 +36,10 @@ export const dataSourceApi = {
       })
       .then((res) => res.data)
   },
+
+  deleteDataSource(dataSourceId: string): Promise<void> {
+    return axiosClient
+      .delete<void>(`/api/datasources/${dataSourceId}`)
+      .then((res) => res.data)
+  },
 }

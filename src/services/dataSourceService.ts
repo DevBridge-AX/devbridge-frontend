@@ -63,6 +63,45 @@ async function connectDataSource(
   }
 }
 
+async function deleteDataSource(
+  dataSourceId: string,
+  workspaceId: string,
+): Promise<void> {
+  const isMock = import.meta.env.VITE_WS_MOCK === 'true'
+
+  if (isMock) {
+    await new Promise((resolve) => setTimeout(resolve, 800))
+    const list = mockDataSources.get(workspaceId)
+    if (list) {
+      const filtered = list.filter((s) => s.id !== dataSourceId)
+      mockDataSources.set(workspaceId, filtered)
+    }
+    return
+  }
+
+  try {
+    await dataSourceApi.deleteDataSource(dataSourceId)
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+
+      if (status === 401) {
+        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
+      }
+
+      if (status === 403) {
+        throw new Error('데이터 소스 삭제 권한이 없습니다.')
+      }
+
+      if (status === 404) {
+        throw new Error('삭제할 데이터 소스를 찾을 수 없습니다.')
+      }
+    }
+
+    throw new Error('데이터 소스 삭제에 실패했습니다.')
+  }
+}
+
 async function fetchDataSources(workspaceId: string): Promise<DataSourceItem[]> {
   const isMock = import.meta.env.VITE_WS_MOCK === 'true'
 
@@ -80,5 +119,6 @@ async function fetchDataSources(workspaceId: string): Promise<DataSourceItem[]> 
 
 export const dataSourceService = {
   connectDataSource,
+  deleteDataSource,
   fetchDataSources,
 }

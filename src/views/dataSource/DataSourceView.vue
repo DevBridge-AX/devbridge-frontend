@@ -20,6 +20,8 @@ const docDescription = ref('')
 const isDragActive = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
 
+const deletingSourceId = ref<string | null>(null)
+
 const feedbackType = ref<'success' | 'error' | null>(null)
 const feedbackMessage = ref('')
 
@@ -180,6 +182,29 @@ function clearFeedback() {
   feedbackMessage.value = ''
 }
 
+async function handleDeleteSource(source: DataSourceItem) {
+  if (deletingSourceId.value) return
+
+  const confirmed = window.confirm(
+    `"${source.sourceName}" 데이터 소스를 삭제하시겠습니까?`,
+  )
+  if (!confirmed) return
+
+  deletingSourceId.value = source.id
+  clearFeedback()
+
+  try {
+    await dataSourceService.deleteDataSource(source.id, workspaceId.value)
+    showFeedback('success', `데이터 소스(${source.sourceName})가 삭제되었습니다.`)
+    await fetchSources()
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : '데이터 소스 삭제에 실패했습니다.'
+    showFeedback('error', msg)
+  } finally {
+    deletingSourceId.value = null
+  }
+}
+
 onMounted(() => {
   void fetchSources()
 })
@@ -251,7 +276,7 @@ onMounted(() => {
                   ref="fileInput"
                   type="file"
                   style="display: none;"
-                  accept=".pdf,.docx,.txt,.csv,.xlsx,.pptx"
+                  accept=".pdf,.docx,.txt,.csv,.xlsx,.pptx,.md"
                   @change="onFileSelect"
                 />
                 <div class="drag-drop-icon">📁</div>
@@ -312,10 +337,24 @@ onMounted(() => {
                 </div>
               </div>
 
-              <!-- Status Badge -->
-              <span class="status-badge" :class="[source.status.toLowerCase()]">
-                {{ source.status === 'indexed' ? 'Indexed' : source.status === 'pending' ? 'Pending' : 'Failed' }}
-              </span>
+              <div class="source-actions">
+                <span class="status-badge" :class="[source.status.toLowerCase()]">
+                  {{ source.status === 'CONNECTED' ? 'Connected' : source.status === 'PENDING' ? 'Pending' : 'Failed' }}
+                </span>
+                <button
+                  v-if="source.status === 'FAILED'"
+                  type="button"
+                  class="source-delete-btn"
+                  :disabled="deletingSourceId === source.id"
+                  aria-label="데이터 소스 삭제"
+                  @click="handleDeleteSource(source)"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6" />
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  </svg>
+                </button>
+              </div>
             </article>
           </div>
         </div>

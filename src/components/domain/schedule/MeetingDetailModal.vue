@@ -362,10 +362,21 @@ function handleOpenResponse(meetingId: string): void {
           </button>
         </template>
 
-        <!-- SELECTING: 후보 시간 목록 -->
+        <!-- SELECTING: 참석자 응답 현황 + 후보 시간 목록 -->
         <template v-else-if="meeting.status === 'SELECTING'">
-          <p class="status-message">시간 조율 중입니다.</p>
-          <h4 class="section-title">후보 시간</h4>
+          <h4 class="section-title">참석자 응답 현황</h4>
+          <ul v-if="meeting.participants.length > 0" class="participant-list">
+            <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
+              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
+              <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
+              <span class="participant-badge" :class="PARTICIPANT_STATUS_BADGE_CLASSES[p.status]">
+                {{ PARTICIPANT_STATUS_LABELS[p.status] }}
+              </span>
+            </li>
+          </ul>
+          <p v-else class="empty-state">참석자가 없습니다.</p>
+
+          <h4 class="section-title section-title--spaced">후보 시간</h4>
           <ul v-if="meeting.topCandidateTimes.length > 0" class="candidate-list">
             <li v-for="(slot, index) in meeting.topCandidateTimes" :key="index" class="candidate-item">
               {{ formatTimeRange(slot) }}
@@ -374,13 +385,22 @@ function handleOpenResponse(meetingId: string): void {
           <p v-else class="empty-state">아직 제안된 후보 시간이 없습니다.</p>
         </template>
 
-        <!-- CONFIRMED: 확정 일시 + 소요 시간 -->
+        <!-- CONFIRMED: 확정 일시 + 소요 시간 + 참석자 목록 -->
         <template v-else-if="meeting.status === 'CONFIRMED'">
           <div class="confirmed-box">
             <p class="confirmed-label">확정 일시</p>
             <p class="confirmed-time">{{ formatConfirmedRange(meeting) }}</p>
             <p class="confirmed-duration">소요 시간 {{ formatDuration(meeting.durationMinutes) }}</p>
           </div>
+
+          <h4 class="section-title section-title--spaced">참석자 목록</h4>
+          <ul v-if="meeting.participants.length > 0" class="participant-list">
+            <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
+              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
+              <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
+            </li>
+          </ul>
+          <p v-else class="empty-state">참석자가 없습니다.</p>
         </template>
 
         <!-- CANCELED -->
