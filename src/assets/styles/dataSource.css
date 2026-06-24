@@ -220,7 +220,8 @@
   text-transform: capitalize;
 }
 
-.status-badge.indexed {
+.status-badge.indexed,
+.status-badge.connected {
   background: #ecfdf5;
   color: #047857;
 }

@@ -339,10 +339,10 @@ onMounted(() => {
 
               <div class="source-actions">
                 <span class="status-badge" :class="[source.status.toLowerCase()]">
-                  {{ source.status === 'indexed' ? 'Indexed' : source.status === 'pending' ? 'Pending' : 'Failed' }}
+                  {{ source.status === 'CONNECTED' ? 'Connected' : source.status === 'PENDING' ? 'Pending' : 'Failed' }}
                 </span>
                 <button
-                  v-if="source.status === 'failed'"
+                  v-if="source.status === 'FAILED'"
                   type="button"
                   class="source-delete-btn"
                   :disabled="deletingSourceId === source.id"
