@@ -116,7 +116,9 @@ export const useChatStore = defineStore('chat', () => {
     isSearching.value = false
     isGenerating.value = false
 
-    const hasStreamedText = streamingMessage.value && streamingMessage.value.id === doneEvent.messageId
+    const hasStreamedText =
+      streamingMessage.value &&
+      streamingMessage.value.id === doneEvent.messageId
 
     if (hasStreamedText) {
       const citations: MessageCitation[] = doneEvent.citations.map((c) => ({
@@ -138,6 +140,7 @@ export const useChatStore = defineStore('chat', () => {
         citations,
       })
     } else if (doneEvent.needs_owner_confirmation) {
+      console.log(doneEvent)
       addMessage({
         id: doneEvent.messageId,
         role: 'assistant',
@@ -149,9 +152,12 @@ export const useChatStore = defineStore('chat', () => {
   function setOwnerConfirmation(event: OwnerConfirmationPayload): void {
     isSearching.value = false
     isGenerating.value = false
-    
+
     // 스트리밍 중이던 메시지가 있다면 먼저 저장
-    if (streamingMessage.value && streamingMessage.value.id === event.messageId) {
+    if (
+      streamingMessage.value &&
+      streamingMessage.value.id === event.messageId
+    ) {
       addMessage({
         id: streamingMessage.value.id,
         role: 'assistant',
@@ -172,7 +178,10 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   function receiveOwnerAnswer(event: OwnerAnswerPayload): void {
-    const ownerName = event.ownerName || messageOwnerMap.value[event.originalMessageId] || '담당자'
+    const ownerName =
+      event.ownerName ||
+      messageOwnerMap.value[event.originalMessageId] ||
+      '담당자'
 
     addMessage({
       id: `${event.originalMessageId}-answer`,
@@ -195,7 +204,7 @@ export const useChatStore = defineStore('chat', () => {
     isSearching.value = false
     isGenerating.value = false
     streamingMessage.value = null
-    
+
     addMessage({
       id: messageId,
       role: 'assistant',

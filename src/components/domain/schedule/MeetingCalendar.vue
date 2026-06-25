@@ -199,183 +199,78 @@ function handleSelectMeeting(meetingId: string): void {
 </template>
 
 <style scoped>
-.meeting-calendar {
-  width: 100%;
-}
+/* ══ Calendar — Light Dashboard Unified ══ */
+.meeting-calendar { width: 100%; }
 
-/* ── 헤더 ──────────────────────────────────────────────────────────── */
-.calendar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.calendar-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f0eeff;
-  margin: 0;
-}
-
-.calendar-nav {
-  display: flex;
-  gap: 8px;
-}
-
+/* ── Header ──────────────────────────────────────────────────── */
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.calendar-title { font-size: 22px; font-weight: 800; color: var(--text-body, #1B2031); margin: 0; }
+.calendar-nav { display: flex; gap: 8px; }
 .nav-btn {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(240, 238, 255, 0.7);
-  font-family: inherit;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  height: 36px; padding: 0 14px; border-radius: 10px;
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600; cursor: pointer;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-secondary, #6B7191);
+  transition: all .12s;
 }
+.nav-btn:hover:not(:disabled) { border-color: var(--brand-indigo, #5B52E3); color: var(--brand-indigo, #5B52E3); background: var(--brand-light, #F0F2FE); }
+.nav-btn--today { color: var(--brand-indigo, #5B52E3); border-color: rgba(91,82,227,.2); font-weight: 700; }
+.nav-btn--today:hover:not(:disabled) { background: var(--brand-indigo, #5B52E3); color: #fff; border-color: var(--brand-indigo, #5B52E3); }
+.nav-btn:disabled { opacity: .4; cursor: not-allowed; }
 
-.nav-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
-}
-
-.nav-btn--today {
-  border-color: rgba(164, 147, 232, 0.2);
-  color: #a493e8;
-}
-
-.nav-btn--today:hover:not(:disabled) {
-  background: rgba(164, 147, 232, 0.2);
-  border-color: #a493e8;
-  color: #fff;
-}
-
-.nav-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* ── 그리드 ────────────────────────────────────────────────────────── */
+/* ── Grid ────────────────────────────────────────────────────── */
 .calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  border: 1px solid rgba(164, 147, 232, 0.12);
-  border-radius: 12px;
-  overflow: hidden;
+  display: grid; grid-template-columns: repeat(7, 1fr);
+  border: 1px solid var(--card-border, #E8EAF2);
+  border-radius: 12px; overflow: hidden;
 }
-
 .weekday-cell {
-  padding: 10px 0;
-  text-align: center;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  color: rgba(164, 147, 232, 0.65);
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(164, 147, 232, 0.12);
+  padding: 12px 0; text-align: center;
+  font-size: 13px; font-weight: 700; letter-spacing: .3px;
+  color: var(--text-secondary, #6B7191);
+  background: var(--page-bg, #F6F7FB);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
 }
+.weekday-cell:nth-child(7n+1) { color: #E8526B; }
+.weekday-cell:nth-child(7n) { color: var(--brand-indigo, #5B52E3); }
 
-/* 일요일(첫 컬럼) / 토요일(마지막 컬럼) 강조 */
-.calendar-grid > *:nth-child(7n + 1) {
-  color: #f56565;
-}
-.weekday-cell:nth-child(7n + 1) {
-  color: #f56565;
-}
-.weekday-cell:nth-child(7n) {
-  color: #6fa8f5;
-}
-
-/* ── 날짜 셀 ───────────────────────────────────────────────────────── */
+/* ── Day Cells ────────────────────────────────────────────────── */
 .day-cell {
-  height: 96px;
-  padding: 6px;
-  border-right: 1px solid rgba(164, 147, 232, 0.08);
-  border-bottom: 1px solid rgba(164, 147, 232, 0.08);
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  overflow: hidden;
+  min-height: 96px; padding: 8px 10px;
+  border-right: 1px solid var(--card-border, #E8EAF2);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
+  display: flex; flex-direction: column; gap: 4px; overflow: hidden;
+  transition: background .1s;
 }
-
-.calendar-grid > .day-cell:nth-child(7n) {
-  border-right: none;
-}
+.day-cell:hover { background: var(--brand-light, #F0F2FE); }
+.calendar-grid > .day-cell:nth-child(7n) { border-right: none; }
+.day-cell--muted { background: rgba(246,247,251,.5); }
+.day-cell--muted:hover { background: #f0f1f6; }
 
 .day-number {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(240, 238, 255, 0.75);
+  font-size: 14px; font-weight: 600;
+  color: var(--text-body, #1B2031); line-height: 1;
 }
-
-.day-cell--muted .day-number {
-  color: rgba(240, 238, 255, 0.25);
-}
-
-.day-cell--today {
-  background: rgba(164, 147, 232, 0.07);
-}
-
+.day-cell--muted .day-number { color: var(--text-light, #9AA0BD); }
+.day-cell--today { background: rgba(91,82,227,.04); }
 .day-cell--today .day-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background: #a493e8;
-  color: #fff;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--brand-indigo, #5B52E3); color: #fff;
+  font-weight: 800;
 }
 
-/* ── 회의 태그 ─────────────────────────────────────────────────────── */
-.meeting-tags {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: hidden;
-}
-
+/* ── Meeting Tags ──────────────────────────────────────────────── */
+.meeting-tags { display: flex; flex-direction: column; gap: 3px; overflow: hidden; }
 .meeting-tag {
-  display: block;
-  width: 100%;
-  padding: 2px 6px;
-  border: none;
-  border-radius: 4px;
-  background: rgba(164, 147, 232, 0.18);
-  color: #c9bcf5;
-  font-size: 11px;
-  font-weight: 500;
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  transition: background-color 0.2s, color 0.2s;
+  display: block; width: 100%; padding: 3px 7px; border: 0;
+  border-radius: 6px; font-family: var(--font-mono); font-size: 10px; font-weight: 600;
+  background: var(--brand-light, #F0F2FE); color: var(--brand-chip-text, #4960CD);
+  text-align: left; cursor: pointer; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; transition: all .12s;
 }
+.meeting-tag:hover:not(.meeting-tag--more) { background: var(--brand-indigo, #5B52E3); color: #fff; }
+.meeting-tag--more { background: transparent; color: var(--text-light, #9AA0BD); cursor: default; text-align: center; font-weight: 700; }
 
-.meeting-tag:hover:not(.meeting-tag--more) {
-  background: #a493e8;
-  color: #fff;
-}
-
-.meeting-tag--more {
-  background: transparent;
-  color: rgba(164, 147, 232, 0.55);
-  cursor: default;
-  text-align: center;
-}
-
-/* ── 반응형 ────────────────────────────────────────────────────────── */
-@media (max-width: 560px) {
-  .day-cell {
-    height: 64px;
-  }
-  .meeting-tag {
-    font-size: 10px;
-  }
-}
+@media (max-width:560px) { .day-cell { min-height: 64px; } .meeting-tag { font-size: 9px; } }
 </style>

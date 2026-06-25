@@ -2,544 +2,255 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { authService } from '@/services/authService'
+import BrandLogo from '@/components/common/BrandLogo.vue'
 
 const router = useRouter()
 
-// ─── 폼 필드 ──────────────────────────────────────────────────────────────
 const employeeId = ref('')
 const password = ref('')
-
-// ─── UI 상태 ──────────────────────────────────────────────────────────────
 const isLoading = ref(false)
 const loginStatus = ref<'idle' | 'error'>('idle')
 const errorMessage = ref('')
 
-// ─── 로그인 핸들러 ────────────────────────────────────────────────────────
 async function handleLogin(): Promise<void> {
   if (!employeeId.value.trim() || !password.value) return
-
   isLoading.value = true
   loginStatus.value = 'idle'
   errorMessage.value = ''
 
   const loginResult = await authService.executeLogin(
-    employeeId.value.trim(),
-    password.value,
+    employeeId.value.trim(), password.value,
   )
-
   if (loginResult.success) {
-    if (loginResult.lastWorkspaceId) {
-      await router.push(`/workspaces/${loginResult.lastWorkspaceId}/dashboard`)
-    } else {
-      await router.push('/workspace')
-    }
+    await router.push(loginResult.lastWorkspaceId
+      ? `/workspaces/${loginResult.lastWorkspaceId}/dashboard`
+      : '/workspace')
   } else {
     loginStatus.value = 'error'
     errorMessage.value = '사번 또는 비밀번호가 일치하지 않습니다.'
     password.value = ''
   }
-
   isLoading.value = false
 }
 </script>
 
 <template>
   <div class="login-page">
-    <!-- 배경 장식 -->
-    <div class="bg-orb bg-orb--1" />
-    <div class="bg-orb bg-orb--2" />
-    <div class="bg-orb bg-orb--3" />
-
-    <div class="login-card">
-      <!-- 헤더 -->
-      <div class="card-header">
-        <div class="logo-mark">
-          <span class="logo-icon">⬡</span>
-        </div>
-        <h1 class="card-title">DevBridge AX</h1>
-        <p class="card-subtitle">기업 지식 동기화 플랫폼</p>
+    <!-- ══ LEFT: Branding Panel ══ -->
+    <section class="login-brand">
+      <div class="brand-top">
+        <BrandLogo variant="dark" size="md" show-subtitle />
       </div>
 
-      <!-- 로그인 폼 -->
-      <form class="login-form" @submit.prevent="handleLogin">
-        <!-- 사번 입력 -->
-        <div class="field">
-          <label class="field-label" for="employeeId">사번</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <rect x="2" y="7" width="20" height="14" rx="2" />
-                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
-              </svg>
-            </span>
-            <input
-              id="employeeId"
-              v-model="employeeId"
-              type="text"
-              class="field-input"
-              placeholder="사번을 입력하세요"
-              :disabled="isLoading"
-              autocomplete="username"
-            />
+      <div class="brand-body">
+        <div class="brand-pills">
+          <span class="brand-pill">Enterprise Knowledge OS</span>
+          <span class="brand-pill brand-pill--green">실시간 동기화</span>
+        </div>
+        <h1 class="brand-headline">문서 · Git · AI 분석을<br>하나의 업무 흐름으로.</h1>
+        <p class="brand-desc">DevBridge AX는 흩어진 프로젝트 지식을 RAG 지식베이스로 동기화하고, 업무·일정·산출물을 한 곳에서 추적하는 기업용 협업 플랫폼입니다.</p>
+      </div>
+
+      <div class="brand-metrics">
+        <div class="brand-metric"><span class="metric-num">48</span><span class="metric-lbl">완성 업무</span></div>
+        <div class="metric-divider" />
+        <div class="brand-metric"><span class="metric-num">6</span><span class="metric-lbl">지식 소스</span></div>
+        <div class="metric-divider" />
+        <div class="brand-metric"><span class="metric-num">8</span><span class="metric-lbl">팀 멤버</span></div>
+      </div>
+
+      <p class="brand-footer">&copy; 2026 DevBridge AX · 사내 인증 전용</p>
+    </section>
+
+    <!-- ══ RIGHT: Login Form ══ -->
+    <main class="login-form-panel">
+      <div class="form-block">
+        <BrandLogo variant="light" size="lg" compact />
+        <h1 class="form-title">다시 오신 것을 환영합니다</h1>
+        <p class="form-subtitle">사번과 비밀번호로 로그인하세요.</p>
+
+        <form class="login-form" @submit.prevent="handleLogin">
+          <div class="field">
+            <div class="field-label-row">
+              <label class="field-label" for="employeeId">사번</label>
+            </div>
+            <div class="input-wrap">
+              <span class="input-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+              </span>
+              <input id="employeeId" v-model="employeeId" type="text" class="form-input" placeholder="사번을 입력하세요" :disabled="isLoading" autocomplete="username" />
+            </div>
           </div>
-        </div>
 
-        <!-- 비밀번호 입력 -->
-        <div class="field">
-          <label class="field-label" for="password">비밀번호</label>
-          <div class="input-wrapper">
-            <span class="input-icon">
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-              >
-                <rect x="3" y="11" width="18" height="11" rx="2" />
-                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-              </svg>
-            </span>
-            <input
-              id="password"
-              v-model="password"
-              type="password"
-              class="field-input"
-              placeholder="비밀번호"
-              :disabled="isLoading"
-              autocomplete="current-password"
-            />
+          <div class="field">
+            <div class="field-label-row">
+              <label class="field-label" for="password">비밀번호</label>
+              <span class="forgot-link">비밀번호 찾기</span>
+            </div>
+            <div class="input-wrap">
+              <span class="input-ico">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              </span>
+              <input id="password" v-model="password" type="password" class="form-input" placeholder="비밀번호" :disabled="isLoading" autocomplete="current-password" />
+            </div>
           </div>
-        </div>
 
-        <!-- 에러 메시지 -->
-        <div v-if="loginStatus === 'error'" class="error-banner">
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2.5"
-          >
-            <circle cx="12" cy="12" r="10" />
-            <line x1="12" y1="8" x2="12" y2="12" />
-            <line x1="12" y1="16" x2="12.01" y2="16" />
-          </svg>
-          {{ errorMessage }}
-        </div>
+          <div v-if="loginStatus === 'error'" class="form-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            {{ errorMessage }}
+          </div>
 
-        <!-- 로그인 버튼 -->
-        <button
-          id="login-submit-btn"
-          type="submit"
-          class="submit-btn"
-          :disabled="isLoading || !employeeId.trim() || !password"
-        >
-          <span v-if="isLoading" class="spinner" />
-          <span v-else>로그인</span>
-        </button>
+          <button id="login-submit-btn" type="submit" class="login-btn" :disabled="isLoading || !employeeId.trim() || !password">
+            <span v-if="isLoading" class="spinner" />
+            <span v-else>로그인</span>
+          </button>
 
-        <!-- 하단 링크 -->
-        <div class="footer-links">
-          <span class="footer-text">계정이 없으신가요?</span>
-          <RouterLink id="signup-link" to="/signup" class="signup-link"
-            >회원가입</RouterLink
-          >
-        </div>
-      </form>
-    </div>
+          <div class="divider"><span>또는</span></div>
+
+          <button type="button" class="sso-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            SSO 사내 계정으로 계속하기
+          </button>
+
+          <div class="signup-row">
+            <span class="signup-text">계정이 없으신가요?</span>
+            <RouterLink id="signup-link" to="/signup" class="signup-link">회원가입</RouterLink>
+          </div>
+        </form>
+      </div>
+    </main>
   </div>
 </template>
 
 <style scoped>
-/* ── 레이아웃 ──────────────────────────────────────────────────────── */
+/* ══ Login — Split Layout (Dashboard Unified) ══ */
 .login-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0d0d12;
-  position: relative;
-  overflow: hidden;
-  padding: 24px 16px;
-  font-family:
-    'Inter',
-    'Pretendard',
-    -apple-system,
-    BlinkMacSystemFont,
-    sans-serif;
+  min-height: 100vh; display: grid;
+  grid-template-columns: 45% 55%;
 }
 
-/* 배경 장식 구체 */
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(90px);
-  pointer-events: none;
-  animation: float 8s ease-in-out infinite;
-}
-.bg-orb--1 {
-  width: 500px;
-  height: 500px;
-  top: -160px;
-  right: -120px;
-  background: radial-gradient(
-    circle,
-    rgba(164, 147, 232, 0.22) 0%,
-    transparent 65%
-  );
-  animation-delay: 0s;
-}
-.bg-orb--2 {
-  width: 400px;
-  height: 400px;
-  bottom: -100px;
-  left: -100px;
-  background: radial-gradient(
-    circle,
-    rgba(100, 80, 200, 0.18) 0%,
-    transparent 65%
-  );
-  animation-delay: -3s;
-}
-.bg-orb--3 {
-  width: 280px;
-  height: 280px;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: radial-gradient(
-    circle,
-    rgba(164, 147, 232, 0.06) 0%,
-    transparent 70%
-  );
-  animation-delay: -6s;
-}
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-20px);
-  }
-}
-.bg-orb--3 {
-  animation: float3 8s ease-in-out infinite;
-  animation-delay: -6s;
-}
-@keyframes float3 {
-  0%,
-  100% {
-    transform: translate(-50%, -50%) scale(1);
-  }
-  50% {
-    transform: translate(-50%, calc(-50% - 12px)) scale(1.04);
-  }
-}
-
-/* ── 카드 ──────────────────────────────────────────────────────────── */
-.login-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 420px;
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(164, 147, 232, 0.16);
-  border-radius: 24px;
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
-  padding: 44px 40px 40px;
-  box-shadow:
-    0 0 0 1px rgba(164, 147, 232, 0.07),
-    0 32px 80px rgba(0, 0, 0, 0.55),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  animation: card-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes card-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-/* ── 헤더 ──────────────────────────────────────────────────────────── */
-.card-header {
-  text-align: center;
-  margin-bottom: 36px;
-}
-.logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  margin-bottom: 18px;
-  box-shadow:
-    0 8px 28px rgba(164, 147, 232, 0.38),
-    0 0 0 1px rgba(164, 147, 232, 0.2);
-  animation: logo-pulse 3s ease-in-out infinite;
-}
-@keyframes logo-pulse {
-  0%,
-  100% {
-    box-shadow:
-      0 8px 28px rgba(164, 147, 232, 0.38),
-      0 0 0 1px rgba(164, 147, 232, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 8px 40px rgba(164, 147, 232, 0.55),
-      0 0 0 1px rgba(164, 147, 232, 0.35);
-  }
-}
-.logo-icon {
-  font-size: 26px;
+/* ══ LEFT: Branding Panel ══ */
+.login-brand {
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 56px 48px; gap: 32px;
+  background: linear-gradient(145deg, #121831 0%, #1F2648 55%, #2A305C 100%);
   color: #fff;
-  line-height: 1;
 }
-.card-title {
-  font-size: 24px;
-  font-weight: 700;
-  color: #f0eeff;
-  margin: 0 0 6px;
-  letter-spacing: -0.4px;
+.brand-top { display: flex; align-items: center; gap: 14px; }
+.brand-logo {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: var(--brand-gradient, linear-gradient(135deg,#6C63FF,#5B52E3));
+  display: grid; place-items: center; flex-shrink: 0;
 }
-.card-subtitle {
-  font-size: 13px;
-  color: rgba(164, 147, 232, 0.6);
-  margin: 0;
-  letter-spacing: 0.1px;
+.brand-logo svg { width: 20px; height: 20px; }
+.brand-top strong { font-size: 16px; font-weight: 700; display: block; }
+.brand-top small { font-size: 11px; color: rgba(255,255,255,.5); }
+
+.brand-body { display: flex; flex-direction: column; gap: 14px; }
+.brand-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.brand-pill {
+  display: inline-flex; padding: 3px 10px; border-radius: 999px;
+  font-size: 10px; font-weight: 600;
+  background: rgba(255,255,255,.08); color: rgba(255,255,255,.6);
+}
+.brand-pill--green { background: rgba(52,199,89,.15); color: #34C759; }
+
+.brand-headline {
+  font-size: 34px; font-weight: 800; line-height: 1.25;
+  margin: 0; letter-spacing: -.03em;
+}
+.brand-desc {
+  font-size: 14px; line-height: 1.7; color: rgba(255,255,255,.55);
+  max-width: 520px; margin: 0;
 }
 
-/* ── 폼 ────────────────────────────────────────────────────────────── */
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.brand-metrics { display: flex; align-items: center; gap: 24px; }
+.brand-metric { display: flex; flex-direction: column; gap: 2px; }
+.metric-num { font-family: var(--font-mono); font-size: 26px; font-weight: 600; color: #fff; }
+.metric-lbl { font-size: 11px; color: rgba(255,255,255,.4); }
+.metric-divider { width: 1px; height: 32px; background: rgba(255,255,255,.1); }
+
+.brand-footer { font-size: 11px; color: rgba(255,255,255,.25); margin: 0; }
+
+/* ══ RIGHT: Login Form ══ */
+.login-form-panel {
+  display: flex; align-items: center; justify-content: center;
+  padding: 40px; background: var(--page-bg, #F6F7FB);
+}
+.form-block { width: 100%; max-width: 400px; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.form-icon {
+  width: 56px; height: 56px; border-radius: 14px;
+  background: var(--brand-gradient, linear-gradient(135deg,#6C63FF,#5B52E3));
+  color: #fff; display: grid; place-items: center;
+  box-shadow: 0 6px 20px rgba(91,82,227,.25);
+}
+.form-icon svg { width: 26px; height: 26px; }
+.form-title { font-size: 22px; font-weight: 800; color: var(--text-body, #1B2031); margin: 0; text-align: center; }
+.form-subtitle { font-size: 14px; color: var(--text-secondary, #6B7191); margin: 0; text-align: center; }
+
+.login-form { width: 100%; display: flex; flex-direction: column; gap: 16px; }
+.field { display: flex; flex-direction: column; gap: 6px; }
+.field-label-row { display: flex; justify-content: space-between; align-items: center; }
+.field-label { font-size: 13px; font-weight: 600; color: var(--text-body, #1B2031); }
+.forgot-link { font-size: 12px; color: var(--brand-indigo, #5B52E3); cursor: pointer; font-weight: 500; }
+.forgot-link:hover { text-decoration: underline; }
+
+.input-wrap { position: relative; display: flex; align-items: center; }
+.input-ico {
+  position: absolute; left: 14px; color: var(--text-light, #9AA0BD);
+  display: flex; align-items: center; pointer-events: none;
+}
+.input-ico svg { width: 18px; height: 18px; }
+.form-input {
+  width: 100%; height: 50px; padding: 0 14px 0 44px;
+  border-radius: 12px; border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 14px; outline: none;
+  transition: border-color .15s, box-shadow .15s; box-sizing: border-box;
+}
+.form-input::placeholder { color: var(--text-light, #9AA0BD); }
+.form-input:focus { border-color: var(--brand-indigo, #5B52E3); box-shadow: 0 0 0 3px rgba(91,82,227,.1); }
+.form-input:disabled { opacity: .5; cursor: not-allowed; }
+
+.form-error {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 9px;
+  background: var(--danger-bg, #FBF0F0); color: var(--danger-text, #D45D5D);
+  font-size: 13px; font-weight: 500;
 }
 
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
+.login-btn {
+  width: 100%; height: 50px; border-radius: 12px; border: 0;
+  background: var(--brand-indigo, #5B52E3); color: #fff;
+  font-family: var(--font-ui); font-size: 15px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .15s; box-shadow: 0 4px 16px rgba(91,82,227,.25);
 }
-.field-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(240, 238, 255, 0.55);
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-}
+.login-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(91,82,227,.35); }
+.login-btn:active:not(:disabled) { transform: translateY(0); }
+.login-btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
 
-/* ── 입력 필드 ─────────────────────────────────────────────────────── */
-.input-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-.input-icon {
-  position: absolute;
-  left: 14px;
-  color: rgba(164, 147, 232, 0.45);
-  display: flex;
-  align-items: center;
-  pointer-events: none;
-  transition: color 0.2s ease;
-}
-.field-input {
-  width: 100%;
-  height: 46px;
-  padding: 0 14px 0 42px;
-  border-radius: 11px;
-  border: 1px solid rgba(164, 147, 232, 0.18);
-  background: rgba(255, 255, 255, 0.04);
-  color: #f0eeff;
-  font-size: 14px;
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-}
-.field-input::placeholder {
-  color: rgba(164, 147, 232, 0.3);
-}
-.field-input:focus {
-  border-color: #a493e8;
-  background: rgba(164, 147, 232, 0.07);
-  box-shadow: 0 0 0 3px rgba(164, 147, 232, 0.14);
-}
-.field-input:focus + .input-icon,
-.input-wrapper:focus-within .input-icon {
-  color: #a493e8;
-}
-.field-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.divider { display: flex; align-items: center; gap: 12px; color: var(--text-light, #9AA0BD); font-size: 12px; }
+.divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--card-border, #E8EAF2); }
 
-/* ── 에러 배너 ─────────────────────────────────────────────────────── */
-.error-banner {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  border-radius: 9px;
-  background: rgba(245, 101, 101, 0.1);
-  border: 1px solid rgba(245, 101, 101, 0.22);
-  color: #f56565;
-  font-size: 13px;
-  font-weight: 500;
-  animation: shake 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+.sso-btn {
+  width: 100%; height: 48px; border-radius: 12px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 14px; font-weight: 500; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .12s;
 }
-@keyframes shake {
-  10%,
-  90% {
-    transform: translateX(-2px);
-  }
-  20%,
-  80% {
-    transform: translateX(3px);
-  }
-  30%,
-  50%,
-  70% {
-    transform: translateX(-3px);
-  }
-  40%,
-  60% {
-    transform: translateX(3px);
-  }
-}
+.sso-btn:hover { border-color: var(--brand-indigo, #5B52E3); color: var(--brand-indigo, #5B52E3); }
 
-/* ── 제출 버튼 ─────────────────────────────────────────────────────── */
-.submit-btn {
-  width: 100%;
-  height: 50px;
-  border-radius: 13px;
-  border: none;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.3px;
-  cursor: pointer;
-  margin-top: 4px;
-  transition:
-    opacity 0.2s ease,
-    transform 0.15s ease,
-    box-shadow 0.2s ease;
-  box-shadow: 0 6px 22px rgba(164, 147, 232, 0.32);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  font-family: inherit;
-  position: relative;
-  overflow: hidden;
-}
-.submit-btn::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.12) 0%,
-    transparent 60%
-  );
-  pointer-events: none;
-}
-.submit-btn:hover:not(:disabled) {
-  opacity: 0.92;
-  transform: translateY(-2px);
-  box-shadow: 0 12px 32px rgba(164, 147, 232, 0.42);
-}
-.submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 4px 12px rgba(164, 147, 232, 0.25);
-}
-.submit-btn:disabled {
-  opacity: 0.32;
-  cursor: not-allowed;
-  box-shadow: none;
-}
+.signup-row { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.signup-text { font-size: 13px; color: var(--text-secondary, #6B7191); }
+.signup-link { font-size: 13px; font-weight: 600; color: var(--brand-indigo, #5B52E3); text-decoration: none; }
+.signup-link:hover { text-decoration: underline; }
 
-/* ── 하단 링크 ─────────────────────────────────────────────────────── */
-.footer-links {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 4px;
-}
-.footer-text {
-  font-size: 13px;
-  color: rgba(240, 238, 255, 0.38);
-}
-.signup-link {
-  font-size: 13px;
-  font-weight: 600;
-  color: #a493e8;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  position: relative;
-}
-.signup-link::after {
-  content: '';
-  position: absolute;
-  bottom: -1px;
-  left: 0;
-  width: 0;
-  height: 1px;
-  background: #a493e8;
-  transition: width 0.2s ease;
-}
-.signup-link:hover {
-  color: #c4b8f4;
-}
-.signup-link:hover::after {
-  width: 100%;
-}
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .65s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── 스피너 ────────────────────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.65s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* ── 반응형 ────────────────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .login-card {
-    padding: 32px 24px 28px;
-    border-radius: 18px;
-  }
-}
+@media (max-width:900px) { .login-page { grid-template-columns: 1fr; } .login-brand { min-height: 300px; padding: 32px 28px; gap: 20px; } .brand-headline { font-size: 28px; } }
+@media (max-width:500px) { .form-block { gap: 16px; } .login-form-panel { padding: 24px 16px; } .form-title { font-size: 18px; } }
 </style>

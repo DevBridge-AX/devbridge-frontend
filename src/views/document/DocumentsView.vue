@@ -529,357 +529,475 @@ watch(
 
 <template>
   <AppLayout>
-    <main class="documents-page-shell">
-      <section class="documents-page">
-        <header class="documents-hero">
-          <div>
-            <p class="documents-eyebrow">Documents</p>
-            <h1>문서 관리</h1>
-            <p class="documents-description">
-              워크스페이스의 보고서, 회의록, 지침, 참고자료를 업로드하고
-              미리보기·다운로드·AI 분석 연결 상태를 관리합니다.
+    <div class="doc-shell">
+      <div class="doc">
+        <!-- ══ HERO ══ -->
+        <header class="doc-hero">
+          <div class="doc-hero-left">
+            <p class="doc-hero-lbl">Knowledge Documents</p>
+            <span class="doc-hero-status">AI 분석 연동</span>
+            <h1>
+              문서 {{ totalDocumentCount }}건 중 {{ analyzedDocumentCount }}건
+              분석 완료
+            </h1>
+            <p>
+              보고서·회의록·지침·참고자료를 업로드하면 미리보기·다운로드와 함께
+              AI 분석 연결 상태를 한 곳에서 관리할 수 있습니다.
             </p>
+            <div class="doc-hero-actions">
+              <button
+                type="button"
+                class="doc-hero-btn doc-hero-btn-pri"
+                @click="openUploadModal"
+              >
+                문서 업로드
+              </button>
+              <button
+                type="button"
+                class="doc-hero-btn doc-hero-btn-sec"
+                @click="goToDashboard"
+              >
+                대시보드로 이동
+              </button>
+            </div>
           </div>
-
-          <div class="documents-hero-actions">
-            <button
-              type="button"
-              class="documents-secondary-button"
-              @click="goToDashboard"
-            >
-              대시보드로 이동
-            </button>
-
-            <button
-              type="button"
-              class="documents-primary-button"
-              @click="fetchDocuments"
-            >
-              새로고침
-            </button>
+          <div class="doc-hero-right">
+            <p class="doc-hero-r-top">분석 상태</p>
+            <div class="doc-hero-r-body">
+              <div class="doc-hero-donut">
+                <svg viewBox="0 0 100 100">
+                  <circle class="doc-donut-track" cx="50" cy="50" r="38" />
+                  <circle class="doc-donut-fill" cx="50" cy="50" r="38" :stroke-dasharray="238.76" :stroke-dashoffset="238.76 - (totalDocumentCount > 0 ? (analyzedDocumentCount / totalDocumentCount) * 238.76 : 238.76)" />
+                </svg>
+                <div class="doc-donut-label">
+                  <div class="num">{{ totalDocumentCount > 0 ? Math.round((analyzedDocumentCount / totalDocumentCount) * 100) : 0 }}%</div>
+                  <div class="lbl">분석률</div>
+                </div>
+              </div>
+              <div class="doc-hero-lgd">
+                <div class="doc-lgd-row"><span class="doc-lgd-dot" style="background:#8B8FF8"></span><span class="lb">완료</span><span class="vl">{{ analyzedDocumentCount }}</span></div>
+                <div class="doc-lgd-row"><span class="doc-lgd-dot" style="background:rgba(255,255,255,.15)"></span><span class="lb">실패</span><span class="vl">{{ documents.filter(d => d.analysisStatus === 'FAILED').length }}</span></div>
+                <div class="doc-lgd-row"><span class="doc-lgd-dot" style="background:rgba(255,255,255,.08)"></span><span class="lb">대기</span><span class="vl">{{ pendingDocumentCount }}</span></div>
+              </div>
+            </div>
+            <div class="doc-hero-foot">{{ analyzedDocumentCount }} / {{ totalDocumentCount }} 문서 분석 완료</div>
           </div>
         </header>
 
-        <section class="documents-toolbar-card">
-          <div>
-            <p class="documents-eyebrow">Knowledge Documents</p>
-            <h2>문서 관리</h2>
-            <p>
-              프로젝트 지식 문서를 업로드하고, 미리보기·다운로드·수정·삭제할 수
-              있습니다.
-            </p>
+        <!-- ══ METRICS ══ -->
+        <section class="doc-metrics">
+          <div class="doc-metric">
+            <div class="doc-metric-hd">
+              <span class="lb">전체 문서</span
+              ><span class="ic"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                  />
+                  <polyline points="14 2 14 8 20 8" /></svg
+              ></span>
+            </div>
+            <div class="doc-metric-val">
+              <span class="n">{{ totalDocumentCount }}</span>
+            </div>
+            <div class="doc-metric-spark">
+              <svg viewBox="0 0 200 26">
+                <path
+                  d="M0 26 Q25 18 50 20 T100 12 T150 16 T200 10 L200 26Z"
+                  fill="var(--brand-light)"
+                />
+                <path
+                  d="M0 26 Q25 18 50 20 T100 12 T150 16 T200 10"
+                  fill="none"
+                  stroke="var(--brand-indigo)"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </div>
           </div>
-
-          <button
-            type="button"
-            class="documents-primary-button"
-            @click="openUploadModal"
-          >
-            문서 업로드
-          </button>
+          <div class="doc-metric">
+            <div class="doc-metric-hd">
+              <span class="lb">DOC Source</span
+              ><span class="ic"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+                  /></svg
+              ></span>
+            </div>
+            <div class="doc-metric-val">
+              <span class="n">{{ docSourceCount }}</span>
+            </div>
+            <div class="doc-metric-spark">
+              <svg viewBox="0 0 200 26">
+                <path
+                  d="M0 26 Q25 20 50 22 T100 16 T150 18 T200 14 L200 26Z"
+                  fill="var(--brand-light)"
+                />
+                <path
+                  d="M0 26 Q25 20 50 22 T100 16 T150 18 T200 14"
+                  fill="none"
+                  stroke="var(--brand-indigo)"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </div>
+          </div>
+          <div class="doc-metric">
+            <div class="doc-metric-hd">
+              <span class="lb">분석 완료</span
+              ><span class="ic"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                  <polyline points="22 4 12 14.01 9 11.01" /></svg
+              ></span>
+            </div>
+            <div class="doc-metric-val">
+              <span class="n">{{ analyzedDocumentCount }}</span>
+            </div>
+            <div class="doc-metric-spark">
+              <svg viewBox="0 0 200 26">
+                <path
+                  d="M0 26 Q25 22 50 20 T100 12 T150 8 T200 6 L200 26Z"
+                  fill="var(--brand-light)"
+                />
+                <path
+                  d="M0 26 Q25 22 50 20 T100 12 T150 8 T200 6"
+                  fill="none"
+                  stroke="var(--brand-indigo)"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </div>
+          </div>
+          <div class="doc-metric">
+            <div class="doc-metric-hd">
+              <span class="lb">분석 대기</span
+              ><span class="ic"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <polyline points="12 6 12 12 16 14" /></svg
+              ></span>
+            </div>
+            <div class="doc-metric-val">
+              <span class="n">{{ pendingDocumentCount }}</span>
+            </div>
+            <div class="doc-metric-spark">
+              <svg viewBox="0 0 200 26">
+                <path
+                  d="M0 26 Q25 24 50 22 T100 24 T150 20 T200 18 L200 26Z"
+                  fill="var(--page-bg)"
+                />
+                <path
+                  d="M0 26 Q25 24 50 22 T100 24 T150 20 T200 18"
+                  fill="none"
+                  stroke="var(--text-light)"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </div>
+          </div>
+          <div class="doc-metric">
+            <div class="doc-metric-hd">
+              <span class="lb">분석 실패</span
+              ><span class="ic"
+                ><svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                >
+                  <path
+                    d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"
+                  />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" /></svg
+              ></span>
+            </div>
+            <div class="doc-metric-val">
+              <span class="n">{{
+                documents.filter((d) => d.analysisStatus === 'FAILED').length
+              }}</span>
+            </div>
+            <div class="doc-metric-spark">
+              <svg viewBox="0 0 200 26">
+                <path
+                  d="M0 26 Q25 24 50 26 T100 22 T150 24 T200 22 L200 26Z"
+                  fill="var(--danger-bg)"
+                />
+                <path
+                  d="M0 26 Q25 24 50 26 T100 22 T150 24 T200 22"
+                  fill="none"
+                  stroke="var(--danger-text)"
+                  stroke-width="1.5"
+                />
+              </svg>
+            </div>
+          </div>
         </section>
 
-        <section class="documents-summary-grid">
-          <article class="documents-summary-card">
-            <span>전체 문서</span>
-            <strong>{{ totalDocumentCount }}</strong>
-          </article>
-
-          <article class="documents-summary-card">
-            <span>DOC Source</span>
-            <strong>{{ docSourceCount }}</strong>
-          </article>
-
-          <article class="documents-summary-card">
-            <span>분석 완료</span>
-            <strong>{{ analyzedDocumentCount }}</strong>
-          </article>
-
-          <article class="documents-summary-card">
-            <span>분석 대기</span>
-            <strong>{{ pendingDocumentCount }}</strong>
-          </article>
-        </section>
-
-        <section class="knowledge-hub-tabs-card">
-          <div>
-            <p class="documents-eyebrow">Knowledge Hub</p>
-            <h2>프로젝트 지식 허브</h2>
-            <p>
-              문서, Git 변경사항, AI 분석 결과를 하나의 흐름으로 확인합니다.
-            </p>
-          </div>
-
-          <div class="knowledge-hub-tabs">
-            <button
-              v-for="tab in knowledgeTabs"
-              :key="tab.key"
-              type="button"
-              class="knowledge-hub-tab-button"
-              :class="{ active: activeKnowledgeTab === tab.key }"
-              @click="changeKnowledgeTab(tab.key)"
-            >
-              {{ tab.label }}
-            </button>
-          </div>
-        </section>
-
-        <section
-          v-if="activeKnowledgeTab === 'documents'"
-          class="documents-content-card"
-        >
-          <div class="documents-content-header">
+        <!-- ══ KNOWLEDGE HUB ══ -->
+        <section class="doc-tab-card">
+          <div class="doc-tab-hd">
             <div>
-              <h2>Document 목록</h2>
+              <h2>프로젝트 지식 허브</h2>
               <p>
-                현재 Workspace 기준으로 조회된 Knowledge Document입니다. 항목을
-                클릭하면 파일 정보, 미리보기, 다운로드, 분석 상태를 확인할 수
-                있습니다.
+                문서, Git 변경사항, AI 분석 결과를 하나의 흐름으로 확인합니다.
               </p>
             </div>
-
-            <span class="documents-count-badge">
-              {{ documents.length }}개 표시
-            </span>
-          </div>
-
-          <div v-if="isLoading" class="documents-state-box">
-            문서 목록을 불러오는 중입니다.
-          </div>
-
-          <div v-else-if="errorMessage" class="documents-state-box error">
-            {{ errorMessage }}
-          </div>
-
-          <div v-else-if="documents.length === 0" class="documents-state-box">
-            아직 연결된 문서가 없습니다. 상단의 문서 업로드 버튼으로 파일을
-            추가할 수 있습니다.
-          </div>
-
-          <div v-else class="documents-grid">
-            <article
-              v-for="document in documents"
-              :key="document.id"
-              class="document-card"
-              role="button"
-              tabindex="0"
-              @click="openDocumentDetail(document.id)"
-              @keydown.enter="openDocumentDetail(document.id)"
-            >
-              <div class="document-card-header">
-                <h3>{{ document.title }}</h3>
-                <span class="document-source-badge">
-                  {{ getDocumentTypeLabel(document.documentType) }}
-                </span>
+            <div class="doc-tab-hd-right">
+              <div class="doc-tab-filter">
+                <button
+                  v-for="tab in knowledgeTabs"
+                  :key="tab.key"
+                  type="button"
+                  :class="{ on: activeKnowledgeTab === tab.key }"
+                  @click="changeKnowledgeTab(tab.key)"
+                >
+                  {{ tab.label }}
+                </button>
               </div>
-
-              <p class="document-summary">
-                {{ buildSummaryText(document) }}
-              </p>
-
-              <dl class="document-meta">
-                <div>
-                  <span>File</span>
-                  <strong>{{ document.originalFileName || '미등록' }}</strong>
-                </div>
-                <div>
-                  <span>Analysis</span>
-                  <strong>{{
-                    getAnalysisStatusLabel(document.analysisStatus)
-                  }}</strong>
-                </div>
-                <div>
-                  <span>Uploader</span>
-                  <strong>{{ document.uploadedByName || '미지정' }}</strong>
-                </div>
-                <div>
-                  <span>Created</span>
-                  <strong>{{ formatDate(document.createdAt) }}</strong>
-                </div>
-              </dl>
-            </article>
-          </div>
-        </section>
-
-        <section
-          v-else-if="activeKnowledgeTab === 'git'"
-          class="documents-content-card"
-        >
-          <div class="documents-content-header">
-            <div>
-              <h2>Git Changes</h2>
-              <p>
-                현재 연결된 로컬 Git 저장소의 최근 commit 변경사항입니다. 이후
-                Task와 연결하여 작업별 변경 이력을 추적할 수 있습니다.
-              </p>
             </div>
-
-            <button
-              type="button"
-              class="documents-secondary-button"
-              :disabled="isGitLoading"
-              @click="fetchGitCommits"
-            >
-              {{ isGitLoading ? '불러오는 중...' : 'Git 새로고침' }}
-            </button>
           </div>
 
-          <div v-if="isGitLoading" class="documents-state-box">
-            Git 변경사항을 불러오는 중입니다.
-          </div>
-
-          <div v-else-if="gitErrorMessage" class="documents-state-box error">
-            {{ gitErrorMessage }}
-          </div>
-
-          <div v-else-if="gitCommits.length === 0" class="documents-state-box">
-            표시할 Git commit이 없습니다.
-          </div>
-
-          <div v-else class="git-commit-list">
-            <article
-              v-for="commit in gitCommits"
-              :key="commit.hash"
-              class="git-commit-card"
-            >
-              <div class="git-commit-main">
-                <span class="git-commit-hash">{{ commit.shortHash }}</span>
-                <h3>{{ commit.message }}</h3>
-                <p>
-                  {{ commit.authorName }}
-                  <span v-if="commit.authorEmail">
-                    · {{ commit.authorEmail }}
-                  </span>
+          <!-- Documents Tab -->
+          <div v-if="activeKnowledgeTab === 'documents'">
+            <div v-if="isLoading" class="doc-state">
+              문서 목록을 불러오는 중입니다.
+            </div>
+            <div v-else-if="errorMessage" class="doc-state error">
+              {{ errorMessage }}
+            </div>
+            <div v-else-if="documents.length === 0" class="doc-state">
+              등록된 문서가 없습니다. 문서를 업로드하면 AI 분석과 지식 검색에
+              활용됩니다.
+            </div>
+            <div v-else class="doc-grid">
+              <article
+                v-for="d in documents"
+                :key="d.id"
+                class="doc-item"
+                @click="openDocumentDetail(d.id)"
+              >
+                <div class="doc-item-hd">
+                  <h3>{{ d.title }}</h3>
+                  <span
+                    class="doc-tag"
+                    :class="(d.documentType || 'x').toLowerCase().slice(0, 4)"
+                    >{{ getDocumentTypeLabel(d.documentType) }}</span
+                  >
+                </div>
+                <p class="doc-summary">
+                  {{ buildSummaryText(d).slice(0, 120)
+                  }}{{ buildSummaryText(d).length > 120 ? '...' : '' }}
                 </p>
-              </div>
-
-              <div class="git-commit-meta">
-                <span>{{ commit.branchName }}</span>
-                <strong>{{ commit.committedAt }}</strong>
-              </div>
-            </article>
-          </div>
-        </section>
-
-        <section
-          v-else-if="activeKnowledgeTab === 'ai'"
-          class="documents-content-card"
-        >
-          <div class="documents-content-header">
-            <div>
-              <h2>AI Analysis</h2>
-              <p>
-                문서와 Git 변경사항을 기반으로 프로젝트 지식 요약, 관련 Task
-                추천, 변경 리스크 분석을 제공할 예정입니다.
-              </p>
+                <div class="doc-item-meta">
+                  <div>
+                    <span class="lbl">File</span
+                    ><span class="val">{{
+                      d.originalFileName || '미등록'
+                    }}</span>
+                  </div>
+                  <div>
+                    <span class="lbl">Uploader</span
+                    ><span class="val">{{ d.uploadedByName || '미지정' }}</span>
+                  </div>
+                  <div>
+                    <span class="lbl">Created</span
+                    ><span class="val">{{ formatDate(d.createdAt) }}</span>
+                  </div>
+                  <div>
+                    <span class="lbl">Analysis</span
+                    ><span
+                      class="val"
+                      :style="
+                        'color:' +
+                        (d.analysisStatus === 'COMPLETED'
+                          ? '#15803d'
+                          : d.analysisStatus === 'FAILED'
+                            ? 'var(--danger-text)'
+                            : 'var(--text-light)')
+                      "
+                      >{{ getAnalysisStatusLabel(d.analysisStatus) }}</span
+                    >
+                  </div>
+                </div>
+              </article>
             </div>
           </div>
 
-          <div class="ai-analysis-placeholder">
-            <p class="documents-eyebrow">Coming Next</p>
-            <h3>AI 기반 프로젝트 분석 영역</h3>
+          <!-- Git Tab -->
+          <div v-else-if="activeKnowledgeTab === 'git'">
+            <div class="doc-tab-hd" style="border-bottom: 0; padding-bottom: 0">
+              <p>현재 연결된 Git 저장소의 최근 commit 변경사항입니다.</p>
+              <button
+                type="button"
+                class="doc-hero-btn doc-hero-btn-sec"
+                style="
+                  color: var(--text-body);
+                  border-color: var(--card-border);
+                "
+                :disabled="isGitLoading"
+                @click="fetchGitCommits"
+              >
+                {{ isGitLoading ? '불러오는 중...' : 'Git 새로고침' }}
+              </button>
+            </div>
+            <div v-if="isGitLoading" class="doc-state">
+              Git 변경사항을 불러오는 중입니다.
+            </div>
+            <div v-else-if="gitErrorMessage" class="doc-state error">
+              {{ gitErrorMessage }}
+            </div>
+            <div v-else-if="gitCommits.length === 0" class="doc-state">
+              표시할 Git commit이 없습니다.
+            </div>
+            <div v-else class="doc-git-list">
+              <div v-for="c in gitCommits" :key="c.hash" class="doc-git-row">
+                <span class="doc-git-ico"
+                  ><svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                  >
+                    <circle cx="12" cy="12" r="4" />
+                    <line x1="1.05" y1="12" x2="7" y2="12" />
+                    <line x1="17.01" y1="12" x2="22.96" y2="12" /></svg
+                ></span>
+                <div class="doc-git-body">
+                  <strong>{{ c.message }}</strong>
+                  <div class="doc-git-meta">
+                    <span class="doc-git-hash">{{ c.shortHash }}</span>
+                    <span
+                      >{{ c.authorName
+                      }}{{ c.authorEmail ? ' · ' + c.authorEmail : '' }}</span
+                    >
+                    <span>· {{ c.branchName }}</span>
+                    <span>· {{ c.committedAt }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Tab -->
+          <div v-else-if="activeKnowledgeTab === 'ai'" class="doc-ai-box">
+            <h3>AI 기반 프로젝트 분석</h3>
             <p>
               이후 FastAPI와 Vector DB가 연결되면 문서 요약, 키워드 추출, 관련
               Task 추천, Git 변경사항 분석 결과가 이 영역에 표시됩니다.
             </p>
           </div>
         </section>
-      </section>
-    </main>
+      </div>
+    </div>
 
+    <!-- Upload Modal -->
     <Teleport to="body">
       <div
         v-if="isUploadModalOpen"
-        class="document-modal-overlay"
-        role="dialog"
-        aria-modal="true"
+        class="doc-overlay"
         @click.self="closeUploadModal"
       >
-        <section class="document-modal upload-modal">
-          <header class="document-modal-header">
-            <div>
-              <p class="documents-eyebrow">Upload Document</p>
-              <h2>문서 업로드</h2>
-              <p>파일을 선택하고 문서 유형과 설명을 입력합니다.</p>
-            </div>
-
+        <section class="doc-modal">
+          <header class="doc-modal-hd">
+            <h2>문서 업로드</h2>
             <button
               type="button"
-              class="document-modal-close"
-              aria-label="문서 업로드 닫기"
+              class="doc-modal-close"
               @click="closeUploadModal"
             >
-              ×
+              &times;
             </button>
           </header>
-
-          <div class="document-modal-body upload-modal-body">
-            <label class="documents-field upload-modal-field">
-              <span>문서 유형</span>
+          <div class="doc-modal-body">
+            <div class="doc-field">
+              <label>문서 유형</label>
               <select v-model="selectedDocumentType">
                 <option
-                  v-for="option in documentTypeOptions"
-                  :key="option.value"
-                  :value="option.value"
+                  v-for="o in documentTypeOptions"
+                  :key="o.value"
+                  :value="o.value"
                 >
-                  {{ option.label }}
+                  {{ o.label }}
                 </option>
               </select>
-            </label>
-
-            <label class="documents-field upload-modal-field">
-              <span>문서 설명 선택 입력</span>
+            </div>
+            <div class="doc-field">
+              <label>문서 설명 (선택)</label>
               <textarea
                 v-model="uploadDescription"
-                rows="4"
+                rows="3"
                 placeholder="예: 프론트엔드 작업 지침, 회의 내용 정리, API 명세 참고자료 등"
               />
-            </label>
-
-            <div class="upload-file-box">
+            </div>
+            <div class="doc-upload-zone">
               <input
                 ref="fileInputRef"
                 type="file"
-                class="documents-hidden-file"
+                class="doc-hidden-file"
+                style="display: none"
                 @change="handleUploadFileChange"
               />
-
               <button
                 type="button"
-                class="documents-secondary-button"
+                class="doc-hero-btn doc-hero-btn-sec"
+                style="
+                  color: var(--text-body);
+                  border-color: var(--card-border);
+                  background: var(--card-bg);
+                "
                 @click="openFilePicker"
               >
                 파일 선택
               </button>
-
-              <p v-if="selectedUploadFile">
-                선택된 파일:
-                <strong>{{ selectedUploadFile.name }}</strong>
+              <p>
+                <strong>{{
+                  selectedUploadFile?.name || '아직 선택된 파일이 없습니다.'
+                }}</strong>
               </p>
-
-              <p v-else>아직 선택된 파일이 없습니다.</p>
             </div>
-
-            <p v-if="uploadMessage" class="documents-upload-message">
+            <div v-if="uploadMessage" class="doc-msg info">
               {{ uploadMessage }}
-            </p>
+            </div>
           </div>
-
-          <footer class="document-modal-footer">
+          <footer class="doc-modal-ft">
             <button
               type="button"
-              class="documents-ghost-button"
+              class="doc-hero-btn doc-hero-btn-sec"
+              style="color: var(--text-body); border-color: var(--card-border)"
               :disabled="isUploading"
               @click="closeUploadModal"
             >
               취소
             </button>
-
             <button
               type="button"
-              class="documents-primary-button"
+              class="doc-hero-btn doc-hero-btn-pri"
               :disabled="isUploading || !selectedUploadFile"
               @click="uploadSelectedDocument"
+              style="background: var(--brand-indigo); color: #fff"
             >
               {{ isUploading ? '업로드 중...' : '업로드' }}
             </button>
@@ -889,303 +1007,95 @@ watch(
     </Teleport>
 
     <Teleport to="body">
-      <div
-        v-if="selectedDocument"
-        class="document-modal-overlay"
-        role="dialog"
-        aria-modal="true"
-        @click.self="closeDocumentDetail"
-      >
-        <section class="document-modal">
-          <header class="document-modal-header">
-            <div>
-              <p class="documents-eyebrow">Document Detail</p>
-              <h2>{{ selectedDocument.title }}</h2>
-            </div>
-
-            <button
-              type="button"
-              class="document-modal-close"
-              aria-label="문서 상세 닫기"
-              @click="closeDocumentDetail"
-            >
-              ×
-            </button>
+      <div v-if="selectedDocument" class="doc-overlay" @click.self="closeDocumentDetail">
+        <section class="doc-modal">
+          <header class="doc-modal-hd">
+            <div><h2>{{ selectedDocument.title }}</h2></div>
+            <button type="button" class="doc-modal-close" @click="closeDocumentDetail">&times;</button>
           </header>
 
-          <div class="document-modal-body">
-            <section
-              v-if="isEditingDocument"
-              class="document-analysis-card document-edit-card"
-            >
-              <div class="document-section-heading">
-                <div>
-                  <h3>Document 수정</h3>
-                  <p>문서 제목, 문서 유형, 문서 설명을 수정합니다.</p>
-                </div>
+          <div style="padding:20px 24px;display:grid;gap:14px;overflow-y:auto">
+
+            <!-- Edit Section -->
+            <section v-if="isEditingDocument" class="doc-analysis-card" style="border-color:var(--card-border)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px">
+                <div><h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text-body)">Document 수정</h3><p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary)">문서 제목, 문서 유형, 문서 설명을 수정합니다.</p></div>
               </div>
-
-              <div class="document-edit-form">
-                <label class="documents-field">
-                  <span>문서 제목</span>
-                  <input
-                    v-model="editTitle"
-                    type="text"
-                    placeholder="문서 제목을 입력하세요"
-                  />
-                </label>
-
-                <label class="documents-field">
-                  <span>문서 유형</span>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="doc-field"><label>문서 제목</label><input v-model="editTitle" type="text" placeholder="문서 제목을 입력하세요" /></div>
+                <div class="doc-field"><label>문서 유형</label>
                   <select v-model="editDocumentType">
-                    <option
-                      v-for="option in documentTypeOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
-                      {{ option.label }}
-                    </option>
+                    <option v-for="o in documentTypeOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
                   </select>
-                </label>
-
-                <label class="documents-field document-edit-description">
-                  <span>문서 설명</span>
-                  <textarea
-                    v-model="editDescription"
-                    rows="4"
-                    placeholder="문서 설명을 입력하세요"
-                  />
-                </label>
+                </div>
+                <div class="doc-field" style="grid-column:1/-1"><label>문서 설명</label><textarea v-model="editDescription" rows="3" placeholder="문서 설명을 입력하세요" /></div>
               </div>
-
-              <p v-if="editMessage" class="documents-upload-message">
-                {{ editMessage }}
-              </p>
+              <div v-if="editMessage" class="doc-msg info" style="margin-top:8px">{{ editMessage }}</div>
             </section>
 
-            <section class="document-analysis-card">
-              <div class="document-section-heading">
-                <div>
-                  <h3>Preview</h3>
-                  <p>
-                    PDF, 이미지, 텍스트 계열 파일은 브라우저에서 기본 미리보기를
-                    제공합니다.
-                  </p>
-                </div>
-
-                <div class="document-preview-actions">
-                  <button
-                    type="button"
-                    class="documents-secondary-button"
-                    :disabled="!previewObjectUrl"
-                    @click="openPreview"
-                  >
-                    새 창 미리보기
-                  </button>
-
-                  <button
-                    type="button"
-                    class="documents-primary-button"
-                    :disabled="!selectedDocument.downloadUrl"
-                    @click="openDownload(selectedDocument)"
-                  >
-                    다운로드
-                  </button>
+            <!-- Preview -->
+            <section class="doc-analysis-card">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:12px">
+                <div><h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text-body)">Preview</h3><p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary)">PDF, 이미지, 텍스트 계열 파일은 브라우저에서 기본 미리보기를 제공합니다.</p></div>
+                <div style="display:flex;gap:8px;flex-shrink:0">
+                  <button type="button" class="doc-hero-btn doc-hero-btn-sec" style="color:var(--text-body);border-color:var(--card-border);height:36px;padding:0 12px;font-size:12px" :disabled="!previewObjectUrl" @click="openPreview">새 창 미리보기</button>
+                  <button type="button" class="doc-hero-btn doc-hero-btn-pri" style="height:36px;padding:0 12px;font-size:12px" :disabled="!selectedDocument.downloadUrl" @click="openDownload(selectedDocument)">다운로드</button>
                 </div>
               </div>
-
-              <div v-if="isPreviewLoading" class="documents-state-box">
-                문서 미리보기를 불러오는 중입니다.
+              <div v-if="isPreviewLoading" class="doc-state" style="padding:24px">문서 미리보기를 불러오는 중입니다.</div>
+              <div v-else-if="previewErrorMessage" class="doc-state error" style="padding:24px">{{ previewErrorMessage }}</div>
+              <div v-else-if="previewObjectUrl && canInlinePreview(selectedDocument)" style="overflow:hidden;min-height:300px;border:1px solid var(--card-border);border-radius:12px;background:var(--page-bg)">
+                <img v-if="isImageDocument(selectedDocument)" :src="previewObjectUrl" :alt="selectedDocument.originalFileName || selectedDocument.title" style="display:block;max-width:100%;max-height:480px;margin:0 auto;object-fit:contain" />
+                <iframe v-else :src="previewObjectUrl" title="문서 미리보기" style="width:100%;height:420px;border:0;background:var(--card-bg)" />
               </div>
+              <div v-else class="doc-state" style="padding:24px">이 파일 형식은 브라우저 기본 미리보기를 지원하지 않습니다. 다운로드 버튼으로 확인해 주세요.</div>
+            </section>
 
-              <div
-                v-else-if="previewErrorMessage"
-                class="documents-state-box error"
-              >
-                {{ previewErrorMessage }}
-              </div>
-
-              <div
-                v-else-if="
-                  previewObjectUrl && canInlinePreview(selectedDocument)
-                "
-                class="document-preview-frame"
-              >
-                <img
-                  v-if="isImageDocument(selectedDocument)"
-                  :src="previewObjectUrl"
-                  :alt="
-                    selectedDocument.originalFileName || selectedDocument.title
-                  "
-                />
-
-                <iframe v-else :src="previewObjectUrl" title="문서 미리보기" />
-              </div>
-
-              <div v-else class="documents-state-box">
-                이 파일 형식은 브라우저 기본 미리보기를 지원하지 않습니다.
-                다운로드 버튼으로 확인해 주세요.
+            <!-- AI Analysis -->
+            <section class="doc-analysis-card">
+              <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text-body)">AI Analysis</h3>
+              <p style="margin:8px 0 0;font-size:13px;color:var(--text-secondary);line-height:1.6">{{ buildSummaryText(selectedDocument) }}</p>
+              <div v-if="buildKeywordList(selectedDocument.keywords).length > 0" class="doc-keywords" style="margin-top:10px">
+                <span v-for="kw in buildKeywordList(selectedDocument.keywords)" :key="kw">{{ kw }}</span>
               </div>
             </section>
 
-            <section class="document-analysis-card">
-              <h3>AI Analysis</h3>
-              <p>{{ buildSummaryText(selectedDocument) }}</p>
-
-              <div
-                v-if="buildKeywordList(selectedDocument.keywords).length > 0"
-                class="document-keyword-list"
-              >
-                <span
-                  v-for="keyword in buildKeywordList(selectedDocument.keywords)"
-                  :key="keyword"
-                >
-                  {{ keyword }}
-                </span>
-              </div>
-            </section>
-
-            <section class="document-detail-grid">
-              <article class="document-detail-card">
-                <span>Document ID</span>
-                <strong>{{ selectedDocument.id }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Document Type</span>
-                <strong>{{
-                  getDocumentTypeLabel(selectedDocument.documentType)
-                }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Description</span>
-                <strong>{{ selectedDocument.description || '미입력' }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Original File</span>
-                <strong>{{
-                  selectedDocument.originalFileName || '미등록'
-                }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>File Size</span>
-                <strong>{{ formatFileSize(selectedDocument.fileSize) }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Content Type</span>
-                <strong>{{ selectedDocument.contentType || '미정' }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Uploaded By</span>
-                <strong>{{
-                  selectedDocument.uploadedByName || '미지정'
-                }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Uploader Email</span>
-                <strong>{{
-                  selectedDocument.uploadedByEmail || '미지정'
-                }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Workspace</span>
-                <strong>{{ selectedDocument.workspaceName }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Data Source</span>
-                <strong>{{ selectedDocument.sourceName }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Source Type</span>
-                <strong>{{ selectedDocument.sourceType }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Source Status</span>
-                <strong>{{ selectedDocument.sourceStatus }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Analysis Status</span>
-                <strong>
-                  {{ getAnalysisStatusLabel(selectedDocument.analysisStatus) }}
-                </strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Analyzed At</span>
-                <strong>{{ formatDate(selectedDocument.analyzedAt) }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Vector ID</span>
-                <strong>{{ selectedDocument.vectorId || '미연결' }}</strong>
-              </article>
-
-              <article class="document-detail-card">
-                <span>Updated</span>
-                <strong>{{ formatDate(selectedDocument.updatedAt) }}</strong>
+            <!-- Detail Grid -->
+            <section style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <article v-for="item in [
+                {l:'Document ID',v:selectedDocument.id},
+                {l:'Document Type',v:getDocumentTypeLabel(selectedDocument.documentType)},
+                {l:'Description',v:selectedDocument.description||'미입력'},
+                {l:'Original File',v:selectedDocument.originalFileName||'미등록'},
+                {l:'File Size',v:formatFileSize(selectedDocument.fileSize)},
+                {l:'Content Type',v:selectedDocument.contentType||'미정'},
+                {l:'Uploaded By',v:selectedDocument.uploadedByName||'미지정'},
+                {l:'Uploader Email',v:selectedDocument.uploadedByEmail||'미지정'},
+                {l:'Workspace',v:selectedDocument.workspaceName},
+                {l:'Data Source',v:selectedDocument.sourceName},
+                {l:'Source Type',v:selectedDocument.sourceType},
+                {l:'Source Status',v:selectedDocument.sourceStatus},
+                {l:'Analysis Status',v:getAnalysisStatusLabel(selectedDocument.analysisStatus)},
+                {l:'Analyzed At',v:formatDate(selectedDocument.analyzedAt)},
+                {l:'Vector ID',v:selectedDocument.vectorId||'미연결'},
+                {l:'Updated',v:formatDate(selectedDocument.updatedAt)},
+              ]" :key="item.l" class="doc-detail-item">
+                <div class="lbl">{{ item.l }}</div>
+                <div class="val">{{ item.v }}</div>
               </article>
             </section>
           </div>
 
-          <footer class="document-modal-footer">
-            <div class="document-modal-footer-actions">
-              <button
-                v-if="!isEditingDocument"
-                type="button"
-                class="documents-secondary-button"
-                @click="openEditDocumentForm"
-              >
-                문서 수정
-              </button>
-
+          <footer style="display:flex;justify-content:space-between;padding:16px 24px;border-top:1px solid var(--card-border)">
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button v-if="!isEditingDocument" type="button" class="doc-hero-btn doc-hero-btn-sec" style="color:var(--text-body);border-color:var(--card-border);height:38px;font-size:12px" @click="openEditDocumentForm">문서 수정</button>
               <template v-else>
-                <button
-                  type="button"
-                  class="documents-primary-button"
-                  :disabled="isUpdatingDocument"
-                  @click="updateSelectedDocument"
-                >
-                  {{ isUpdatingDocument ? '수정 중...' : '수정 저장' }}
-                </button>
-
-                <button
-                  type="button"
-                  class="documents-ghost-button"
-                  :disabled="isUpdatingDocument"
-                  @click="closeEditDocumentForm"
-                >
-                  수정 취소
-                </button>
+                <button type="button" class="doc-hero-btn doc-hero-btn-pri" style="height:38px;font-size:12px" :disabled="isUpdatingDocument" @click="updateSelectedDocument">{{ isUpdatingDocument?'수정 중...':'수정 저장' }}</button>
+                <button type="button" class="doc-hero-btn doc-hero-btn-sec" style="color:var(--text-body);border-color:var(--card-border);height:38px;font-size:12px" :disabled="isUpdatingDocument" @click="closeEditDocumentForm">수정 취소</button>
               </template>
-
-              <button
-                type="button"
-                class="documents-danger-button"
-                :disabled="isUpdatingDocument"
-                @click="deleteSelectedDocument"
-              >
-                문서 삭제
-              </button>
+              <button type="button" style="height:38px;padding:0 14px;border-radius:8px;border:0;background:var(--danger-bg);color:var(--danger-text);font-family:var(--font-ui);font-size:12px;font-weight:600;cursor:pointer" :disabled="isUpdatingDocument" @click="deleteSelectedDocument">문서 삭제</button>
             </div>
-
-            <button
-              type="button"
-              class="documents-ghost-button"
-              @click="closeDocumentDetail"
-            >
-              닫기
-            </button>
+            <button type="button" class="doc-hero-btn doc-hero-btn-sec" style="color:var(--text-body);border-color:var(--card-border);height:38px;font-size:12px" @click="closeDocumentDetail">닫기</button>
           </footer>
         </section>
       </div>

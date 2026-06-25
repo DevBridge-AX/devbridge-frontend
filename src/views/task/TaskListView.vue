@@ -66,6 +66,10 @@ const completedCount = computed(
     ).length,
 )
 
+const reviewCount = computed(
+  () => tasks.value.filter((task) => task.status === 'REVIEW').length,
+)
+
 const overdueCount = computed(() => {
   const now = new Date()
 
@@ -426,343 +430,145 @@ watch(
 
 <template>
   <AppLayout>
-    <main class="task-list-page-shell">
-      <section class="task-list-page">
-        <header class="task-list-hero">
-          <div>
-            <p class="task-list-eyebrow">Task</p>
-            <h1>업무 관리</h1>
-            <p class="task-list-description">
-              현재 Workspace에서 진행되는 업무를 확인하고, 담당자·마감일·진행
-              상태를 추적합니다. 업무 항목을 클릭하면 상세 정보, 관련 문서, 변경
-              사항, 산출물, 활동 이력을 확인할 수 있습니다.
-            </p>
-          </div>
+    <div class="tl-shell">
+      <div class="tl">
 
-          <div class="task-list-header-actions">
-            <button
-              type="button"
-              class="task-list-secondary-button"
-              @click="goToDashboard"
-            >
-              대시보드로 이동
-            </button>
-            <button
-              type="button"
-              class="task-list-primary-button"
-              @click="fetchTasks"
-            >
-              새로고침
-            </button>
+        <header class="tl-hero">
+          <div class="tl-hero-left">
+            <p class="tl-hero-lbl">Task Management</p>
+            <h1>업무 {{ inProgressCount }}건 진행 중, 이번 주 {{ completedCount }}건 완료</h1>
+            <p>담당자·마감일·진행 상태를 한눈에 추적하고, 업무 항목을 클릭해 관련 문서와 산출물을 확인할 수 있습니다.</p>
+          </div>
+          <div class="tl-hero-right">
+            <button type="button" class="tl-hero-btn tl-hero-btn-pri" @click="openCreateTaskForm">+ 업무 추가</button>
+            <button type="button" class="tl-hero-btn tl-hero-btn-sec" @click="goToDashboard">대시보드로 이동</button>
           </div>
         </header>
 
-        <section class="task-list-summary-grid">
-          <button
-            type="button"
-            class="task-list-summary-card"
-            :class="{ active: selectedStatus === 'ALL' }"
-            @click="setStatusFilter('ALL')"
-          >
-            <span>전체 업무</span>
-            <strong>{{ totalCount }}</strong>
+        <section class="tl-metrics">
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'ALL' }" @click="setStatusFilter('ALL')">
+            <div class="tl-metric-hd"><span class="lb">전체</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"/><line x1="8" y1="10" x2="8" y2="16"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="16" y1="8" x2="16" y2="16"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ totalCount }}</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 20 50 22 T100 14 T150 8 T200 10 L200 28Z" fill="var(--brand-light)"/><path d="M0 28 Q25 20 50 22 T100 14 T150 8 T200 10" fill="none" stroke="var(--brand-indigo)" stroke-width="1.5"/></svg></div>
           </button>
-
-          <button
-            type="button"
-            class="task-list-summary-card"
-            :class="{ active: selectedStatus === 'ASSIGNED' }"
-            @click="setStatusFilter('ASSIGNED')"
-          >
-            <span>배정</span>
-            <strong>{{ assignedCount }}</strong>
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'ASSIGNED' }" @click="setStatusFilter('ASSIGNED')">
+            <div class="tl-metric-hd"><span class="lb">배정</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ assignedCount }}</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 20 50 18 T100 22 T150 12 T200 14 L200 28Z" fill="var(--brand-light)"/><path d="M0 28 Q25 20 50 18 T100 22 T150 12 T200 14" fill="none" stroke="var(--brand-indigo)" stroke-width="1.5"/></svg></div>
           </button>
-
-          <button
-            type="button"
-            class="task-list-summary-card"
-            :class="{ active: selectedStatus === 'IN_PROGRESS' }"
-            @click="setStatusFilter('IN_PROGRESS')"
-          >
-            <span>진행 중</span>
-            <strong>{{ inProgressCount }}</strong>
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'IN_PROGRESS' }" @click="setStatusFilter('IN_PROGRESS')">
+            <div class="tl-metric-hd"><span class="lb">진행</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ inProgressCount }}</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 18 50 14 T100 10 T150 16 T200 8 L200 28Z" fill="var(--brand-light)"/><path d="M0 28 Q25 18 50 14 T100 10 T150 16 T200 8" fill="none" stroke="var(--brand-indigo)" stroke-width="1.5"/></svg></div>
           </button>
-
-          <button
-            type="button"
-            class="task-list-summary-card"
-            :class="{ active: selectedStatus === 'DONE' }"
-            @click="setStatusFilter('DONE')"
-          >
-            <span>완료</span>
-            <strong>{{ completedCount }}</strong>
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'DONE' }" @click="setStatusFilter('DONE')">
+            <div class="tl-metric-hd"><span class="lb">완료</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ completedCount }}</span><span class="t up">&#9650;{{ totalCount > 0 ? Math.round(completedCount/totalCount*100) : 0 }}%</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 22 50 20 T100 12 T150 6 T200 4 L200 28Z" fill="var(--brand-light)"/><path d="M0 28 Q25 22 50 20 T100 12 T150 6 T200 4" fill="none" stroke="var(--brand-indigo)" stroke-width="1.5"/></svg></div>
           </button>
-
-          <button
-            type="button"
-            class="task-list-summary-card warning"
-            :class="{ active: selectedStatus === 'OVERDUE' }"
-            @click="setStatusFilter('OVERDUE')"
-          >
-            <span>지연 가능</span>
-            <strong>{{ overdueCount }}</strong>
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'OVERDUE' }" @click="setStatusFilter('OVERDUE')">
+            <div class="tl-metric-hd"><span class="lb">지연</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ overdueCount }}</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 24 50 26 T100 20 T150 22 T200 24 L200 28Z" fill="var(--danger-bg)"/><path d="M0 28 Q25 24 50 26 T100 20 T150 22 T200 24" fill="none" stroke="var(--danger-text)" stroke-width="1.5"/></svg></div>
+          </button>
+          <button type="button" class="tl-metric" :class="{ active: selectedStatus === 'REVIEW' }" @click="setStatusFilter('REVIEW')">
+            <div class="tl-metric-hd"><span class="lb">검토</span><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></span></div>
+            <div class="tl-metric-val"><span class="n">{{ reviewCount }}</span></div>
+            <div class="tl-metric-spark"><svg viewBox="0 0 200 28"><path d="M0 28 Q25 18 50 20 T100 14 T150 16 T200 12 L200 28Z" fill="var(--brand-light)"/><path d="M0 28 Q25 18 50 20 T100 14 T150 16 T200 12" fill="none" stroke="var(--brand-indigo)" stroke-width="1.5"/></svg></div>
           </button>
         </section>
 
-        <section class="task-list-content-card">
-          <div class="task-list-content-header">
-            <div>
+        <section class="tl-card">
+          <div class="tl-card-hd">
+            <div class="tl-card-hd-left">
               <h2>Task 목록</h2>
-              <p>
-                선택한 Workspace 기준으로 조회된 업무입니다. 항목을 클릭하면
-                공통 Task 상세 모달에서 업무 맥락과 연결 데이터를 확인합니다.
-              </p>
+              <p>선택한 Workspace 기준 업무입니다. 항목을 클릭하면 상세 정보와 연결 데이터를 확인합니다.</p>
             </div>
+            <div class="tl-card-hd-right">
+              <span class="tl-count">{{ filteredTasks.length }}개</span>
+              <div class="tl-filter">
+                <button type="button" :class="{ on: selectedStatus === 'ALL' }" @click="setStatusFilter('ALL')">전체</button>
+                <button type="button" :class="{ on: selectedStatus === 'IN_PROGRESS' }" @click="setStatusFilter('IN_PROGRESS')">진행</button>
+                <button type="button" :class="{ on: selectedStatus === 'DONE' }" @click="setStatusFilter('DONE')">완료</button>
+                <button type="button" :class="{ on: selectedStatus === 'OVERDUE' }" @click="setStatusFilter('OVERDUE')">지연</button>
+              </div>
+              <button type="button" class="tl-add-btn" @click="openCreateTaskForm">+ 업무 추가</button>
+            </div>
+          </div>
 
-            <div class="task-list-content-actions">
-              <span class="task-list-count-badge">
-                {{ filteredTasks.length }}개 표시
+          <div v-if="isLoading" class="tl-state">업무 목록을 불러오는 중입니다.</div>
+          <div v-else-if="errorMessage" class="tl-state error">{{ errorMessage }}</div>
+          <div v-else-if="filteredTasks.length === 0" class="tl-state">조건에 맞는 업무가 없습니다.</div>
+
+          <div v-else class="tl-rows">
+            <article v-for="task in filteredTasks" :key="task.id" class="tl-row" :class="{ overdue: isOverdue(task) }" @click="openTaskDetail(task.id)">
+              <span class="tl-row-icon" :class="task.status === 'IN_PROGRESS' ? 'go' : task.status === 'DONE' || task.status === 'COMPLETED' ? 'done' : isOverdue(task) ? 'delay' : 'wait'">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
               </span>
-              <button
-                type="button"
-                class="task-list-add-button"
-                @click="openCreateTaskForm"
-              >
-                + 업무 추가
-              </button>
-            </div>
-          </div>
-
-          <div v-if="isLoading" class="task-list-state-box">
-            업무 목록을 불러오는 중입니다.
-          </div>
-
-          <div v-else-if="errorMessage" class="task-list-state-box error">
-            {{ errorMessage }}
-          </div>
-
-          <div
-            v-else-if="filteredTasks.length === 0"
-            class="task-list-state-box"
-          >
-            조건에 맞는 업무가 없습니다.
-          </div>
-
-          <div v-else class="task-list-items">
-            <article
-              v-for="task in filteredTasks"
-              :key="task.id"
-              class="task-list-item"
-              :class="{ overdue: isOverdue(task) }"
-              role="button"
-              tabindex="0"
-              @click="openTaskDetail(task.id)"
-              @keydown.enter="openTaskDetail(task.id)"
-            >
-              <div class="task-list-title-row">
-                <div>
-                  <h3>{{ task.title }}</h3>
-                  <p class="task-list-description-text">
-                    {{ task.description || '설명 없음' }}
-                  </p>
-                </div>
-
-                <div class="task-list-badge-group">
-                  <span v-if="isOverdue(task)" class="task-list-overdue-badge">
-                    지연 가능
-                  </span>
-                  <span
-                    class="task-list-status-badge"
-                    :class="getStatusClass(task.status)"
-                  >
-                    {{ getStatusLabel(task.status) }}
-                  </span>
+              <div class="tl-row-body">
+                <div class="title">{{ task.title }}</div>
+                <div v-if="task.description" class="desc">{{ task.description }}</div>
+                <div class="meta">
+                  <span>요청 {{ task.requesterId?.slice(0, 6) || '-' }}</span>
+                  <span class="sep">·</span>
+                  <span>담당 {{ task.assigneeId?.slice(0, 6) || '미지정' }}</span>
+                  <span class="sep">·</span>
+                  <span>마감 {{ formatDate(task.dueDate) }}</span>
+                  <span v-if="isOverdue(task)" class="sep">·</span>
+                  <span v-if="isOverdue(task)" style="color:var(--danger-text);font-weight:600">기한 초과</span>
                 </div>
               </div>
-
-              <dl class="task-list-meta">
-                <div>
-                  <dt>요청자</dt>
-                  <dd>{{ task.requesterId }}</dd>
-                </div>
-                <div>
-                  <dt>담당자</dt>
-                  <dd>{{ task.assigneeId || '미지정' }}</dd>
-                </div>
-                <div>
-                  <dt>마감일</dt>
-                  <dd>{{ formatDate(task.dueDate) }}</dd>
-                </div>
-              </dl>
-
-              <div class="task-list-item-footer">
-                <div
-                  class="task-list-status-actions"
-                  aria-label="Task status actions"
-                  @click.stop
-                >
-                  <button
-                    type="button"
-                    class="task-list-status-action"
-                    :class="{ active: task.status === 'ASSIGNED' }"
-                    @click="changeTaskStatus(task, 'ASSIGNED')"
-                  >
-                    배정
-                  </button>
-                  <button
-                    type="button"
-                    class="task-list-status-action"
-                    :class="{ active: task.status === 'IN_PROGRESS' }"
-                    @click="changeTaskStatus(task, 'IN_PROGRESS')"
-                  >
-                    진행
-                  </button>
-                  <button
-                    type="button"
-                    class="task-list-status-action"
-                    :class="{ active: task.status === 'REVIEW' }"
-                    @click="changeTaskStatus(task, 'REVIEW')"
-                  >
-                    검토
-                  </button>
-                  <button
-                    type="button"
-                    class="task-list-status-action"
-                    :class="{
-                      active:
-                        task.status === 'DONE' || task.status === 'COMPLETED',
-                    }"
-                    @click="changeTaskStatus(task, 'DONE')"
-                  >
-                    완료
-                  </button>
-                </div>
-
-                <div class="task-list-row-actions" @click.stop>
-                  <button
-                    type="button"
-                    class="task-list-row-button"
-                    @click="openEditTaskForm(task)"
-                  >
-                    수정
-                  </button>
-                  <button
-                    type="button"
-                    class="task-list-row-button danger"
-                    @click="removeTask(task)"
-                  >
-                    삭제
-                  </button>
+              <div class="tl-row-right">
+                <span class="chip" :class="task.status === 'IN_PROGRESS' ? 'go' : task.status === 'DONE' || task.status === 'COMPLETED' ? 'done' : isOverdue(task) ? 'delay' : 'wait'">{{ getStatusLabel(task.status) }}</span>
+                <div class="tl-row-status" @click.stop>
+                  <button v-if="task.status !== 'ASSIGNED'" class="status-btn" @click="changeTaskStatus(task, 'ASSIGNED')" title="배정">배정</button>
+                  <button v-if="task.status !== 'IN_PROGRESS'" class="status-btn" @click="changeTaskStatus(task, 'IN_PROGRESS')" title="진행">진행</button>
+                  <button v-if="task.status !== 'REVIEW'" class="status-btn" @click="changeTaskStatus(task, 'REVIEW')" title="검토">검토</button>
+                  <button v-if="task.status !== 'DONE' && task.status !== 'COMPLETED'" class="status-btn done-btn" @click="changeTaskStatus(task, 'DONE')" title="완료">완료</button>
                 </div>
               </div>
             </article>
           </div>
         </section>
-      </section>
-    </main>
+      </div>
+    </div>
 
-    <TaskDetailModal
-      :task-id="selectedTaskId"
-      :is-open="isTaskDetailModalOpen"
-      @close="closeTaskDetail"
-    />
+    <TaskDetailModal :task-id="selectedTaskId" :is-open="isTaskDetailModalOpen" @close="closeTaskDetail" />
 
     <Teleport to="body">
-      <div
-        v-if="isTaskFormOpen"
-        class="task-list-form-overlay"
-        role="dialog"
-        aria-modal="true"
-      >
-        <section class="task-list-form-modal">
-          <header class="task-list-form-header">
-            <div>
-              <p class="task-list-eyebrow">{{ taskFormMode }}</p>
-              <h2>{{ formTitle }}</h2>
-            </div>
-
-            <button
-              type="button"
-              class="task-list-form-close"
-              aria-label="업무 입력 창 닫기"
-              @click="closeTaskForm"
-            >
-              ×
-            </button>
+      <div v-if="isTaskFormOpen" class="tl-form-overlay" role="dialog" aria-modal="true">
+        <section class="tl-form">
+          <header class="tl-form-hd">
+            <h2>{{ formTitle }}</h2>
+            <button type="button" class="tl-form-close" @click="closeTaskForm">&times;</button>
           </header>
-
-          <form class="task-list-form-body" @submit.prevent="submitTaskForm">
-            <p class="task-list-form-note">
-              요청자는 현재 로그인 사용자로 자동 설정됩니다. 담당자 ID는 선택
-              입력이며, 멤버 선택 API가 연결되면 드롭다운 방식으로 개선합니다.
-            </p>
-
-            <div v-if="formErrorMessage" class="task-list-form-error">
-              {{ formErrorMessage }}
-            </div>
-
-            <div class="task-list-field">
+          <form class="tl-form-body" @submit.prevent="submitTaskForm">
+            <p class="tl-form-note">요청자는 현재 로그인 사용자로 자동 설정됩니다. 담당자 ID는 선택 입력입니다.</p>
+            <div v-if="formErrorMessage" class="tl-form-error">{{ formErrorMessage }}</div>
+            <div class="tl-field">
               <label for="task-title">업무 제목</label>
-              <input
-                id="task-title"
-                v-model="taskForm.title"
-                type="text"
-                placeholder="예: 문서 업로드 기능 구현"
-                autocomplete="off"
-              />
+              <input id="task-title" v-model="taskForm.title" type="text" placeholder="예: 문서 업로드 기능 구현" autocomplete="off" />
             </div>
-
-            <div class="task-list-field">
-              <label for="task-description">업무 설명</label>
-              <textarea
-                id="task-description"
-                v-model="taskForm.description"
-                placeholder="업무 목적, 범위, 필요한 산출물을 입력하세요."
-              />
+            <div class="tl-field">
+              <label for="task-desc">업무 설명</label>
+              <textarea id="task-desc" v-model="taskForm.description" placeholder="업무 목적, 범위, 필요한 산출물을 입력하세요." />
             </div>
-
-            <div class="task-list-form-grid">
-              <div class="task-list-field">
+            <div class="tl-field-grid">
+              <div class="tl-field">
                 <label for="task-assignee">담당자 ID</label>
-                <input
-                  id="task-assignee"
-                  v-model="taskForm.assigneeId"
-                  type="text"
-                  placeholder="선택 입력"
-                  autocomplete="off"
-                />
+                <input id="task-assignee" v-model="taskForm.assigneeId" type="text" placeholder="선택 입력" autocomplete="off" />
               </div>
-
-              <div class="task-list-field">
-                <label for="task-due-date">마감일</label>
-                <input
-                  id="task-due-date"
-                  v-model="taskForm.dueDate"
-                  type="datetime-local"
-                />
+              <div class="tl-field">
+                <label for="task-due">마감일</label>
+                <input id="task-due" v-model="taskForm.dueDate" type="datetime-local" />
               </div>
             </div>
-
-            <footer class="task-list-form-footer">
-              <div class="task-list-form-footer-left">
-                <button
-                  type="button"
-                  class="task-list-ghost-button"
-                  :disabled="isSavingTask"
-                  @click="closeTaskForm"
-                >
-                  취소
-                </button>
+            <footer class="tl-form-ft">
+              <div class="tl-form-ft-left">
+                <button type="button" class="tl-hero-btn tl-hero-btn-sec" :disabled="isSavingTask" @click="closeTaskForm" style="color:var(--text-body);border-color:var(--card-border);background:var(--page-bg)">취소</button>
               </div>
-
-              <div class="task-list-form-footer-right">
-                <button
-                  type="submit"
-                  class="task-list-danger-button"
-                  :disabled="isSavingTask"
-                >
-                  {{ isSavingTask ? '저장 중...' : submitButtonLabel }}
-                </button>
+              <div class="tl-form-ft-right">
+                <button type="submit" class="tl-hero-btn tl-hero-btn-pri" :disabled="isSavingTask" style="background:var(--brand-indigo);color:#fff;border:0">{{ isSavingTask ? '저장 중...' : submitButtonLabel }}</button>
               </div>
             </footer>
           </form>

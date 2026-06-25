@@ -74,8 +74,25 @@ async function getDashboardData(workspaceId: string): Promise<DashboardData> {
   }
 }
 
+async function getDashboardAiSummary(
+  workspaceId: string,
+): Promise<string> {
+  try {
+    const response = await dashboardApi.fetchAiSummary(workspaceId)
+    return response.summary
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      if (status === 400) throw new Error('워크스페이스 ID가 올바르지 않습니다.')
+      if (status === 500) throw new Error('AI 엔진 연결에 실패했습니다.')
+    }
+    throw new Error('AI 요약을 불러오지 못했습니다.')
+  }
+}
+
 export const dashboardService = {
   getDashboardSummary,
   getDashboardDetail,
   getDashboardData,
+  getDashboardAiSummary,
 }
