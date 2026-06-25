@@ -57,6 +57,45 @@
   padding-bottom: 12px;
 }
 
+.ds-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24px 32px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #121831 0%, #1F2648 50%, #2A305C 100%);
+  color: #fff;
+  box-shadow: 0 8px 32px rgba(18, 24, 49, .30);
+}
+
+.ds-hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ds-hero-lbl {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, .38);
+}
+
+.ds-hero h1 {
+  font-size: 22px;
+  font-weight: 800;
+  margin: 2px 0 0;
+  color: #fff;
+}
+
+.ds-hero p {
+  font-size: 12px;
+  color: rgba(255, 255, 255, .55);
+  margin: 2px 0 0;
+  max-width: 560px;
+}
+
 /* Form Fields */
 .datasource-field {
   display: flex;
@@ -302,7 +341,7 @@
   .datasource-page {
     padding: 20px;
   }
-  
+
   .datasource-content {
     grid-template-columns: 1fr;
   }
