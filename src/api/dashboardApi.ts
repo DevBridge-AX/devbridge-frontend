@@ -25,6 +25,7 @@ export interface DashboardGitCommitItem {
   commitHash: string
   commitMessage: string
   authorName: string
+  branchName?: string
   pushedAt: string
 }
 
@@ -42,6 +43,12 @@ export interface WorkspaceDashboardDetail {
   recentDocuments: DashboardDocumentItem[]
 }
 
+export interface AiSummaryResponse {
+  summary: string
+  model: string
+  mode: string
+}
+
 export const dashboardApi = {
   fetchSummary(workspaceId: string): Promise<WorkspaceDashboardSummary> {
     return axiosClient
@@ -54,6 +61,14 @@ export const dashboardApi = {
   fetchDetail(workspaceId: string): Promise<WorkspaceDashboardDetail> {
     return axiosClient
       .get<WorkspaceDashboardDetail>('/api/workspace/dashboard/detail', {
+        params: { workspaceId },
+      })
+      .then((res) => res.data)
+  },
+
+  fetchAiSummary(workspaceId: string): Promise<AiSummaryResponse> {
+    return axiosClient
+      .post<AiSummaryResponse>('/api/workspace/dashboard/ai-summary', null, {
         params: { workspaceId },
       })
       .then((res) => res.data)

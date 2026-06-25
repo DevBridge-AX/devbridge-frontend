@@ -348,9 +348,13 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
 <template>
   <AppLayout>
     <div class="schedule-view">
-    <!-- ── Header ───────────────────────────────────────────────── -->
-    <header class="schedule-header">
-      <h1 class="schedule-title">회의 일정</h1>
+    <!-- ── Hero ────────────────────────────────────────────────── -->
+    <header class="schedule-hero">
+      <div class="schedule-hero-left">
+        <p class="schedule-hero-lbl">Schedule</p>
+        <h1>회의 일정</h1>
+        <p>팀 회의·리뷰·릴리즈 일정을 캘린더에서 한눈에 관리하고, 업무·문서와 연결해 추적합니다.</p>
+      </div>
       <button type="button" class="create-btn" @click="createModalOpen = true">+ 회의 생성</button>
     </header>
 
@@ -432,113 +436,52 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
 </template>
 
 <style scoped>
+/* ══ Schedule (Dashboard Unified) ══ */
 .schedule-view {
-  min-height: 100vh;
-  background: #0d0d12;
-  padding: 48px 24px 80px;
-  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
+  min-height: calc(100vh - 56px);
+  background: var(--page-bg, #F6F7FB);
+  padding: 24px 32px 40px;
+  display: flex; flex-direction: column; gap: 20px;
 }
 
-/* ── 헤더 ──────────────────────────────────────────────────────────── */
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
+/* ── Hero ──────────────────────────────────────────────────── */
+.schedule-hero {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 24px 32px; border-radius: 16px;
+  background: linear-gradient(135deg, #121831 0%, #1F2648 50%, #2A305C 100%);
+  color: #fff; box-shadow: 0 8px 32px rgba(18,24,49,.30);
 }
-
-.schedule-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f0eeff;
-  margin: 0;
-  letter-spacing: -0.3px;
-}
-
+.schedule-hero-left { display: flex; flex-direction: column; gap: 4px; }
+.schedule-hero-lbl { font-size: 10px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: rgba(255,255,255,.38); }
+.schedule-hero-left h1 { font-size: 22px; font-weight: 800; margin: 2px 0 0; color: #fff; }
+.schedule-hero-left p { font-size: 12px; color: rgba(255,255,255,.55); margin: 2px 0 0; max-width: 560px; }
 .create-btn {
-  height: 40px;
-  padding: 0 20px;
-  border-radius: 10px;
-  border: none;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  box-shadow: 0 6px 20px rgba(164, 147, 232, 0.28);
-  transition: opacity 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  display: inline-flex; align-items: center; justify-content: center;
+  height: 44px; min-width: 132px; padding: 0 20px; border-radius: 14px;
+  border: 0; background: #fff; color: #121831; font-family: var(--font-ui);
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.18); transition: all .15s;
 }
-.create-btn:hover {
-  opacity: 0.9;
-  transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(164, 147, 232, 0.38);
-}
+.create-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,.22); }
 
-/* ── 본문 (캘린더 위 + 목록 아래, 화면 크기와 무관하게 고정) ────────────── */
+/* ── Body ──────────────────────────────────────────────────── */
 .schedule-body {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
+  display: flex; flex-direction: column; gap: 20px;
+  max-width: 1200px; margin: 0 auto; width: 100%;
 }
-
 .schedule-panel {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid rgba(164, 147, 232, 0.15);
-  border-radius: 20px;
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  padding: 24px;
-  box-shadow:
-    0 0 0 1px rgba(164, 147, 232, 0.07),
-    0 24px 64px rgba(0, 0, 0, 0.45);
+  background: var(--card-bg, #fff); border: 1px solid #dfe3ee;
+  border-radius: 16px; padding: 24px 26px;
+  box-shadow: 0 8px 24px rgba(20,24,48,.06);
 }
 
-/* ── 로드/에러 상태 ─────────────────────────────────────────────────── */
-.panel-loading,
-.panel-error {
-  text-align: center;
-  padding: 48px 20px;
-  font-size: 13px;
-  color: rgba(164, 147, 232, 0.55);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
+.panel-loading, .panel-error {
+  text-align: center; padding: 48px 20px; font-size: 13px;
+  color: var(--text-secondary, #6B7191); display: flex; flex-direction: column;
+  align-items: center; gap: 14px;
 }
-.panel-error {
-  color: #f56565;
-}
+.panel-error { color: var(--danger-text, #D45D5D); }
 
-.spinner {
-  display: inline-block;
-  width: 28px;
-  height: 28px;
-  border: 2px solid rgba(164, 147, 232, 0.25);
-  border-top-color: #a493e8;
-  border-radius: 50%;
-  animation: spin 0.65s linear infinite;
-}
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* ── 푸터 ──────────────────────────────────────────────────────────── */
-.schedule-footer {
-  max-width: 1200px;
-  margin: 0 auto;
-  width: 100%;
-  min-height: 40px;
-}
-
+.spinner { display: inline-block; width: 24px; height: 24px; border: 2px solid var(--card-border, #E8EAF2); border-top-color: var(--brand-indigo, #5B52E3); border-radius: 50%; animation: spin .65s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 </style>

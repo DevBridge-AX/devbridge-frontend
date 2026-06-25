@@ -308,71 +308,21 @@ function handleClose(): void {
 <style scoped>
 /* ── 모달 레이아웃 ───────────────────────────────────────────────────── */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  z-index: 999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fade-in 0.25s ease;
-  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(15,18,32,.48); backdrop-filter: blur(8px);
+  display: flex; align-items: center; justify-content: center; padding: 32px;
 }
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
 .modal-content {
-  background: rgba(18, 18, 24, 0.95);
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 680px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding: 28px 24px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
-  animation: zoom-in 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  width: min(640px, calc(100vw - 48px)); max-height: calc(100vh - 64px);
+  display: flex; flex-direction: column;
+  background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2);
+  border-radius: 20px; box-shadow: 0 24px 80px rgba(20,24,48,.18);
+  overflow: hidden; padding: 24px 28px;
 }
-@keyframes zoom-in {
-  from { transform: scale(0.92); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.modal-title {
-  font-size: 16px;
-  font-weight: 700;
-  margin: 0;
-  color: #f0eeff;
-}
-.modal-close-btn {
-  background: transparent;
-  border: none;
-  color: rgba(240, 238, 255, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 6px;
-  transition: background-color 0.2s, color 0.2s;
-}
-.modal-close-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #f0eeff;
-}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.modal-title { font-size: 18px; font-weight: 700; color: var(--text-body, #1B2031); margin: 0; }
+.modal-close-btn { width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--page-bg, #F6F7FB); color: var(--text-light, #9AA0BD); cursor: pointer; display: grid; place-items: center; }
+.modal-close-btn:hover { background: var(--card-border, #E8EAF2); color: var(--text-body, #1B2031); }
 .modal-actions {
   display: flex;
   justify-content: flex-end;

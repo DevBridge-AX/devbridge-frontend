@@ -176,161 +176,57 @@ function applySelection(): void {
 </template>
 
 <style scoped>
-.dt-picker {
-  position: relative;
-  width: 100%;
-}
-
-/* ── 트리거 버튼 ───────────────────────────────────────────────────── */
+/* ══ Date-Time Picker (Dashboard Unified) ══ */
+.dt-picker { position: relative; width: 100%; }
 .dt-trigger {
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  background: rgba(255, 255, 255, 0.045);
-  color: #f0eeff;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-  font-family: inherit;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  width: 100%; height: 44px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 13px; text-align: left; cursor: pointer;
+  transition: border-color .15s;
 }
-.dt-trigger:hover {
-  border-color: #a493e8;
-  background: rgba(164, 147, 232, 0.07);
-}
+.dt-trigger:hover { border-color: var(--brand-indigo, #5B52E3); }
 
-/* ── 패널 ──────────────────────────────────────────────────────────── */
 .dt-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  right: 0;
-  z-index: 20;
-  padding: 14px;
-  border-radius: 12px;
-  background: rgba(28, 28, 36, 0.98);
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+  padding: 14px; border-radius: 12px;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-border, #E8EAF2);
+  box-shadow: var(--shadow-lg, 0 8px 28px rgba(27,32,49,.08));
+  display: flex; flex-direction: column; gap: 10px;
 }
-
-.dt-panel-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.dt-panel-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #f0eeff;
-}
+.dt-panel-header { display: flex; justify-content: space-between; align-items: center; }
+.dt-panel-title { font-size: 13px; font-weight: 700; color: var(--text-body, #1B2031); }
 .dt-nav-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(240, 238, 255, 0.7);
-  font-size: 14px;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background-color 0.2s, color 0.2s, opacity 0.2s;
+  width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-secondary, #6B7191);
+  font-size: 14px; cursor: pointer; display: grid; place-items: center;
 }
-.dt-nav-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
-}
-.dt-nav-btn:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
+.dt-nav-btn:hover:not(:disabled) { border-color: var(--brand-indigo, #5B52E3); color: var(--brand-indigo, #5B52E3); }
+.dt-nav-btn:disabled { opacity: .3; cursor: not-allowed; }
 
-/* ── 캘린더 그리드 ─────────────────────────────────────────────────── */
-.dt-calendar-grid {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 2px;
-}
-.dt-weekday-cell {
-  text-align: center;
-  font-size: 10px;
-  font-weight: 700;
-  color: rgba(164, 147, 232, 0.65);
-  padding: 4px 0;
-}
-.dt-weekday-cell:nth-child(7n + 1) {
-  color: #f56565;
-}
-.dt-weekday-cell:nth-child(7n) {
-  color: #6fa8f5;
-}
-
+.dt-calendar-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 2px; }
+.dt-weekday-cell { text-align: center; font-size: 10px; font-weight: 700; color: var(--text-light, #9AA0BD); padding: 4px 0; }
+.dt-weekday-cell:nth-child(7n+1) { color: #E8526B; }
+.dt-weekday-cell:nth-child(7n) { color: var(--brand-indigo, #5B52E3); }
 .dt-day-cell {
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: rgba(240, 238, 255, 0.75);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: inherit;
-  transition: background-color 0.2s, color 0.2s;
+  height: 32px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 12px; font-weight: 600; cursor: pointer;
 }
-.dt-day-cell:hover:not(:disabled) {
-  background: rgba(164, 147, 232, 0.1);
-}
-.dt-day-cell--muted {
-  color: rgba(240, 238, 255, 0.2);
-  cursor: not-allowed;
-}
-.dt-day-cell--selected {
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  color: #fff;
-}
+.dt-day-cell:hover:not(:disabled) { background: var(--brand-light, #F0F2FE); }
+.dt-day-cell--muted { color: var(--text-light, #9AA0BD); cursor: not-allowed; }
+.dt-day-cell--selected { background: var(--brand-indigo, #5B52E3); color: #fff; font-weight: 700; }
 
-/* ── 시 / 분 선택 ──────────────────────────────────────────────────── */
-.dt-time-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
+.dt-time-row { display: flex; align-items: center; justify-content: center; gap: 8px; }
 .dt-time-select {
-  flex: 1;
-  height: 36px;
-  padding: 0 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  background: rgba(255, 255, 255, 0.045);
-  color: #f0eeff;
-  font-size: 13px;
-  font-family: inherit;
-  cursor: pointer;
+  flex: 1; height: 36px; padding: 0 8px; border-radius: 8px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 13px; cursor: pointer;
 }
-.dt-time-sep {
-  color: rgba(240, 238, 255, 0.4);
-  font-size: 13px;
-}
-
-/* ── 적용 버튼 ─────────────────────────────────────────────────────── */
-.dt-apply-btn {
-  height: 36px;
-  border-radius: 8px;
-  border: none;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  font-family: inherit;
-  transition: opacity 0.2s;
-}
-.dt-apply-btn:hover {
-  opacity: 0.9;
-}
+.dt-time-sep { color: var(--text-light, #9AA0BD); font-size: 13px; }
+.dt-apply-btn { height: 36px; border-radius: 8px; border: 0; background: var(--brand-indigo, #5B52E3); color: #fff; font-family: var(--font-ui); font-size: 12px; font-weight: 600; cursor: pointer; }
+.dt-apply-btn:hover { opacity: .9; }
 </style>

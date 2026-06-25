@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { authService } from '@/services/authService'
+import BrandLogo from '@/components/common/BrandLogo.vue'
 
 const router = useRouter()
 
@@ -158,9 +159,7 @@ async function handleSubmit(): Promise<void> {
     <div class="signup-card">
       <!-- 헤더 -->
       <div class="card-header">
-        <div class="logo-mark">
-          <span class="logo-icon">⬡</span>
-        </div>
+        <BrandLogo variant="light" size="lg" compact style="margin:0 auto 14px" />
         <h1 class="card-title">DevBridge AX</h1>
         <p class="card-subtitle">신규 계정 등록</p>
       </div>
@@ -400,370 +399,99 @@ async function handleSubmit(): Promise<void> {
 </template>
 
 <style scoped>
-/* ── 레이아웃 ──────────────────────────────────────────────────────── */
+/* ══ Signup (Dashboard Unified) ══ */
 .signup-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #0d0d12;
-  position: relative;
-  overflow: hidden;
-  padding: 40px 16px;
-  font-family: 'Inter', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh; display: flex; align-items: center; justify-content: center;
+  background: var(--page-bg, #F6F7FB); padding: 40px 16px;
 }
-
-/* 배경 장식 구체 */
-.bg-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-}
-.bg-orb--1 {
-  width: 480px;
-  height: 480px;
-  top: -120px;
-  right: -100px;
-  background: radial-gradient(circle, rgba(164, 147, 232, 0.25) 0%, transparent 70%);
-}
-.bg-orb--2 {
-  width: 360px;
-  height: 360px;
-  bottom: -80px;
-  left: -80px;
-  background: radial-gradient(circle, rgba(100, 80, 200, 0.2) 0%, transparent 70%);
-}
-
-/* ── 카드 ──────────────────────────────────────────────────────────── */
 .signup-card {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 520px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(164, 147, 232, 0.18);
-  border-radius: 20px;
-  backdrop-filter: blur(20px);
-  padding: 40px 40px 36px;
-  box-shadow:
-    0 0 0 1px rgba(164, 147, 232, 0.08),
-    0 24px 64px rgba(0, 0, 0, 0.5);
+  width: 100%; max-width: 520px;
+  background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2);
+  border-radius: 16px; padding: 36px 36px 32px;
 }
-
-/* ── 헤더 ──────────────────────────────────────────────────────────── */
-.card-header {
-  text-align: center;
-  margin-bottom: 32px;
-}
+.card-header { text-align: center; margin-bottom: 28px; }
 .logo-mark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  margin-bottom: 16px;
-  box-shadow: 0 8px 24px rgba(164, 147, 232, 0.35);
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; border-radius: 12px;
+  background: var(--brand-gradient, linear-gradient(135deg,#6C63FF,#5B52E3));
+  margin-bottom: 14px; box-shadow: 0 6px 20px rgba(91,82,227,.25);
 }
-.logo-icon {
-  font-size: 24px;
-  color: #fff;
-}
-.card-title {
-  font-size: 22px;
-  font-weight: 700;
-  color: #f0eeff;
-  margin: 0 0 6px;
-  letter-spacing: -0.3px;
-}
-.card-subtitle {
-  font-size: 13px;
-  color: rgba(164, 147, 232, 0.7);
-  margin: 0;
-}
+.logo-icon { font-size: 22px; color: #fff; line-height: 1; }
+.card-title { font-size: 20px; font-weight: 700; color: var(--text-body, #1B2031); margin: 0 0 4px; }
+.card-subtitle { font-size: 13px; color: var(--text-secondary, #6B7191); margin: 0; }
 
-/* ── 폼 섹션 ───────────────────────────────────────────────────────── */
-.signup-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
+.signup-form { display: flex; flex-direction: column; gap: 18px; }
 .form-section {
-  border: 1px solid rgba(164, 147, 232, 0.15);
-  border-radius: 12px;
-  padding: 18px 18px 16px;
-  margin: 0;
-  transition: opacity 0.25s ease, border-color 0.25s ease;
+  border: 1px solid var(--card-border, #E8EAF2); border-radius: 12px;
+  padding: 16px 16px 14px; margin: 0;
 }
-.form-section:not(.section--disabled) {
-  border-color: rgba(164, 147, 232, 0.22);
-}
-.form-section.section--disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
+.form-section.section--disabled { opacity: .4; pointer-events: none; }
 .section-label {
-  font-size: 11px;
-  font-weight: 600;
-  color: #a493e8;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px;
-  margin-bottom: 14px;
-  float: none;
-  width: auto;
+  font-size: 10px; font-weight: 700; color: var(--text-light, #9AA0BD);
+  letter-spacing: .6px; text-transform: uppercase;
+  display: flex; align-items: center; gap: 6px; margin-bottom: 12px;
 }
 .step-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: rgba(164, 147, 232, 0.25);
-  color: #a493e8;
-  font-size: 10px;
-  font-weight: 700;
-  flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--brand-light, #F0F2FE); color: var(--brand-indigo, #5B52E3);
+  font-size: 10px; font-weight: 700; flex-shrink: 0;
 }
-
-/* ── 필드 ──────────────────────────────────────────────────────────── */
-.field-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.field-label {
-  font-size: 12px;
-  font-weight: 500;
-  color: rgba(240, 238, 255, 0.6);
-  letter-spacing: 0.2px;
-}
-
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.field { display: flex; flex-direction: column; gap: 5px; }
+.field-label { font-size: 12px; font-weight: 600; color: var(--text-secondary, #6B7191); }
 .field-input {
-  width: 100%;
-  height: 40px;
-  padding: 0 14px;
-  border-radius: 9px;
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  background: rgba(255, 255, 255, 0.05);
-  color: #f0eeff;
-  font-size: 14px;
-  outline: none;
-  transition:
-    border-color 0.2s ease,
-    background 0.2s ease,
-    box-shadow 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
+  width: 100%; height: 42px; padding: 0 12px; border-radius: 9px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--text-body, #1B2031);
+  font-family: var(--font-ui); font-size: 13px; outline: none;
+  transition: border-color .15s; box-sizing: border-box;
 }
-.field-input::placeholder {
-  color: rgba(164, 147, 232, 0.35);
-}
-.field-input:focus {
-  border-color: #a493e8;
-  background: rgba(164, 147, 232, 0.08);
-  box-shadow: 0 0 0 3px rgba(164, 147, 232, 0.15);
-}
-.field-input:disabled,
-.field-input[readonly] {
-  opacity: 0.55;
-  cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.02);
-}
-.field-input.input--error {
-  border-color: #f56565;
-  box-shadow: 0 0 0 3px rgba(245, 101, 101, 0.15);
-}
+.field-input::placeholder { color: var(--text-light, #9AA0BD); }
+.field-input:focus { border-color: var(--brand-indigo, #5B52E3); box-shadow: 0 0 0 3px rgba(91,82,227,.1); }
+.field-input:disabled, .field-input[readonly] { opacity: .5; cursor: not-allowed; background: var(--page-bg, #F6F7FB); }
+.field-input.input--error { border-color: var(--danger-text, #D45D5D); box-shadow: 0 0 0 3px rgba(212,93,93,.1); }
+.code-input { letter-spacing: 6px; font-weight: 600; text-align: center; }
+select.field-input { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239AA0BD' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; cursor: pointer; }
 
-.code-input {
-  letter-spacing: 6px;
-  font-weight: 600;
-  text-align: center;
-}
-
-select.field-input {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a493e8' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 12px center;
-  padding-right: 32px;
-  cursor: pointer;
-}
-select.field-input:disabled {
-  cursor: not-allowed;
-}
-select.field-input option {
-  background: #1a1a24;
-  color: #f0eeff;
-}
-
-/* ── 입력 + 버튼 묶음 ─────────────────────────────────────────────── */
-.input-with-btn {
-  display: flex;
-  gap: 8px;
-  align-items: stretch;
-}
-.input-with-btn .field-input {
-  flex: 1;
-}
-
-/* ── 액션 버튼 ─────────────────────────────────────────────────────── */
+.input-with-btn { display: flex; gap: 8px; align-items: stretch; }
+.input-with-btn .field-input { flex: 1; }
 .action-btn {
-  flex-shrink: 0;
-  height: 40px;
-  padding: 0 16px;
-  border-radius: 9px;
-  border: 1px solid rgba(164, 147, 232, 0.4);
-  background: rgba(164, 147, 232, 0.12);
-  color: #a493e8;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  transition:
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease,
-    opacity 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-family: inherit;
+  flex-shrink: 0; height: 42px; padding: 0 16px; border-radius: 9px;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff); color: var(--brand-indigo, #5B52E3);
+  font-family: var(--font-ui); font-size: 13px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  transition: all .12s;
 }
-.action-btn:hover:not(:disabled) {
-  background: rgba(164, 147, 232, 0.22);
-  border-color: #a493e8;
-}
-.action-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-}
-.action-btn.btn--verified {
-  background: rgba(72, 199, 142, 0.12);
-  border-color: rgba(72, 199, 142, 0.4);
-  color: #48c78e;
-}
+.action-btn:hover:not(:disabled) { border-color: var(--brand-indigo, #5B52E3); background: var(--brand-light, #F0F2FE); }
+.action-btn:disabled { opacity: .35; cursor: not-allowed; }
+.action-btn.btn--verified { border-color: #15803d; color: #15803d; background: #dcfce7; }
 
-/* ── 제출 버튼 ─────────────────────────────────────────────────────── */
 .submit-btn {
-  width: 100%;
-  height: 48px;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-  cursor: pointer;
-  transition:
-    opacity 0.2s ease,
-    transform 0.15s ease,
-    box-shadow 0.2s ease;
-  box-shadow: 0 6px 20px rgba(164, 147, 232, 0.3);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
+  width: 100%; height: 48px; border-radius: 12px; border: 0;
+  background: var(--brand-indigo, #5B52E3); color: #fff;
+  font-family: var(--font-ui); font-size: 15px; font-weight: 700; cursor: pointer;
+  transition: all .15s; box-shadow: 0 4px 16px rgba(91,82,227,.25);
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   margin-top: 4px;
-  font-family: inherit;
 }
-.submit-btn:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-  box-shadow: 0 10px 28px rgba(164, 147, 232, 0.4);
-}
-.submit-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-.submit-btn:disabled {
-  opacity: 0.35;
-  cursor: not-allowed;
-  box-shadow: none;
-}
+.submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(91,82,227,.35); }
+.submit-btn:active:not(:disabled) { transform: translateY(0); }
+.submit-btn:disabled { opacity: .35; cursor: not-allowed; box-shadow: none; }
 
-/* ── 상태 메시지 ──────────────────────────────────────────────────── */
-.status-msg {
-  font-size: 12px;
-  font-weight: 500;
-  margin: 10px 0 0;
-  padding: 8px 12px;
-  border-radius: 7px;
-}
-.msg--success {
-  color: #48c78e;
-  background: rgba(72, 199, 142, 0.1);
-  border: 1px solid rgba(72, 199, 142, 0.2);
-}
-.msg--error {
-  color: #f56565;
-  background: rgba(245, 101, 101, 0.1);
-  border: 1px solid rgba(245, 101, 101, 0.2);
-}
-.hint-msg {
-  font-size: 12px;
-  color: rgba(164, 147, 232, 0.65);
-  margin: 10px 0 0;
-  padding: 0 2px;
-}
+.status-msg { font-size: 12px; font-weight: 500; margin: 8px 0 0; padding: 8px 12px; border-radius: 7px; }
+.msg--success { color: #15803d; background: #dcfce7; border: 1px solid rgba(21,128,61,.2); }
+.msg--error { color: var(--danger-text, #D45D5D); background: var(--danger-bg, #FBF0F0); border: 1px solid rgba(212,93,93,.2); }
+.hint-msg { font-size: 11px; color: var(--text-light, #9AA0BD); margin: 8px 0 0; }
 
-/* ── 로그인 링크 ──────────────────────────────────────────────────── */
-.login-link {
-  text-align: center;
-  font-size: 13px;
-  color: rgba(240, 238, 255, 0.45);
-  margin: 4px 0 0;
-}
-.login-link a {
-  color: #a493e8;
-  text-decoration: none;
-  font-weight: 600;
-  transition: color 0.2s ease;
-}
-.login-link a:hover {
-  color: #c4b8f4;
-  text-decoration: underline;
-}
+.login-link { text-align: center; font-size: 13px; color: var(--text-secondary, #6B7191); margin: 4px 0 0; }
+.login-link a { color: var(--brand-indigo, #5B52E3); text-decoration: none; font-weight: 600; }
+.login-link a:hover { text-decoration: underline; }
 
-/* ── 스피너 ────────────────────────────────────────────────────────── */
-.spinner {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(164, 147, 232, 0.35);
-  border-top-color: #a493e8;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-.spinner--white {
-  border-color: rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin .65s linear infinite; }
+.spinner--white { border-color: rgba(255,255,255,.3); border-top-color: #fff; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── 반응형 ────────────────────────────────────────────────────────── */
-@media (max-width: 480px) {
-  .signup-card {
-    padding: 28px 20px 24px;
-  }
-  .field-row {
-    grid-template-columns: 1fr;
-  }
-}
+@media (max-width:480px) { .signup-card { padding: 24px 18px; } .field-row { grid-template-columns: 1fr; } }
 </style>
