@@ -475,7 +475,7 @@ function handleOpenResponse(meetingId: string): void {
   display: flex; flex-direction: column;
   background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2);
   border-radius: 20px; box-shadow: 0 24px 80px rgba(20,24,48,.18);
-  overflow: hidden; padding: 24px 28px;
+  overflow-y: auto; padding: 24px 28px;
 }
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .modal-title { font-size: 18px; font-weight: 700; color: var(--text-body, #1B2031); margin: 0; }
@@ -490,13 +490,13 @@ function handleOpenResponse(meetingId: string): void {
   gap: 16px;
   padding: 48px 20px;
   font-size: 13px;
-  color: rgba(164, 147, 232, 0.55);
+  color: var(--text-secondary, #6B7191);
 }
 .spinner--lg {
   width: 28px;
   height: 28px;
-  border: 2px solid rgba(164, 147, 232, 0.25);
-  border-top-color: #a493e8;
+  border: 2px solid var(--card-border, #E8EAF2);
+  border-top-color: var(--brand-indigo, #5B52E3);
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
 }
@@ -505,7 +505,7 @@ function handleOpenResponse(meetingId: string): void {
   width: 12px;
   height: 12px;
   border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #f0eeff;
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.65s linear infinite;
 }
@@ -525,27 +525,27 @@ function handleOpenResponse(meetingId: string): void {
   margin-bottom: 16px;
 }
 .status-badge--gathering {
-  color: #f5d142;
-  background: rgba(245, 209, 66, 0.12);
+  color: #b45309;
+  background: #fef9c3;
 }
 .status-badge--selecting {
-  color: #f5a623;
-  background: rgba(245, 166, 35, 0.12);
+  color: #c2410c;
+  background: #ffedd5;
 }
 .status-badge--confirmed {
-  color: #6fa8f5;
-  background: rgba(111, 168, 245, 0.12);
+  color: #1d4ed8;
+  background: #dbeafe;
 }
 .status-badge--canceled {
-  color: rgba(240, 238, 255, 0.45);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-light, #9AA0BD);
+  background: var(--page-bg, #F6F7FB);
 }
 
 /* ── 섹션 ──────────────────────────────────────────────────────────── */
 .section-title {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(240, 238, 255, 0.5);
+  color: var(--text-secondary, #6B7191);
   letter-spacing: 0.2px;
   text-transform: uppercase;
   margin: 0 0 10px;
@@ -555,24 +555,24 @@ function handleOpenResponse(meetingId: string): void {
 }
 .field-hint {
   font-size: 11px;
-  color: rgba(240, 238, 255, 0.45);
+  color: var(--text-light, #9AA0BD);
   margin: 8px 0 0;
   padding: 0 2px;
 }
 .verify-error {
-  color: #f56565 !important;
+  color: var(--danger-text, #D45D5D) !important;
 }
 .status-message {
   font-size: 13px;
-  color: rgba(240, 238, 255, 0.65);
+  color: var(--text-secondary, #6B7191);
   margin: 0 0 16px;
 }
 .status-message--error {
-  color: #f56565;
+  color: var(--danger-text, #D45D5D);
 }
 .empty-state {
   font-size: 13px;
-  color: rgba(240, 238, 255, 0.45);
+  color: var(--text-light, #9AA0BD);
   margin: 0 0 16px;
 }
 
@@ -580,28 +580,28 @@ function handleOpenResponse(meetingId: string): void {
 .info-box {
   padding: 12px 14px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(164, 147, 232, 0.1);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
   margin: 0 0 12px;
 }
 .info-label {
   font-size: 11px;
   font-weight: 700;
-  color: rgba(164, 147, 232, 0.65);
+  color: var(--text-secondary, #6B7191);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   margin: 0 0 6px;
 }
 .info-text {
   font-size: 13px;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
 }
 .info-link {
   display: block;
-  color: #a493e8;
+  color: var(--brand-indigo, #5B52E3);
   text-decoration: none;
 }
 .info-link:hover {
@@ -623,18 +623,18 @@ function handleOpenResponse(meetingId: string): void {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(164, 147, 232, 0.1);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
 }
 .participant-id {
   flex: 1;
   font-size: 13px;
   font-weight: 600;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
 }
 .participant-role {
   font-size: 12px;
-  color: rgba(240, 238, 255, 0.5);
+  color: var(--text-secondary, #6B7191);
 }
 .participant-badge {
   display: inline-flex;
@@ -646,12 +646,12 @@ function handleOpenResponse(meetingId: string): void {
   white-space: nowrap;
 }
 .participant-badge--pending {
-  color: #f5a623;
-  background: rgba(245, 166, 35, 0.12);
+  color: #c2410c;
+  background: #ffedd5;
 }
 .participant-badge--responded {
-  color: #48c78e;
-  background: rgba(72, 199, 142, 0.12);
+  color: #15803d;
+  background: #dcfce7;
 }
 
 /* ── 후보 시간 목록 ─────────────────────────────────────────────────── */
@@ -666,10 +666,10 @@ function handleOpenResponse(meetingId: string): void {
 .candidate-item {
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(164, 147, 232, 0.1);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
   font-size: 13px;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   font-weight: 500;
 }
 
@@ -678,13 +678,13 @@ function handleOpenResponse(meetingId: string): void {
   text-align: center;
   padding: 28px 16px;
   border-radius: 12px;
-  background: rgba(164, 147, 232, 0.08);
-  border: 1px solid rgba(164, 147, 232, 0.18);
+  background: var(--brand-light, #F0F2FE);
+  border: 1px solid rgba(91, 82, 227, 0.15);
 }
 .confirmed-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(164, 147, 232, 0.7);
+  color: var(--brand-indigo, #5B52E3);
   letter-spacing: 0.3px;
   text-transform: uppercase;
   margin: 0 0 8px;
@@ -692,12 +692,12 @@ function handleOpenResponse(meetingId: string): void {
 .confirmed-time {
   font-size: 18px;
   font-weight: 700;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   margin: 0 0 8px;
 }
 .confirmed-duration {
   font-size: 13px;
-  color: rgba(240, 238, 255, 0.55);
+  color: var(--text-secondary, #6B7191);
   margin: 0;
 }
 
@@ -716,20 +716,20 @@ function handleOpenResponse(meetingId: string): void {
   gap: 10px;
   padding: 10px 12px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(164, 147, 232, 0.1);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
 }
 .reference-title {
   flex: 1;
   font-size: 13px;
   font-weight: 500;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .reference-link {
-  color: #a493e8;
+  color: var(--brand-indigo, #5B52E3);
   text-decoration: none;
 }
 .reference-link:hover {
@@ -738,7 +738,7 @@ function handleOpenResponse(meetingId: string): void {
 .reference-date {
   flex-shrink: 0;
   font-size: 11px;
-  color: rgba(240, 238, 255, 0.4);
+  color: var(--text-light, #9AA0BD);
 }
 .reference-remove {
   flex-shrink: 0;
@@ -750,14 +750,14 @@ function handleOpenResponse(meetingId: string): void {
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: rgba(240, 238, 255, 0.4);
+  color: var(--text-light, #9AA0BD);
   cursor: pointer;
   font-size: 14px;
   line-height: 1;
 }
 .reference-remove:hover:not(:disabled) {
-  background: rgba(245, 101, 101, 0.15);
-  color: #f56565;
+  background: var(--danger-bg, #FBF0F0);
+  color: var(--danger-text, #D45D5D);
 }
 .reference-remove:disabled {
   cursor: not-allowed;
@@ -780,16 +780,17 @@ function handleOpenResponse(meetingId: string): void {
   height: 36px;
   padding: 0 14px;
   border-radius: 8px;
-  border: 1px dashed rgba(164, 147, 232, 0.3);
+  border: 1px dashed var(--card-border, #E8EAF2);
   background: transparent;
-  color: #a493e8;
+  color: var(--brand-indigo, #5B52E3);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   transition: background-color 0.2s, border-color 0.2s;
 }
 .file-select-btn:hover {
-  background: rgba(164, 147, 232, 0.1);
+  background: var(--brand-light, #F0F2FE);
+  border-color: var(--brand-indigo, #5B52E3);
 }
 .file-select-btn--disabled {
   opacity: 0.5;
@@ -806,7 +807,7 @@ function handleOpenResponse(meetingId: string): void {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s, transform 0.1s;
+  transition: all 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -822,21 +823,22 @@ function handleOpenResponse(meetingId: string): void {
   cursor: not-allowed;
 }
 .btn--primary {
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
+  background: var(--brand-indigo, #5B52E3);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(164, 147, 232, 0.25);
 }
 .btn--primary:hover:not(:disabled) {
-  opacity: 0.95;
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 .btn--secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(240, 238, 255, 0.7);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
+  color: var(--text-secondary, #6B7191);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  background: var(--brand-light, #F0F2FE);
 }
 
 /* ── 회의 정보 수정 ─────────────────────────────────────────────────── */
@@ -857,7 +859,7 @@ function handleOpenResponse(meetingId: string): void {
 .field-label {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(240, 238, 255, 0.5);
+  color: var(--text-secondary, #6B7191);
   letter-spacing: 0.2px;
   text-transform: uppercase;
 }
@@ -865,12 +867,12 @@ function handleOpenResponse(meetingId: string): void {
 .field-textarea {
   padding: 0 14px;
   border-radius: 10px;
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  background: rgba(255, 255, 255, 0.045);
-  color: #f0eeff;
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff);
+  color: var(--text-body, #1B2031);
   font-size: 14px;
   outline: none;
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   box-sizing: border-box;
   font-family: inherit;
   width: 100%;
@@ -885,13 +887,12 @@ function handleOpenResponse(meetingId: string): void {
 }
 .field-input::placeholder,
 .field-textarea::placeholder {
-  color: rgba(164, 147, 232, 0.3);
+  color: var(--text-light, #9AA0BD);
 }
 .field-input:focus,
 .field-textarea:focus {
-  border-color: #a493e8;
-  background: rgba(164, 147, 232, 0.07);
-  box-shadow: 0 0 0 3px rgba(164, 147, 232, 0.13);
+  border-color: var(--brand-indigo, #5B52E3);
+  box-shadow: 0 0 0 3px rgba(91, 82, 227, 0.1);
 }
 .edit-actions {
   display: flex;

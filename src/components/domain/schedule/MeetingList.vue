@@ -3,8 +3,9 @@ import type { MeetingSummaryResponse, MeetingStatus } from '@/api/scheduleApi'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
-defineProps<{
+const props = defineProps<{
   meetings: MeetingSummaryResponse[]
+  currentEmployeeId?: string
 }>()
 
 const emit = defineEmits<{
@@ -84,7 +85,7 @@ function handleOpenResponse(meetingId: string): void {
                 상세
               </button>
               <button
-                v-if="meeting.status === 'GATHERING'"
+                v-if="meeting.status === 'GATHERING' && (!props.currentEmployeeId || meeting.hostEmployeeId !== props.currentEmployeeId)"
                 type="button"
                 class="btn btn--respond"
                 @click="handleOpenResponse(meeting.meetingId)"
@@ -110,7 +111,7 @@ function handleOpenResponse(meetingId: string): void {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
 }
 
 .meeting-table th {
@@ -118,20 +119,24 @@ function handleOpenResponse(meetingId: string): void {
   padding: 12px 14px;
   font-size: 11px;
   font-weight: 700;
-  color: rgba(164, 147, 232, 0.65);
+  color: var(--text-secondary, #6B7191);
   letter-spacing: 0.5px;
   text-transform: uppercase;
-  border-bottom: 1px solid rgba(164, 147, 232, 0.15);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
 }
 
 .meeting-table td {
   padding: 14px;
-  border-bottom: 1px solid rgba(164, 147, 232, 0.08);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
   vertical-align: middle;
 }
 
 .meeting-table tbody tr:last-child td {
   border-bottom: none;
+}
+
+.meeting-table tbody tr:hover {
+  background: var(--page-bg, #F6F7FB);
 }
 
 .col-title {
@@ -142,12 +147,13 @@ function handleOpenResponse(meetingId: string): void {
 
 .col-schedule {
   width: 150px;
-  color: rgba(240, 238, 255, 0.65);
+  color: var(--text-light, #9AA0BD);
   white-space: nowrap;
 }
 
 .col-action {
-  text-align: right;
+  text-align: center;
+  width: 140px;
 }
 
 /* ── 상태 배지 ──────────────────────────────────────────────────────── */
@@ -162,29 +168,29 @@ function handleOpenResponse(meetingId: string): void {
 }
 
 .status-badge--gathering {
-  color: #f5d142;
-  background: rgba(245, 209, 66, 0.12);
+  color: #b45309;
+  background: #fef9c3;
 }
 
 .status-badge--selecting {
-  color: #f5a623;
-  background: rgba(245, 166, 35, 0.12);
+  color: #c2410c;
+  background: #ffedd5;
 }
 
 .status-badge--confirmed {
-  color: #6fa8f5;
-  background: rgba(111, 168, 245, 0.12);
+  color: #1d4ed8;
+  background: #dbeafe;
 }
 
 .status-badge--canceled {
-  color: rgba(240, 238, 255, 0.45);
-  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-light, #9AA0BD);
+  background: var(--page-bg, #F6F7FB);
 }
 
 /* ── 액션 버튼 ──────────────────────────────────────────────────────── */
 .action-buttons {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 8px;
 }
 
@@ -197,29 +203,29 @@ function handleOpenResponse(meetingId: string): void {
   cursor: pointer;
   border: none;
   font-family: inherit;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition: all 0.15s;
 }
 
 .btn--detail {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(240, 238, 255, 0.7);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
+  color: var(--text-secondary, #6B7191);
 }
 
 .btn--detail:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  background: var(--brand-light, #F0F2FE);
 }
 
 .btn--respond {
-  background: rgba(164, 147, 232, 0.1);
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  color: #a493e8;
+  background: var(--brand-light, #F0F2FE);
+  border: 1px solid transparent;
+  color: var(--brand-indigo, #5B52E3);
 }
 
 .btn--respond:hover {
-  background: rgba(164, 147, 232, 0.2);
-  border-color: #a493e8;
+  background: var(--brand-indigo, #5B52E3);
   color: #fff;
 }
 
@@ -228,6 +234,6 @@ function handleOpenResponse(meetingId: string): void {
   padding: 48px 20px;
   text-align: center;
   font-size: 13px;
-  color: rgba(240, 238, 255, 0.5);
+  color: var(--text-secondary, #6B7191);
 }
 </style>

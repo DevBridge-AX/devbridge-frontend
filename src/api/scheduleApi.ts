@@ -77,6 +77,7 @@ export interface MeetingSummaryResponse {
   durationMinutes: number
   confirmedStartTime: string | null
   confirmedEndTime: string | null
+  hostEmployeeId?: string
 }
 
 export interface MeetingParticipant {

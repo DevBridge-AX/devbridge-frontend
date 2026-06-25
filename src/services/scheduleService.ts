@@ -24,7 +24,26 @@ import axios from 'axios'
  */
 async function fetchMeetings(status?: MeetingStatus): Promise<MeetingSummaryResponse[]> {
   try {
-    return await scheduleApi.fetchMyMeetings(status ? { status } : undefined)
+    const meetings = await scheduleApi.fetchMyMeetings(status ? { status } : undefined)
+
+    const gatheringMeetings = meetings.filter(
+      (m) => m.status === 'GATHERING' && !m.hostEmployeeId,
+    )
+    await Promise.all(
+      gatheringMeetings.map(async (m) => {
+        try {
+          const detail = await scheduleApi.fetchMeetingDetail(m.meetingId)
+          const host = detail.participants.find((p) => p.role === 'HOST')
+          if (host) {
+            m.hostEmployeeId = host.employeeId
+          }
+        } catch {
+          // 상세 조회 실패 시 무시
+        }
+      }),
+    )
+
+    return meetings
   } catch (error: unknown) {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       throw new Error('인증이 만료되었습니다. 다시 로그인해 주세요.')

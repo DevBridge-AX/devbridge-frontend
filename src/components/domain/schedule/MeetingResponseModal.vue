@@ -126,50 +126,92 @@ function goToToday(): void {
   viewMonth.value = today.getMonth()
 }
 
-// ─── 날짜 / 시간 슬롯 선택 ──────────────────────────────────────────────────
+// ─── 날짜 / 시간 슬롯 선택 (범위 선택 방식) ─────────────────────────────────
 
-interface SelectedSlot {
+interface TimeRange {
   dateKey: string
-  time: string
+  startTime: string
+  endTime: string
 }
 
 const selectedDateKey = ref<string | null>(null)
-const selectedSlots = ref<SelectedSlot[]>([])
+const selectedRanges = ref<TimeRange[]>([])
+const rangeAnchor = ref<string | null>(null)
 const limitMessage = ref('')
 
 function selectDate(dateKey: string): void {
   selectedDateKey.value = dateKey
+  rangeAnchor.value = null
 }
 
 function hasSelection(dateKey: string): boolean {
-  return selectedSlots.value.some((s) => s.dateKey === dateKey)
+  return selectedRanges.value.some((r) => r.dateKey === dateKey)
+}
+
+function getSelectedTimesForDate(dateKey: string): Set<string> {
+  const times = new Set<string>()
+  for (const range of selectedRanges.value) {
+    if (range.dateKey !== dateKey) continue
+    const startIdx = TIME_SLOTS.indexOf(range.startTime)
+    const endIdx = TIME_SLOTS.indexOf(range.endTime)
+    if (startIdx === -1 || endIdx === -1) continue
+    for (let i = startIdx; i <= endIdx; i++) {
+      times.add(TIME_SLOTS[i])
+    }
+  }
+  return times
 }
 
 function isSlotSelected(time: string): boolean {
   if (!selectedDateKey.value) return false
-  const dateKey = selectedDateKey.value
-  return selectedSlots.value.some((s) => s.dateKey === dateKey && s.time === time)
+  return getSelectedTimesForDate(selectedDateKey.value).has(time)
 }
 
 function toggleSlot(time: string): void {
   if (!selectedDateKey.value) return
   const dateKey = selectedDateKey.value
 
-  const index = selectedSlots.value.findIndex((s) => s.dateKey === dateKey && s.time === time)
-  if (index !== -1) {
-    selectedSlots.value.splice(index, 1)
+  if (isSlotSelected(time)) {
+    selectedRanges.value = selectedRanges.value.filter((r) => {
+      if (r.dateKey !== dateKey) return true
+      const startIdx = TIME_SLOTS.indexOf(r.startTime)
+      const endIdx = TIME_SLOTS.indexOf(r.endTime)
+      const clickIdx = TIME_SLOTS.indexOf(time)
+      return clickIdx < startIdx || clickIdx > endIdx
+    })
+    rangeAnchor.value = null
     limitMessage.value = ''
     return
   }
 
-  if (selectedSlots.value.length >= MAX_SLOTS) {
-    limitMessage.value = `가능 시간은 최대 ${MAX_SLOTS}개까지 선택할 수 있습니다.`
+  if (rangeAnchor.value === null) {
+    rangeAnchor.value = time
+    if (selectedRanges.value.length >= MAX_SLOTS) {
+      limitMessage.value = `가능 시간 블록은 최대 ${MAX_SLOTS}개까지 선택할 수 있습니다.`
+      rangeAnchor.value = null
+      return
+    }
+    selectedRanges.value.push({ dateKey, startTime: time, endTime: time })
+    limitMessage.value = ''
     return
   }
 
-  selectedSlots.value.push({ dateKey, time })
+  const anchorIdx = TIME_SLOTS.indexOf(rangeAnchor.value)
+  const clickIdx = TIME_SLOTS.indexOf(time)
+  const startTime = TIME_SLOTS[Math.min(anchorIdx, clickIdx)]
+  const endTime = TIME_SLOTS[Math.max(anchorIdx, clickIdx)]
+
+  const lastRange = selectedRanges.value[selectedRanges.value.length - 1]
+  if (lastRange && lastRange.dateKey === dateKey && lastRange.startTime === rangeAnchor.value && lastRange.endTime === rangeAnchor.value) {
+    lastRange.startTime = startTime
+    lastRange.endTime = endTime
+  }
+
+  rangeAnchor.value = null
   limitMessage.value = ''
 }
+
+const selectedBlockCount = computed(() => selectedRanges.value.length)
 
 // ─── 모달 열릴 때 상태 초기화 ────────────────────────────────────────────────
 
@@ -177,7 +219,8 @@ function resetState(): void {
   viewYear.value = today.getFullYear()
   viewMonth.value = today.getMonth()
   selectedDateKey.value = null
-  selectedSlots.value = []
+  selectedRanges.value = []
+  rangeAnchor.value = null
   limitMessage.value = ''
 }
 
@@ -193,11 +236,11 @@ watch(
 // ─── 제출 / 닫기 ────────────────────────────────────────────────────────────
 
 function handleSubmit(): void {
-  if (selectedSlots.value.length === 0) return
+  if (selectedRanges.value.length === 0) return
 
-  const times: TimeSlot[] = selectedSlots.value.map((s) => ({
-    startTime: `${s.dateKey}T${s.time}:00`,
-    endTime: `${s.dateKey}T${getSlotEndTime(s.time)}:00`,
+  const times: TimeSlot[] = selectedRanges.value.map((r) => ({
+    startTime: `${r.dateKey}T${r.startTime}:00`,
+    endTime: `${r.dateKey}T${getSlotEndTime(r.endTime)}:00`,
   }))
 
   emit('submit', times)
@@ -272,7 +315,7 @@ function handleClose(): void {
                 :key="time"
                 type="button"
                 class="time-slot-btn"
-                :class="{ 'time-slot-btn--selected': isSlotSelected(time) }"
+                :class="{ 'time-slot-btn--selected': isSlotSelected(time), 'time-slot-btn--anchor': rangeAnchor === time }"
                 @click="toggleSlot(time)"
               >
                 {{ time }}
@@ -281,7 +324,8 @@ function handleClose(): void {
           </template>
           <p v-else class="slots-placeholder">캘린더에서 날짜를 선택해 주세요.</p>
 
-          <p class="selection-count">선택된 시간: {{ selectedSlots.length }} / {{ MAX_SLOTS }}</p>
+          <p v-if="rangeAnchor" class="selection-hint">끝 시간을 클릭하면 범위가 선택됩니다.</p>
+          <p class="selection-count">선택된 블록: {{ selectedBlockCount }} / {{ MAX_SLOTS }}</p>
           <p v-if="limitMessage" class="field-hint verify-error">{{ limitMessage }}</p>
           <p v-if="submitError" class="field-hint verify-error">{{ submitError }}</p>
         </div>
@@ -294,7 +338,7 @@ function handleClose(): void {
         <button
           type="button"
           class="btn btn--primary"
-          :disabled="isSubmitting || selectedSlots.length === 0"
+          :disabled="isSubmitting || selectedRanges.length === 0"
           @click="handleSubmit"
         >
           <span v-if="isSubmitting" class="spinner" />
@@ -347,7 +391,7 @@ function handleClose(): void {
 .calendar-title {
   font-size: 14px;
   font-weight: 700;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   margin: 0;
 }
 .calendar-nav {
@@ -361,23 +405,24 @@ function handleClose(): void {
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(240, 238, 255, 0.7);
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff);
+  color: var(--text-secondary, #6B7191);
   font-family: inherit;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s, opacity 0.2s;
+  transition: all 0.15s;
 }
 .nav-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  background: var(--brand-light, #F0F2FE);
 }
 .nav-btn--today {
-  border-color: rgba(164, 147, 232, 0.2);
-  color: #a493e8;
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  font-weight: 700;
 }
 .nav-btn--today:hover:not(:disabled) {
-  background: rgba(164, 147, 232, 0.2);
-  border-color: #a493e8;
+  background: var(--brand-indigo, #5B52E3);
   color: #fff;
 }
 .nav-btn:disabled {
@@ -388,7 +433,7 @@ function handleClose(): void {
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
-  border: 1px solid rgba(164, 147, 232, 0.12);
+  border: 1px solid var(--card-border, #E8EAF2);
   border-radius: 12px;
   overflow: hidden;
 }
@@ -398,26 +443,26 @@ function handleClose(): void {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
-  color: rgba(164, 147, 232, 0.65);
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid rgba(164, 147, 232, 0.12);
+  color: var(--text-secondary, #6B7191);
+  background: var(--page-bg, #F6F7FB);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
 }
 .calendar-grid > *:nth-child(7n + 1) {
-  color: #f56565;
+  color: #dc2626;
 }
 .weekday-cell:nth-child(7n + 1) {
-  color: #f56565;
+  color: #dc2626;
 }
 .weekday-cell:nth-child(7n) {
-  color: #6fa8f5;
+  color: #2563eb;
 }
 
 .day-cell {
   height: 48px;
   padding: 6px;
   border: none;
-  border-right: 1px solid rgba(164, 147, 232, 0.08);
-  border-bottom: 1px solid rgba(164, 147, 232, 0.08);
+  border-right: 1px solid var(--card-border, #E8EAF2);
+  border-bottom: 1px solid var(--card-border, #E8EAF2);
   border-radius: 0;
   background: transparent;
   display: flex;
@@ -433,7 +478,7 @@ function handleClose(): void {
   border-right: none;
 }
 .day-cell:hover:not(:disabled) {
-  background: rgba(164, 147, 232, 0.1);
+  background: var(--brand-light, #F0F2FE);
 }
 .day-cell:disabled {
   cursor: not-allowed;
@@ -441,10 +486,10 @@ function handleClose(): void {
 .day-number {
   font-size: 12px;
   font-weight: 600;
-  color: rgba(240, 238, 255, 0.75);
+  color: var(--text-body, #1B2031);
 }
 .day-cell--muted .day-number {
-  color: rgba(240, 238, 255, 0.2);
+  color: var(--text-light, #9AA0BD);
 }
 .day-cell--today .day-number {
   display: inline-flex;
@@ -453,20 +498,21 @@ function handleClose(): void {
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: rgba(164, 147, 232, 0.35);
+  background: var(--brand-indigo, #5B52E3);
   color: #fff;
 }
 .day-cell--selected {
-  background: rgba(164, 147, 232, 0.22);
+  background: var(--brand-light, #F0F2FE);
 }
 .day-cell--selected .day-number {
-  color: #fff;
+  color: var(--brand-indigo, #5B52E3);
+  font-weight: 700;
 }
 .day-dot {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #a493e8;
+  background: var(--brand-indigo, #5B52E3);
 }
 
 /* ── 시간 슬롯 패널 ────────────────────────────────────────────────── */
@@ -478,12 +524,12 @@ function handleClose(): void {
 .slots-title {
   font-size: 14px;
   font-weight: 700;
-  color: #f0eeff;
+  color: var(--text-body, #1B2031);
   margin: 0;
 }
 .slots-placeholder {
   font-size: 13px;
-  color: rgba(240, 238, 255, 0.45);
+  color: var(--text-light, #9AA0BD);
   margin: 0;
 }
 .slot-grid {
@@ -494,39 +540,52 @@ function handleClose(): void {
 .time-slot-btn {
   height: 36px;
   border-radius: 8px;
-  border: 1px solid rgba(164, 147, 232, 0.2);
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(240, 238, 255, 0.75);
+  border: 1px solid var(--card-border, #E8EAF2);
+  background: var(--card-bg, #fff);
+  color: var(--text-body, #1B2031);
   font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   font-family: inherit;
-  transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+  transition: all 0.15s;
 }
 .time-slot-btn:hover {
-  border-color: #a493e8;
-  background: rgba(164, 147, 232, 0.12);
+  border-color: var(--brand-indigo, #5B52E3);
+  background: var(--brand-light, #F0F2FE);
+  color: var(--brand-indigo, #5B52E3);
 }
 .time-slot-btn--selected {
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
-  border-color: transparent;
+  background: var(--brand-indigo, #5B52E3);
+  border-color: var(--brand-indigo, #5B52E3);
   color: #fff;
+}
+.time-slot-btn--anchor {
+  background: var(--brand-light, #F0F2FE);
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  box-shadow: 0 0 0 2px rgba(91, 82, 227, 0.2);
+}
+.selection-hint {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--brand-indigo, #5B52E3);
+  margin: 0;
 }
 .selection-count {
   font-size: 12px;
-  color: rgba(240, 238, 255, 0.5);
+  color: var(--text-secondary, #6B7191);
   margin: 0;
 }
 
 /* ── 공통 필드 힌트 ────────────────────────────────────────────────── */
 .field-hint {
   font-size: 11px;
-  color: #f5a520;
+  color: #d97706;
   margin: 0;
   padding: 0 2px;
 }
 .verify-error {
-  color: #f56565 !important;
+  color: var(--danger-text, #D45D5D) !important;
 }
 
 /* ── 버튼 ──────────────────────────────────────────────────────────── */
@@ -537,7 +596,7 @@ function handleClose(): void {
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s, transform 0.1s, opacity 0.2s;
+  transition: all 0.15s;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -553,21 +612,22 @@ function handleClose(): void {
   cursor: not-allowed;
 }
 .btn--primary {
-  background: linear-gradient(135deg, #a493e8 0%, #7b68c8 100%);
+  background: var(--brand-indigo, #5B52E3);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(164, 147, 232, 0.25);
 }
 .btn--primary:hover:not(:disabled) {
-  opacity: 0.95;
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 .btn--secondary {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(240, 238, 255, 0.7);
+  background: var(--page-bg, #F6F7FB);
+  border: 1px solid var(--card-border, #E8EAF2);
+  color: var(--text-secondary, #6B7191);
 }
 .btn--secondary:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  color: #f0eeff;
+  border-color: var(--brand-indigo, #5B52E3);
+  color: var(--brand-indigo, #5B52E3);
+  background: var(--brand-light, #F0F2FE);
 }
 
 /* ── 스피너 ────────────────────────────────────────────────────────── */
