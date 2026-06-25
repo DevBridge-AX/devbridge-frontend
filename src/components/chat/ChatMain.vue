@@ -307,7 +307,7 @@ function getSessionTitle(): string {
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
 .status-dot.active { background: #34C759; }
 
-.chat-messages-area { flex: 1; overflow-y: auto; padding: 0; min-height: 0; }
+.chat-messages-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0; min-height: 0; }
 .chat-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 60px 32px; text-align: center; gap: 6px; height: 100%;
