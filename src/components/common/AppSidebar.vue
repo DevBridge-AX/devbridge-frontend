@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useWorkspaceStore } from '@/state/workspaceStore'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 
 const props = defineProps<{
@@ -13,10 +14,12 @@ const emit = defineEmits<{
 
 const route = useRoute()
 const router = useRouter()
+const workspaceStore = useWorkspaceStore()
 
 const currentWorkspaceId = computed(() => {
   const value = route.params.workspaceId
-  return Array.isArray(value) ? value[0] : value
+  const fromRoute = Array.isArray(value) ? value[0] : value
+  return fromRoute || workspaceStore.currentWorkspaceId
 })
 
 const navItems = [

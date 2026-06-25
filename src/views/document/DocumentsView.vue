@@ -902,12 +902,42 @@ watch(
           </div>
 
           <!-- AI Tab -->
-          <div v-else-if="activeKnowledgeTab === 'ai'" class="doc-ai-box">
-            <h3>AI 기반 프로젝트 분석</h3>
-            <p>
-              이후 FastAPI와 Vector DB가 연결되면 문서 요약, 키워드 추출, 관련
-              Task 추천, Git 변경사항 분석 결과가 이 영역에 표시됩니다.
-            </p>
+          <div v-else-if="activeKnowledgeTab === 'ai'" style="padding:18px 20px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+              <div>
+                <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--text-body)">AI 분석 현황</h3>
+                <p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary)">문서 분석 결과 요약 · 키워드 · 리스크 평가</p>
+              </div>
+              <span style="padding:4px 12px;border-radius:999px;background:var(--brand-light);color:var(--brand-indigo);font-family:var(--font-mono);font-size:10px;font-weight:600;white-space:nowrap">총 {{ analyzedDocumentCount }}건 분석 완료</span>
+            </div>
+
+            <!-- Status summary chips -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#dcfce7;color:#15803d;font-family:var(--font-mono);font-size:10px;font-weight:600">완료 {{ analyzedDocumentCount }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:var(--danger-bg);color:var(--danger-text);font-family:var(--font-mono);font-size:10px;font-weight:600">실패 {{ documents.filter(d=>d.analysisStatus==='FAILED').length }}</span>
+              <span style="display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:999px;background:#f1f3f5;color:#868e96;font-family:var(--font-mono);font-size:10px;font-weight:600">대기 {{ pendingDocumentCount }}</span>
+            </div>
+
+            <!-- Analysis results grid -->
+            <div v-if="documents.filter(d=>d.analysisStatus==='COMPLETED'||d.summary).length === 0" class="doc-state" style="padding:32px">
+              <strong style="display:block;color:var(--text-body)">아직 분석 결과가 없습니다</strong>
+              <p style="margin:4px 0 0;font-size:12px;color:var(--text-secondary)">문서를 업로드하고 AI 분석이 완료되면 여기에 결과가 표시됩니다.</p>
+            </div>
+            <div v-else style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px">
+              <div v-for="d in documents.filter(doc=>doc.analysisStatus==='COMPLETED'||doc.summary)" :key="d.id" style="padding:16px;border-radius:12px;border:1px solid var(--card-border);background:var(--card-bg);display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                  <strong style="font-size:13px;font-weight:600;color:var(--text-body)">{{ d.title }}</strong>
+                  <span v-if="d.riskLevel" style="padding:2px 8px;border-radius:999px;font-family:var(--font-mono);font-size:9px;font-weight:700;white-space:nowrap;flex-shrink:0"
+                    :style="d.riskLevel==='HIGH'?'background:var(--danger-bg);color:var(--danger-text)':d.riskLevel==='MEDIUM'?'background:#fff9db;color:#e67700':'background:#dcfce7;color:#15803d'">
+                    {{ d.riskLevel === 'HIGH' ? '위험' : d.riskLevel === 'MEDIUM' ? '보통' : '낮음' }}
+                  </span>
+                </div>
+                <p v-if="d.summary" style="margin:0;font-size:12px;color:var(--text-secondary);line-height:1.6">{{ d.summary.slice(0,200) }}{{ d.summary.length > 200 ? '...' : '' }}</p>
+                <div v-if="d.keywords" style="display:flex;flex-wrap:wrap;gap:4px">
+                  <span v-for="kw in d.keywords.split(',').map(k=>k.trim()).filter(Boolean).slice(0,5)" :key="kw" style="padding:2px 8px;border-radius:999px;background:var(--brand-light);color:var(--brand-chip-text);font-family:var(--font-mono);font-size:9px;font-weight:600">{{ kw }}</span>
+                </div>
+              </div>
+            </div>
           </div>
         </section>
       </div>
