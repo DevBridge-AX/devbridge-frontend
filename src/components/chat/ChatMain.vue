@@ -5,6 +5,7 @@ import MessageList from '@/components/chat/MessageList.vue'
 import OwnerConfirmationCard from '@/components/chat/OwnerConfirmationCard.vue'
 import OwnerAnswerToast from '@/components/chat/OwnerAnswerToast.vue'
 import ChatHistorySidebar from '@/components/chat/ChatHistorySidebar.vue'
+import DirectQuestionModal from '@/components/chat/DirectQuestionModal.vue'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
 import '@/assets/styles/chat.css'
@@ -31,6 +32,21 @@ const inputText = computed({
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isComposing = ref(false)
 const isInputFocused = ref(false)
+const showPlusMenu = ref(false)
+const showDirectQuestion = ref(false)
+
+function togglePlusMenu() {
+  showPlusMenu.value = !showPlusMenu.value
+}
+
+function openDirectQuestion() {
+  showPlusMenu.value = false
+  showDirectQuestion.value = true
+}
+
+function handleDirectQuestionSent() {
+  showDirectQuestion.value = false
+}
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
@@ -211,7 +227,7 @@ function getSessionTitle(): string {
               v-model="inputText"
               class="chat-input-box"
               rows="1"
-              placeholder="동기화된 지식에 대해 물어보세요... ('담당자' 또는 'owner' 입력 시 호출 시나리오 시작)"
+              placeholder="동기화된 지식에 대해 물어보세요..."
               @keydown="handleKeydown"
               @compositionstart="isComposing = true"
               @compositionend="isComposing = false"
@@ -225,12 +241,28 @@ function getSessionTitle(): string {
                 <span v-if="error" class="status-error">{{ error }}</span>
                 <span v-else>{{ isConnected ? '실시간 연동 중' : '연결되지 않음' }}</span>
               </div>
-              <button type="submit" class="chat-send-btn" :disabled="!inputText.trim() || !isConnected" aria-label="전송">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"/>
-                  <polyline points="5 12 12 5 19 12"/>
-                </svg>
-              </button>
+              <div class="chat-input-actions">
+                <div class="chat-plus-wrap">
+                  <button type="button" class="chat-plus-btn" @click="togglePlusMenu" aria-label="추가 기능">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                  <div v-if="showPlusMenu" class="chat-plus-menu">
+                    <button type="button" class="chat-plus-menu-item" @click="openDirectQuestion">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      담당자에게 질문
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" class="chat-send-btn" :disabled="!inputText.trim() || !isConnected" aria-label="전송">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="5 14 12 7 19 14"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -245,11 +277,41 @@ function getSessionTitle(): string {
 
       <!-- Owner Push Toast -->
       <OwnerAnswerToast />
+
+      <!-- Direct Question Modal -->
+      <DirectQuestionModal
+        :is-open="showDirectQuestion"
+        @close="showDirectQuestion = false"
+        @sent="handleDirectQuestionSent"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
+.chat-input-actions { display: flex; align-items: center; gap: 6px; }
+.chat-plus-wrap { position: relative; display: flex; align-items: center; }
+.chat-plus-btn {
+  width: 34px; height: 34px; padding: 0;
+  background: var(--brand-indigo, #5B52E3); color: #fff;
+  border: 0; border-radius: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all .15s;
+}
+.chat-plus-btn:hover { background: #4A43C9; transform: translateY(-1px); }
+.chat-plus-btn svg { width: 16px; height: 16px; }
+.chat-plus-menu {
+  position: absolute; bottom: 42px; right: 0; z-index: 20;
+  background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2); border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px 0; min-width: 180px;
+}
+.chat-plus-menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 16px; border: none; background: none; cursor: pointer;
+  font-size: 13px; color: var(--text-body, #1B2031); white-space: nowrap; font-family: var(--font-ui);
+}
+.chat-plus-menu-item:hover { background: var(--brand-light, #F0F2FE); color: var(--brand-indigo, #5B52E3); }
+
 .chat-shell {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -307,7 +369,7 @@ function getSessionTitle(): string {
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #ccc; flex-shrink: 0; }
 .status-dot.active { background: #34C759; }
 
-.chat-messages-area { flex: 1; overflow-y: auto; padding: 0; min-height: 0; }
+.chat-messages-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 0; min-height: 0; }
 .chat-empty {
   display: flex; flex-direction: column; align-items: center; justify-content: center;
   padding: 60px 32px; text-align: center; gap: 6px; height: 100%;
@@ -338,7 +400,7 @@ function getSessionTitle(): string {
   display: flex; flex-direction: column;
   border: 1px solid var(--card-border, #E8EAF2);
   border-radius: 14px; background: var(--page-bg, #F6F7FB);
-  transition: border-color .15s, background .15s; overflow: hidden;
+  transition: border-color .15s, background .15s; overflow: visible;
 }
 .chat-input-wrap.focused { border-color: var(--brand-indigo, #5B52E3); background: var(--card-bg, #fff); box-shadow: 0 0 0 3px rgba(91,82,227,.1); }
 .chat-input-wrap.disconnected { border-color: var(--danger-text, #D45D5D); }

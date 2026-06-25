@@ -37,6 +37,11 @@ export interface SubmitAnswerRequest {
   answerContent: string
 }
 
+export interface DirectQuestionRequest {
+  assignedOwnerId: string
+  questionContent: string
+}
+
 // ─── API 객체 (Layer 1: Axios 통신 규격만 정의) ────────────────────────────
 
 export const ownerConfirmationApi = {
@@ -58,6 +63,12 @@ export const ownerConfirmationApi = {
         payload,
       )
       .then((res) => res.data)
+  },
+
+  sendDirectQuestion(payload: DirectQuestionRequest): Promise<void> {
+    return axiosClient
+      .post<void>('/api/owner-confirmations/direct-question', payload)
+      .then(() => undefined)
   },
 
   getRequestedList(params: OwnerConfirmationListParams): Promise<OwnerConfirmationPageResponse> {

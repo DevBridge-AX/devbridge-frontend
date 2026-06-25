@@ -382,6 +382,7 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
         <MeetingList
           v-else
           :meetings="meetings"
+          :current-employee-id="authStore.currentUser?.employeeId"
           @select-meeting="handleSelectMeeting"
           @open-response="handleOpenResponse"
         />

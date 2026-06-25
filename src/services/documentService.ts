@@ -95,7 +95,7 @@ async function uploadDocument(file: File): Promise<UploadDocumentResult> {
 
 /**
  * Documents 페이지와 Task 상세 Documents 탭에서 사용하는 실제 문서 업로드 함수.
- * 1. DOC DataSource 생성
+ * 1. 기존 DOC DataSource 조회 → 없으면 생성
  * 2. 생성된 dataSourceId로 실제 파일 업로드
  * 3. taskId가 있으면 해당 Task에 문서 연결
  */
@@ -111,11 +111,15 @@ async function uploadWorkspaceDocument(
   }
 
   try {
-    const dataSource = await dataSourceApi.connectDataSource({
-      workspaceId: request.workspaceId,
-      sourceType: 'DOC',
-      sourceName: 'Uploaded Documents',
-    })
+    const existingSources = await dataSourceApi.fetchDataSources(request.workspaceId)
+    const docSource = existingSources.find((s) => s.sourceType === 'DOC')
+
+    const dataSource = docSource
+      ?? await dataSourceApi.connectDataSource({
+        workspaceId: request.workspaceId,
+        sourceType: 'DOC',
+        sourceName: request.file.name,
+      })
 
     return await documentApi.uploadDocument({
       workspaceId: request.workspaceId,
