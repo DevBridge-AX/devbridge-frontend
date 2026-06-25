@@ -222,22 +222,6 @@ function getSessionTitle(): string {
       <footer class="chat-input-area">
         <form class="chat-input-form" @submit.prevent="handleSend">
           <div class="chat-input-wrap" :class="{ focused: isInputFocused, disconnected: !isConnected }">
-            <!-- + 버튼 -->
-            <div class="chat-plus-wrap" style="position:relative;">
-              <button type="button" class="chat-plus-btn" @click="togglePlusMenu" aria-label="추가 기능">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-              </button>
-              <div v-if="showPlusMenu" class="chat-plus-menu">
-                <button type="button" class="chat-plus-menu-item" @click="openDirectQuestion">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                  </svg>
-                  담당자에게 질문
-                </button>
-              </div>
-            </div>
             <textarea
               ref="textareaRef"
               v-model="inputText"
@@ -257,12 +241,28 @@ function getSessionTitle(): string {
                 <span v-if="error" class="status-error">{{ error }}</span>
                 <span v-else>{{ isConnected ? '실시간 연동 중' : '연결되지 않음' }}</span>
               </div>
-              <button type="submit" class="chat-send-btn" :disabled="!inputText.trim() || !isConnected" aria-label="전송">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <line x1="12" y1="19" x2="12" y2="5"/>
-                  <polyline points="5 12 12 5 19 12"/>
-                </svg>
-              </button>
+              <div class="chat-input-actions">
+                <div class="chat-plus-wrap">
+                  <button type="button" class="chat-plus-btn" @click="togglePlusMenu" aria-label="추가 기능">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round">
+                      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                    </svg>
+                  </button>
+                  <div v-if="showPlusMenu" class="chat-plus-menu">
+                    <button type="button" class="chat-plus-menu-item" @click="openDirectQuestion">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                      </svg>
+                      담당자에게 질문
+                    </button>
+                  </div>
+                </div>
+                <button type="submit" class="chat-send-btn" :disabled="!inputText.trim() || !isConnected" aria-label="전송">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="5 14 12 7 19 14"/>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         </form>
@@ -289,25 +289,28 @@ function getSessionTitle(): string {
 </template>
 
 <style scoped>
-.chat-plus-wrap { display: flex; align-items: center; }
+.chat-input-actions { display: flex; align-items: center; gap: 6px; }
+.chat-plus-wrap { position: relative; display: flex; align-items: center; }
 .chat-plus-btn {
-  width: 36px; height: 36px; border-radius: 50%; border: 1px solid #d1d5db;
-  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
-  color: #6b7280; transition: all 0.15s; flex-shrink: 0; margin-right: 8px;
+  width: 34px; height: 34px; padding: 0;
+  background: var(--brand-indigo, #5B52E3); color: #fff;
+  border: 0; border-radius: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  transition: all .15s;
 }
-.chat-plus-btn:hover { background: #f3f4f6; color: #2563eb; border-color: #2563eb; }
-.chat-plus-btn svg { width: 18px; height: 18px; }
+.chat-plus-btn:hover { background: #4A43C9; transform: translateY(-1px); }
+.chat-plus-btn svg { width: 16px; height: 16px; }
 .chat-plus-menu {
-  position: absolute; bottom: 44px; left: 0; z-index: 20;
-  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+  position: absolute; bottom: 42px; right: 0; z-index: 20;
+  background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2); border-radius: 10px;
   box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px 0; min-width: 180px;
 }
 .chat-plus-menu-item {
   display: flex; align-items: center; gap: 8px; width: 100%;
   padding: 10px 16px; border: none; background: none; cursor: pointer;
-  font-size: 14px; color: #374151; white-space: nowrap;
+  font-size: 13px; color: var(--text-body, #1B2031); white-space: nowrap; font-family: var(--font-ui);
 }
-.chat-plus-menu-item:hover { background: #f3f4f6; color: #2563eb; }
+.chat-plus-menu-item:hover { background: var(--brand-light, #F0F2FE); color: var(--brand-indigo, #5B52E3); }
 
 .chat-shell {
   display: grid;
@@ -397,7 +400,7 @@ function getSessionTitle(): string {
   display: flex; flex-direction: column;
   border: 1px solid var(--card-border, #E8EAF2);
   border-radius: 14px; background: var(--page-bg, #F6F7FB);
-  transition: border-color .15s, background .15s; overflow: hidden;
+  transition: border-color .15s, background .15s; overflow: visible;
 }
 .chat-input-wrap.focused { border-color: var(--brand-indigo, #5B52E3); background: var(--card-bg, #fff); box-shadow: 0 0 0 3px rgba(91,82,227,.1); }
 .chat-input-wrap.disconnected { border-color: var(--danger-text, #D45D5D); }
