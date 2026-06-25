@@ -5,6 +5,7 @@ import MessageList from '@/components/chat/MessageList.vue'
 import OwnerConfirmationCard from '@/components/chat/OwnerConfirmationCard.vue'
 import OwnerAnswerToast from '@/components/chat/OwnerAnswerToast.vue'
 import ChatHistorySidebar from '@/components/chat/ChatHistorySidebar.vue'
+import DirectQuestionModal from '@/components/chat/DirectQuestionModal.vue'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
 import '@/assets/styles/chat.css'
@@ -31,6 +32,21 @@ const inputText = computed({
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isComposing = ref(false)
 const isInputFocused = ref(false)
+const showPlusMenu = ref(false)
+const showDirectQuestion = ref(false)
+
+function togglePlusMenu() {
+  showPlusMenu.value = !showPlusMenu.value
+}
+
+function openDirectQuestion() {
+  showPlusMenu.value = false
+  showDirectQuestion.value = true
+}
+
+function handleDirectQuestionSent() {
+  showDirectQuestion.value = false
+}
 
 function handleKeydown(event: KeyboardEvent) {
   if (event.key === 'Enter' && !event.shiftKey && !isComposing.value) {
@@ -206,12 +222,28 @@ function getSessionTitle(): string {
       <footer class="chat-input-area">
         <form class="chat-input-form" @submit.prevent="handleSend">
           <div class="chat-input-wrap" :class="{ focused: isInputFocused, disconnected: !isConnected }">
+            <!-- + 버튼 -->
+            <div class="chat-plus-wrap" style="position:relative;">
+              <button type="button" class="chat-plus-btn" @click="togglePlusMenu" aria-label="추가 기능">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+              </button>
+              <div v-if="showPlusMenu" class="chat-plus-menu">
+                <button type="button" class="chat-plus-menu-item" @click="openDirectQuestion">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  담당자에게 질문
+                </button>
+              </div>
+            </div>
             <textarea
               ref="textareaRef"
               v-model="inputText"
               class="chat-input-box"
               rows="1"
-              placeholder="동기화된 지식에 대해 물어보세요... ('담당자' 또는 'owner' 입력 시 호출 시나리오 시작)"
+              placeholder="동기화된 지식에 대해 물어보세요..."
               @keydown="handleKeydown"
               @compositionstart="isComposing = true"
               @compositionend="isComposing = false"
@@ -245,11 +277,38 @@ function getSessionTitle(): string {
 
       <!-- Owner Push Toast -->
       <OwnerAnswerToast />
+
+      <!-- Direct Question Modal -->
+      <DirectQuestionModal
+        :is-open="showDirectQuestion"
+        @close="showDirectQuestion = false"
+        @sent="handleDirectQuestionSent"
+      />
     </div>
   </div>
 </template>
 
 <style scoped>
+.chat-plus-wrap { display: flex; align-items: center; }
+.chat-plus-btn {
+  width: 36px; height: 36px; border-radius: 50%; border: 1px solid #d1d5db;
+  background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #6b7280; transition: all 0.15s; flex-shrink: 0; margin-right: 8px;
+}
+.chat-plus-btn:hover { background: #f3f4f6; color: #2563eb; border-color: #2563eb; }
+.chat-plus-btn svg { width: 18px; height: 18px; }
+.chat-plus-menu {
+  position: absolute; bottom: 44px; left: 0; z-index: 20;
+  background: #fff; border: 1px solid #e5e7eb; border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.12); padding: 4px 0; min-width: 180px;
+}
+.chat-plus-menu-item {
+  display: flex; align-items: center; gap: 8px; width: 100%;
+  padding: 10px 16px; border: none; background: none; cursor: pointer;
+  font-size: 14px; color: #374151; white-space: nowrap;
+}
+.chat-plus-menu-item:hover { background: #f3f4f6; color: #2563eb; }
+
 .chat-shell {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
