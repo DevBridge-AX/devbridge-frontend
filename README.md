@@ -1,88 +1,315 @@
-# 🌉 DevBridge AX - Frontend
+# 🌉 DevBridge AX (Frontend)
 
-> **기획과 개발, 비즈니스와 기술을 잇는 지식 파이프라인**
-> DevBridge AI의 사용자 웹 대시보드 및 실시간 직무별 인터페이스를 구축하는 프론트엔드 레포지토리입니다.
+<p align="center">
+  <strong>문서 · Git 커밋 · 업무 · 회의 · 채팅을 하나의 워크스페이스 흐름으로 연결하는 사용자 인터페이스</strong><br />
+  DevBridge AX의 Dashboard, Tasks, Documents, AI Chat, Workspace Navigation을 담당하는 Vue.js 기반 Frontend Web Application입니다.
+</p>
 
----
-
-## 🔗 Project Workspace & Documentation
-> 💡 **포트폴리오 및 협업 히스토리 확인**
-> 본 프로젝트의 기획 고도화, 요구사항 명세서, 회의록 및 태스크 관리는 아래 공간에서 투명하게 기록되고 있습니다.
-* 📝 [DevBridge AX 공식 Notion 워크스페이스 바로가기](https://notion-link-here.notion.site)
-* 🎨 [Figma 와이어프레임 및 디자인 시스템](https://figma-link-here.com)
-
----
-
-## 1. 🎯 프로젝트 기획 및 서비스 개요
-
-### 💡 기획 배경 및 문제 정의
-현업 부서(기획/마케팅/디자인)와 개발 부서 간 협업에서 **_정보 파편화_**, **_데이터 접근 장벽_** **_도메인 용어의 불일치_** 등으로 업무 병목을 겪으며 **소통 비용의 증가**로 이어지고 있습니다.
-* **비즈니스 언어 vs 시스템 언어의 괴리**: 기획자가 설계하는 비즈니스 모델의 형태와 개발자가 실제 DB에 구축해 둔 테이블 구조 및 컬럼명(물리명)이 일치하지 않습니다. 이로 인해 기획-개발 간 싱크를 맞출 때마다 불필요한 번역 과정이 발생하며 소통 비용이 발생합니다.
-* **데이터 조회 및 검증의 병목**: 기획자나 디자이너가 업무 검증을 위해 간단한 데이터 하나를 확인하려 해도, 복잡한 DB 구조를 알지 못해 개발자에게 찾아가 스키마 설명 혹은 데이터 조회를 요청해야 합니다. 이는 업무 속도를 지연시키며 의사결정 속도를 정체시키는 악순환을 만듭니다.
-* **구전 중심의 온보딩과 지식 부채**: 시스템 히스토리가 코드와 파편화된 문서에 숨겨져 있어, 신규 팀원이 온보딩하거나 타 부서와 협업할 때 싱크를 맞추는데 개인의 기억력과 구두 설명에 의존하게 됩니다. 담당자가 바뀌거나 부서가 확장될 때마다 인수인계의 어려움이 존재합니다.
-
-### 🚀 해결 방안 (Our Service)
-**DevBridge AX**는 이러한 파편화된 지식을 하나로 잇는 **'지식 구축 파이프라인'**입니다. 
-외부 개발사의 Git 변경 사항, 문서, 디자인 토큰을 웹훅(Webhook)으로 실시간 수집·정형화하여 하나의 인텔리전트 지식베이스로 결합합니다. 이를 기반으로 **직무별 맞춤형 AI 챗봇**과 **시각적 대시보드**를 제공하여 부서 간 소통 장벽을 허뭅니다.
-
-### 👥 핵심 타겟 및 페르소나
-* **기획자 및 디자이너 (양평의 딸  & 기획의 여신)**: 개발자에게 매번 조회 요청을 하는 번거로움 없이, 서비스의 실제 데이터 구조와 필요한 쿼리를 직관적인 웹 인터페이스를 통해 스스로 획득하고자 하는 유저.
-* **백엔드/AI 개발자 (보리차의 여왕)**: 단순 데이터 확인용 쿼리 추출 업무(소음 태스크)에서 해방되어, 코어 비즈니스 로직 설계와 AI 라우팅 고도화에 온전히 집중하고 싶은 개발자.
-* **조직 관리자 (PM/C-Level)**: 부서 간 기술-비즈니스 싱크를 맞추는 리드타임을 줄이고 데이터 기반의 의사결정 속도를 극대화하고 싶은 관리자.
+<p align="center">
+  <img src="https://img.shields.io/badge/Vue.js_3-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white" />
+  <img src="https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white" />
+  <img src="https://img.shields.io/badge/Pinia-F7D336?style=for-the-badge&logo=vue.js&logoColor=black" />
+  <img src="https://img.shields.io/badge/Vue_Router-4FC08D?style=for-the-badge&logo=vue.js&logoColor=white" />
+  <img src="https://img.shields.io/badge/Axios-5A29E4?style=for-the-badge&logo=axios&logoColor=white" />
+</p>
 
 ---
 
-## 2. 🛠 Tech Stack
-*현재 프론트엔드 아키텍처는 유연한 확장과 유저 피드백 수렴을 위해 지속적으로 고도화 중입니다.*
+<a id="quick-links"></a>
+## 🔗 Quick Links
 
-| :--- | :--- | :--- |
-| **Framework** | **Vue.js 3** (Composition API) | **[확정]** 높은 생산성과 반응형 UI 구현 |
-| **Build Tool** | Vite | [논의 중] 빠른 로컬 개발 환경 고려 |
-| **State** | Pinia / Vuex | [논의 중] 유저 세션 및 챗 히스토리 관리용 |
-| **Styling** | Tailwind CSS / SCSS | [논의 중] 브랜드 컬러 융합 가이드라인 반영 예정 |
-
-### 🎨 Brand Identity Colors
-* **Main Color (Lavender)**: `#8E77F6`
-* **Sub Color (Intelli Blue)**: `#4B73FF` 
+- 🖥️ [Frontend Repository](https://github.com/DevBridge-AX/devbridge-frontend)
+- ⚙️ [Backend Repository](https://github.com/DevBridge-AX/devbridge-backend)
+- 🤖 [AI Engine Repository](https://github.com/DevBridge-AX/devbridge-ai-engine)
+- 🎨 Figma / 화면 설계: 링크 연결 예정
+- 📝 Notion / API 명세서: 링크 연결 예정
 
 ---
 
-## 3. 📂 Project Structure
-*컴포넌트의 재사용성과 도메인 확장을 고려하여 설계된 구조입니다. 프로젝트 진행 상황에 따라 유연하게 변경될 수 있습니다.*
+<a id="table-of-contents"></a>
+## 📚 Table of Contents
 
-## 3. 📂 Project Structure
-*DevBridge AI의 프론트엔드는 AI 에이전트와의 협업 효율 및 유지보수성을 극대화하기 위해 설계된 **5계층 단방향 아키텍처(5-Layer Architecture)**를 따릅니다. 의존성은 반드시 상위에서 하위로만 흐릅니다.*
+- [Wireframe & Screenshots](#wireframe--screenshots)
+- [Frontend Features](#frontend-features)
+- [User Flow](#user-flow)
+- [Role-based UI](#role-based-ui)
+- [Frontend Architecture](#frontend-architecture)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Routes](#routes)
+
+---
+
+<a id="wireframe--screenshots"></a>
+## 🖼️ Wireframe & Screenshots
+
+### Wireframe Overview
+
+<p align="center">
+  <img src="docs/images/wireframe-overview.png" alt="Wireframe Overview" width="900" />
+</p>
+
+### Login / Signup
+
+<p align="center">
+  <img src="docs/images/login.png" alt="Login Screenshot" width="800" />
+</p>
+
+### Workspace / Permission UI
+
+<p align="center">
+  <img src="docs/images/workspace.png" alt="Workspace Screenshot" width="800" />
+</p>
+
+### Dashboard
+
+<p align="center">
+  <img src="docs/images/dashboard.png" alt="Dashboard Screenshot" width="800" />
+</p>
+
+### Tasks
+
+<p align="center">
+  <img src="docs/images/tasks.png" alt="Tasks Screenshot" width="800" />
+</p>
+
+### Documents
+
+<p align="center">
+  <img src="docs/images/documents.png" alt="Documents Screenshot" width="800" />
+</p>
+
+### AI Chat
+
+<p align="center">
+  <img src="docs/images/chat.png" alt="AI Chat Screenshot" width="800" />
+</p>
+
+---
+
+<a id="frontend-features"></a>
+## 🧩 Frontend Features
+
+Frontend는 사용자가 워크스페이스 단위로 프로젝트 데이터를 조회하고, 필요한 액션을 바로 수행할 수 있도록 화면 흐름을 구성합니다.
+
+| Feature | Frontend Responsibility |
+| :--- | :--- |
+| **Auth** | 로그인, 회원가입, 인증 상태 관리, 인증 필요 페이지 접근 제어 |
+| **Workspace** | 워크스페이스 목록 조회, 워크스페이스 선택, 생성 버튼, 초대 수락/거절 UI |
+| **Permission UI** | 사용자 권한과 초대 상태에 따라 버튼, 메뉴, 관리 액션 노출 제어 |
+| **Dashboard** | 업무 통계, 최근 업무, 최근 문서, 최근 Git commit, 지연 업무, AI Summary 표시 |
+| **Tasks** | 업무 목록 조회, 업무 생성/수정/삭제, 상태 변경, 담당자/마감일 표시 |
+| **Documents** | 문서 업로드, 문서 목록/상세 조회, 미리보기, 다운로드, AI 분석 상태 표시 |
+| **Data Sources / Git** | Git 저장소 등록, 연동 상태 확인, commit 데이터 화면 표시 |
+| **AI Chat** | 채팅 세션, 메시지 목록, Markdown 답변 렌더링, 문서/Git 기반 질의응답 화면 제공 |
+| **Owner Question** | AI 답변이 부족한 경우 담당자 확인 요청 흐름 제공 |
+| **Schedule / Notification** | 회의 일정, 초대, 업무, 담당자 확인 요청 등 주요 이벤트 표시 |
+| **Settings** | 사용자 프로필 및 워크스페이스 설정 화면 제공 |
+
+---
+
+<a id="user-flow"></a>
+## 🚀 User Flow
 
 ```text
-frontend/
-├── public/                  # 정적 리소스
-├── src/
-│   ├── api/                 # [Layer 1] 외부 통신 계층 (Axios 인스턴스 및 엔드포인트)
-│   ├── state/               # [Layer 2] 전역 상태 계층 (Pinia 캐싱 및 상태 유지)
-│   ├── service/             # [Layer 3] 비즈니스 로직 계층 (API 호출 + State 업데이트)
-│   ├── components/          # [Layer 4] 프레젠테이션 계층 (재사용 가능한 UI 부품)
-│   │   ├── layout/          # 앱 전체 뼈대 (Header, Sidebar 등)
-│   │   ├── ui/              # 순수 공통 부품 (Button, Modal 등)
-│   │   └── domain/          # 도메인 전용 복합 컴포넌트 (chat, schedule 등)
-│   ├── views/               # [Layer 5] 페이지 계층 (Vue Router와 1:1 매칭)
-│   │   ├── auth/            # 인증 및 로그인 화면
-│   │   ├── workspace/       # 대시보드 및 프로젝트 목록 화면
-│   │   ├── chat/            # AI 실시간 채팅 화면
-│   │   ├── knowledge/       # RAG 데이터 업로드 및 산출물 화면
-│   │   ├── schedule/        # 지능형 일정 조율 화면
-│   │   └── governance/      # 전사 표준 용어 관리 화면
-│   ├── assets/              # 전역 스타일시트(CSS), 이미지, 아이콘 등
-│   ├── router/              # Vue Router 설정 및 접근 제어(가드)
-│   ├── types/               # 전역(Global) TypeScript 인터페이스 및 타입 정의
-│   ├── App.vue              # 최상위 루트 컴포넌트
-│   └── main.ts              # Vue 앱 진입점 (Pinia/Router 주입)
-├── index.html               # Vite 프로젝트의 메인 HTML 진입점
-├── package.json             # 프로젝트 의존성(npm) 및 실행 스크립트 명세서
-├── vite.config.ts           # Vite 빌드 및 로컬 서버 설정
-└── .gitignore               
+로그인 / 회원가입
+  ↓
+워크스페이스 목록 확인
+  ↓
+권한에 따라 Workspace 생성 또는 초대 수락
+  ↓
+선택한 Workspace 진입
+  ↓
+Dashboard에서 프로젝트 현황 확인
+  ↓
+Tasks / Documents / Data Sources에서 업무·문서·Git 데이터 관리
+  ↓
+AI Chat에서 프로젝트 문맥 기반 질문
+  ↓
+Owner Question / Notification / Schedule로 후속 협업
 ```
+
+| Step | User Action | UI Response |
+| :--- | :--- | :--- |
+| Auth | 로그인 또는 회원가입 | 인증 성공 후 워크스페이스 화면으로 이동 |
+| Workspace | 워크스페이스 카드 클릭 | 선택한 `workspaceId` 기준 Dashboard 진입 |
+| Invitation | 초대 수락 / 거절 클릭 | 참여 가능 워크스페이스 목록 또는 초대 상태 갱신 |
+| Dashboard | 프로젝트 현황 확인 | 업무·문서·Git 요약 카드와 리스트 표시 |
+| Tasks | 업무 생성 / 상태 변경 | 업무 목록과 상태 badge 갱신 |
+| Documents | 문서 업로드 / 미리보기 / 다운로드 | 문서 목록과 분석 상태 badge 갱신 |
+| AI Chat | 질문 입력 | Markdown 기반 AI 답변 표시 |
+| Follow-up | 담당자 확인 요청 / 일정 확인 | 알림, 일정, 담당자 확인 흐름으로 연결 |
+
 ---
 
-## > 🎨 화면 디자인
+<a id="role-based-ui"></a>
+## 🔐 Role-based UI
 
-[img]{blank}
+사용자의 권한, 워크스페이스 참여 상태, 초대 상태에 따라 화면에 표시되는 버튼과 메뉴를 다르게 구성합니다.
+
+| User State / Role | Visible UI |
+| :--- | :--- |
+| 신규 사용자 | 워크스페이스 생성 또는 초대 수락 안내 |
+| 워크스페이스 생성 가능 사용자 | `Workspace 생성` 버튼 |
+| 초대받은 사용자 | `초대 수락` / `거절` 버튼 |
+| 워크스페이스 멤버 | Dashboard, Tasks, Documents, AI Chat 등 주요 메뉴 |
+| 관리자 / Owner | 멤버 관리, 설정 변경, 데이터소스 등록 등 관리 액션 |
+| 일반 멤버 | 업무 조회, 상태 변경, 문서 확인 등 참여 중심 액션 |
+
+```text
+현재 사용자 정보 조회
+  ↓
+워크스페이스 참여 상태 / 권한 확인
+  ↓
+역할에 따라 버튼·메뉴·관리 액션 노출 여부 결정
+  ↓
+사용자 액션 실행
+  ↓
+Backend 권한 검증 후 결과 반영
+```
+
+---
+
+<a id="frontend-architecture"></a>
+## 🏗️ Frontend Architecture
+
+```text
+[User Action]
+      ↓
+[View / Component]
+      ↓
+[Service]
+      ↓
+[API Module]
+      ↓
+[Axios Client]
+      ↓
+[Backend API]
+      ↓
+[State / UI Update]
+```
+
+### Auth & Workspace Flow
+
+```text
+Login
+  ↓
+accessToken 저장
+  ↓
+Router Guard로 인증 필요 페이지 접근 확인
+  ↓
+워크스페이스 목록 / 초대 상태 조회
+  ↓
+/workspaces/:workspaceId/... 진입
+  ↓
+workspaceStore에 workspaceId 저장
+  ↓
+Axios Interceptor가 Authorization / X-Workspace-Id 헤더 자동 주입
+```
+
+### API Layer
+
+| Layer | Role |
+| :--- | :--- |
+| `views/` | 라우트 단위 화면 구성 |
+| `components/` | 공통 UI와 도메인 UI 컴포넌트 |
+| `services/` | 화면에서 필요한 데이터 가공 및 API 호출 흐름 관리 |
+| `api/` | Axios 기반 Backend API 요청 함수 관리 |
+| `state/` | Pinia 기반 인증, 워크스페이스, 채팅 등 전역 상태 관리 |
+
+---
+
+<a id="tech-stack"></a>
+## 🛠️ Tech Stack
+
+| Category | Stack | Purpose |
+| :--- | :--- | :--- |
+| **Framework** | `Vue.js 3` | Composition API 기반 반응형 UI 구현 |
+| **Language** | `TypeScript` | API 응답 타입, 도메인 모델, 컴포넌트 props 안정성 확보 |
+| **Build Tool** | `Vite` | 빠른 로컬 개발 서버 및 빌드 환경 구성 |
+| **State Management** | `Pinia` | 인증 상태, 워크스페이스 상태, 채팅 상태 등 전역 상태 관리 |
+| **Routing** | `Vue Router` | 로그인/워크스페이스/기능별 페이지 라우팅 및 접근 제어 |
+| **HTTP Client** | `Axios` | Backend REST API 통신, JWT 및 workspaceId 헤더 처리 |
+| **Markdown Rendering** | `marked`, `DOMPurify` | AI Chat 답변 Markdown 렌더링 및 XSS 방어 |
+| **Type Check** | `vue-tsc`, `TypeScript` | 빌드 전 타입 검증 |
+| **Package Manager** | `npm` | 의존성 및 실행 스크립트 관리 |
+| **Styling** | `CSS`, `Component-based UI` | 화면별 UI 구성 및 공통 컴포넌트 관리 |
+
+---
+
+<a id="project-structure"></a>
+## 📂 Project Structure
+
+```text
+devbridge-frontend/
+├── public/                         # 정적 리소스
+├── src/
+│   ├── api/                        # Axios 기반 API 통신 계층
+│   │   ├── axiosClient.ts          # 공통 Axios 인스턴스, JWT / workspaceId 인터셉터
+│   │   ├── authApi.ts
+│   │   ├── dashboardApi.ts
+│   │   ├── dataSourceApi.ts
+│   │   ├── documentApi.ts
+│   │   ├── gitApi.ts
+│   │   ├── notificationApi.ts
+│   │   ├── ownerConfirmationApi.ts
+│   │   ├── scheduleApi.ts
+│   │   ├── settingApi.ts
+│   │   ├── taskApi.ts
+│   │   └── workspaceApi.ts
+│   │
+│   ├── services/                   # 화면과 API 사이의 비즈니스 로직 계층
+│   ├── state/                      # Pinia 전역 상태 관리
+│   ├── router/                     # Vue Router 및 인증/워크스페이스 라우트 가드
+│   ├── layouts/                    # 공통 레이아웃
+│   ├── components/                 # 공통/도메인 UI 컴포넌트
+│   ├── views/                      # 라우트 단위 페이지
+│   │   ├── auth/
+│   │   ├── chat/
+│   │   ├── dataSource/
+│   │   ├── document/
+│   │   ├── schedule/
+│   │   ├── settings/
+│   │   ├── task/
+│   │   └── workspace/
+│   │
+│   ├── assets/                     # 스타일, 이미지, 아이콘 등 리소스
+│   ├── composables/                # 재사용 가능한 Composition 함수
+│   ├── App.vue                     # 루트 컴포넌트
+│   └── main.ts                     # Vue 앱 진입점
+│
+├── index.html
+├── package.json
+├── vite.config.ts
+├── tsconfig.json
+└── README.md
+```
+
+---
+
+<a id="routes"></a>
+## 🧭 Routes
+
+주요 화면은 `workspaceId`를 기준으로 동작합니다.
+
+| Path | Description |
+| :--- | :--- |
+| `/login` | 로그인 |
+| `/signup` | 회원가입 |
+| `/workspace` | 워크스페이스 목록 및 초대 상태 확인 |
+| `/workspaces/:workspaceId/dashboard` | 워크스페이스 대시보드 |
+| `/workspaces/:workspaceId/tasks` | 업무 관리 |
+| `/workspaces/:workspaceId/documents` | 문서 관리 |
+| `/workspaces/:workspaceId/chat` | AI Chat |
+| `/workspaces/:workspaceId/datasources` | 데이터소스 관리 |
+| `/workspaces/:workspaceId/schedule` | 일정 관리 |
+| `/settings/profile` | 사용자 프로필 설정 |
+
+---
+
+## 🧭 Project Message
+
+DevBridge AX Frontend는 프로젝트의 문서, 업무, Git 변경사항, AI Chat을 사용자가 하나의 워크스페이스 흐름 안에서 탐색하고 관리할 수 있도록 설계된 사용자 인터페이스입니다.
+
+사용자 권한과 워크스페이스 맥락에 따라 필요한 버튼과 화면을 제공하고, 프로젝트 산출물이 실제 협업 흐름으로 이어지도록 돕는 화면 계층을 목표로 합니다.
