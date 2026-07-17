@@ -24,6 +24,7 @@
 - 🤖 [AI Engine Repository](https://github.com/DevBridge-AX/devbridge-ai-engine)
 - 🎨 Figma / 화면 설계: 링크 연결 예정
 - 📝 Notion / API 명세서: 링크 연결 예정
+- 📘 [Frontend 상세 기술 문서]([FRONTEND_NOTION_LINK](https://app.notion.com/p/26-352ae979d3a78056a468ee52dfe1d05d?p=3a0ae979d3a7806685b8d9ae04f46e35&pm=s))
 
 ---
 
