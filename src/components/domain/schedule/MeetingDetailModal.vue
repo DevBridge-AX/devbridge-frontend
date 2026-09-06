@@ -1,6 +1,8 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import type {
+  AddParticipantsRequest,
+  ManualConfirmRequest,
   MeetingDetailResponse,
   MeetingReferenceRequest,
   MeetingStatus,
@@ -8,6 +10,7 @@ import type {
   ParticipantStatus,
   TimeSlot,
   UpdateMeetingRequest,
+  WorkspaceMemberResponse,
 } from '@/api/scheduleApi'
 import { documentService } from '@/services/documentService'
 
@@ -19,12 +22,26 @@ const props = defineProps<{
   isLoading: boolean
   loadError?: string
   isHost?: boolean
+  currentEmployeeId?: string
   isUpdatingMeeting?: boolean
   updateMeetingError?: string
   isAddingReference?: boolean
   addReferenceError?: string
   deletingReferenceId?: string | null
   deleteReferenceError?: string
+  isCancelingMeeting?: boolean
+  cancelMeetingError?: string
+  isConfirmingManually?: boolean
+  confirmManuallyError?: string
+  isReopeningMeeting?: boolean
+  reopenMeetingError?: string
+  memberSearchResults?: WorkspaceMemberResponse[]
+  isAddingParticipants?: boolean
+  addParticipantsError?: string
+  removingParticipantId?: string | null
+  removeParticipantError?: string
+  isDecliningMeeting?: boolean
+  declineMeetingError?: string
 }>()
 
 const emit = defineEmits<{
@@ -33,6 +50,13 @@ const emit = defineEmits<{
   'update-meeting': [payload: UpdateMeetingRequest]
   'add-reference': [payload: MeetingReferenceRequest]
   'delete-reference': [referenceId: string]
+  'cancel-meeting': []
+  'confirm-meeting-manually': [payload: ManualConfirmRequest]
+  'reopen-meeting': []
+  'search-participants': [keyword: string]
+  'add-participants': [payload: AddParticipantsRequest]
+  'remove-participant': [employeeId: string]
+  'decline-meeting': []
 }>()
 
 // ─── 첨부파일 업로드 ──────────────────────────────────────────────────────────
@@ -91,16 +115,16 @@ const PARTICIPANT_ROLE_LABELS: Record<ParticipantRole, string> = {
   ATTENDEE: '참석자',
 }
 
-// NOTE: 백엔드 ParticipantStatus에는 현재 PENDING/RESPONDED만 정의되어 있음.
-// DECLINED 응답 현황은 추후 타입 확장 후 추가 필요.
 const PARTICIPANT_STATUS_LABELS: Record<ParticipantStatus, string> = {
   PENDING: '응답 대기',
   RESPONDED: '응답 완료',
+  DECLINED: '불참',
 }
 
 const PARTICIPANT_STATUS_BADGE_CLASSES: Record<ParticipantStatus, string> = {
   PENDING: 'participant-badge--pending',
   RESPONDED: 'participant-badge--responded',
+  DECLINED: 'participant-badge--declined',
 }
 
 // ─── 일시 포맷 ──────────────────────────────────────────────────────────────
@@ -156,6 +180,7 @@ const editTitle = ref('')
 const editPurpose = ref('')
 const editAgenda = ref('')
 const editLocation = ref('')
+const editMeetingLink = ref('')
 const editFormError = ref('')
 
 // 모달에 표시되는 회의가 바뀌면 수정 모드를 초기화한다.
@@ -183,6 +208,7 @@ function startEdit(): void {
   editPurpose.value = props.meeting.purpose ?? ''
   editAgenda.value = props.meeting.agenda ?? ''
   editLocation.value = props.meeting.location ?? ''
+  editMeetingLink.value = props.meeting.meetingLink ?? ''
   editFormError.value = ''
   isEditing.value = true
 }
@@ -204,7 +230,153 @@ function submitEdit(): void {
     purpose: editPurpose.value.trim(),
     agenda: editAgenda.value.trim(),
     location: editLocation.value.trim(),
+    meetingLink: editMeetingLink.value.trim(),
   })
+}
+
+// ─── 회의 취소 (Host 전용) ───────────────────────────────────────────────────
+
+function handleCancelMeeting(): void {
+  emit('cancel-meeting')
+}
+
+// ─── 회의 시간 수동 확정 (Host 전용) ─────────────────────────────────────────
+
+const isManualConfirmFormOpen = ref(false)
+const manualConfirmStart = ref('')
+const manualConfirmEnd = ref('')
+const manualConfirmFormError = ref('')
+
+watch(
+  () => props.meeting?.meetingId,
+  () => {
+    isManualConfirmFormOpen.value = false
+  },
+)
+
+watch(
+  () => props.isConfirmingManually,
+  (isConfirming, wasConfirming) => {
+    if (wasConfirming && !isConfirming && !props.confirmManuallyError) {
+      isManualConfirmFormOpen.value = false
+    }
+  },
+)
+
+function startManualConfirm(): void {
+  manualConfirmStart.value = ''
+  manualConfirmEnd.value = ''
+  manualConfirmFormError.value = ''
+  isManualConfirmFormOpen.value = true
+}
+
+function cancelManualConfirm(): void {
+  isManualConfirmFormOpen.value = false
+}
+
+function submitManualConfirm(): void {
+  manualConfirmFormError.value = ''
+
+  if (!manualConfirmStart.value || !manualConfirmEnd.value) {
+    manualConfirmFormError.value = '시작 시간과 종료 시간을 모두 입력해 주세요.'
+    return
+  }
+
+  const start = new Date(manualConfirmStart.value)
+  const end = new Date(manualConfirmEnd.value)
+
+  if (end.getTime() <= start.getTime()) {
+    manualConfirmFormError.value = '종료 시간은 시작 시간보다 이후여야 합니다.'
+    return
+  }
+
+  emit('confirm-meeting-manually', {
+    confirmedStartTime: start.toISOString(),
+    confirmedEndTime: end.toISOString(),
+  })
+}
+
+// ─── 회의 재조율 (Host 전용) ─────────────────────────────────────────────────
+
+function handleReopenMeeting(): void {
+  emit('reopen-meeting')
+}
+
+// ─── 참석자 추가 (Host 전용) ─────────────────────────────────────────────────
+
+const isAddParticipantFormOpen = ref(false)
+const participantSearchKeyword = ref('')
+const selectedNewParticipants = ref<WorkspaceMemberResponse[]>([])
+let participantSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+const showParticipantDropdown = computed(
+  () => participantSearchKeyword.value.trim().length > 0 && (props.memberSearchResults?.length ?? 0) > 0,
+)
+
+watch(
+  () => props.meeting?.meetingId,
+  () => {
+    isAddParticipantFormOpen.value = false
+  },
+)
+
+watch(
+  () => props.isAddingParticipants,
+  (isAdding, wasAdding) => {
+    if (wasAdding && !isAdding && !props.addParticipantsError) {
+      isAddParticipantFormOpen.value = false
+    }
+  },
+)
+
+function startAddParticipant(): void {
+  participantSearchKeyword.value = ''
+  selectedNewParticipants.value = []
+  isAddParticipantFormOpen.value = true
+}
+
+function cancelAddParticipant(): void {
+  isAddParticipantFormOpen.value = false
+}
+
+function handleParticipantSearchInput(): void {
+  if (participantSearchTimer) clearTimeout(participantSearchTimer)
+  participantSearchTimer = setTimeout(() => {
+    emit('search-participants', participantSearchKeyword.value.trim())
+  }, 300)
+}
+
+function selectNewParticipant(member: WorkspaceMemberResponse): void {
+  if (selectedNewParticipants.value.some((m) => m.employeeId === member.employeeId)) return
+  selectedNewParticipants.value.push(member)
+  participantSearchKeyword.value = ''
+}
+
+function removeNewParticipant(employeeId: string): void {
+  selectedNewParticipants.value = selectedNewParticipants.value.filter((m) => m.employeeId !== employeeId)
+}
+
+function submitAddParticipants(): void {
+  if (selectedNewParticipants.value.length === 0) return
+
+  emit('add-participants', {
+    employeeIds: selectedNewParticipants.value.map((m) => m.employeeId),
+  })
+}
+
+function handleRemoveParticipant(employeeId: string): void {
+  emit('remove-participant', employeeId)
+}
+
+// ─── 참석 거절 (참석자 본인) ─────────────────────────────────────────────────
+
+const myParticipant = computed(() => {
+  if (!props.meeting || !props.currentEmployeeId) return null
+  return props.meeting.participants.find((p) => p.employeeId === props.currentEmployeeId) ?? null
+})
+
+function handleDeclineMeeting(): void {
+  emit('decline-meeting')
 }
 
 // ─── 이벤트 핸들러 ──────────────────────────────────────────────────────────
@@ -243,15 +415,83 @@ function handleOpenResponse(meetingId: string): void {
           {{ STATUS_LABELS[meeting.status] }}
         </span>
 
-        <!-- 회의 정보 수정 버튼 (Host 전용) -->
-        <button
-          v-if="isHost && !isEditing"
-          type="button"
-          class="btn btn--secondary edit-toggle-btn"
-          @click="startEdit"
-        >
-          회의 정보 수정
-        </button>
+        <!-- 호스트 전용 액션 (정보 수정 / 취소 / 수동 확정 / 재조율) -->
+        <div v-if="isHost && !isEditing && !isManualConfirmFormOpen" class="host-actions">
+          <button type="button" class="btn btn--secondary" @click="startEdit">
+            회의 정보 수정
+          </button>
+          <button
+            v-if="meeting.status === 'GATHERING' || meeting.status === 'SELECTING'"
+            type="button"
+            class="btn btn--secondary"
+            @click="startManualConfirm"
+          >
+            시간 수동 확정
+          </button>
+          <button
+            v-if="meeting.status === 'SELECTING'"
+            type="button"
+            class="btn btn--secondary"
+            :disabled="isReopeningMeeting"
+            @click="handleReopenMeeting"
+          >
+            <span v-if="isReopeningMeeting" class="spinner" />
+            재조율 요청
+          </button>
+          <button
+            v-if="meeting.status !== 'CANCELED'"
+            type="button"
+            class="btn btn--danger"
+            :disabled="isCancelingMeeting"
+            @click="handleCancelMeeting"
+          >
+            <span v-if="isCancelingMeeting" class="spinner" />
+            회의 취소
+          </button>
+        </div>
+        <p v-if="cancelMeetingError" class="field-hint verify-error">{{ cancelMeetingError }}</p>
+        <p v-if="reopenMeetingError" class="field-hint verify-error">{{ reopenMeetingError }}</p>
+
+        <!-- 시간 수동 확정 폼 (Host 전용) -->
+        <form v-if="isManualConfirmFormOpen" class="edit-form" @submit.prevent="submitManualConfirm">
+          <div class="field">
+            <label class="field-label" for="manual-confirm-start">시작 시간</label>
+            <input
+              id="manual-confirm-start"
+              v-model="manualConfirmStart"
+              type="datetime-local"
+              class="field-input"
+            />
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="manual-confirm-end">종료 시간</label>
+            <input
+              id="manual-confirm-end"
+              v-model="manualConfirmEnd"
+              type="datetime-local"
+              class="field-input"
+            />
+          </div>
+
+          <p v-if="manualConfirmFormError" class="field-hint verify-error">{{ manualConfirmFormError }}</p>
+          <p v-if="confirmManuallyError" class="field-hint verify-error">{{ confirmManuallyError }}</p>
+
+          <div class="edit-actions">
+            <button
+              type="button"
+              class="btn btn--secondary"
+              :disabled="isConfirmingManually"
+              @click="cancelManualConfirm"
+            >
+              취소
+            </button>
+            <button type="submit" class="btn btn--primary" :disabled="isConfirmingManually">
+              <span v-if="isConfirmingManually" class="spinner" />
+              확정
+            </button>
+          </div>
+        </form>
 
         <!-- 회의 정보 수정 폼 -->
         <form v-if="isEditing" class="edit-form" @submit.prevent="submitEdit">
@@ -299,6 +539,17 @@ function handleOpenResponse(meetingId: string): void {
             />
           </div>
 
+          <div class="field">
+            <label class="field-label" for="edit-meeting-link">화상회의 링크</label>
+            <input
+              id="edit-meeting-link"
+              v-model="editMeetingLink"
+              type="text"
+              class="field-input"
+              placeholder="Zoom/Meet 등 링크 (선택)"
+            />
+          </div>
+
           <p v-if="editFormError" class="field-hint verify-error">{{ editFormError }}</p>
           <p v-if="updateMeetingError" class="field-hint verify-error">{{ updateMeetingError }}</p>
 
@@ -341,6 +592,19 @@ function handleOpenResponse(meetingId: string): void {
             </a>
             <p v-else class="info-text">{{ meeting.location }}</p>
           </div>
+
+          <!-- 화상회의 링크 -->
+          <div v-if="meeting.meetingLink" class="info-box">
+            <p class="info-label">화상회의 링크</p>
+            <a
+              class="info-text info-link"
+              :href="meeting.meetingLink"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {{ meeting.meetingLink }}
+            </a>
+          </div>
         </template>
 
         <!-- GATHERING: 참석자 목록 + 응답 현황 -->
@@ -353,13 +617,103 @@ function handleOpenResponse(meetingId: string): void {
               <span class="participant-badge" :class="PARTICIPANT_STATUS_BADGE_CLASSES[p.status]">
                 {{ PARTICIPANT_STATUS_LABELS[p.status] }}
               </span>
+              <button
+                v-if="isHost && p.role !== 'HOST'"
+                type="button"
+                class="reference-remove"
+                :disabled="removingParticipantId === p.employeeId"
+                @click="handleRemoveParticipant(p.employeeId)"
+              >
+                <span v-if="removingParticipantId === p.employeeId" class="spinner" />
+                <span v-else>×</span>
+              </button>
             </li>
           </ul>
           <p v-else class="empty-state">참석자가 없습니다.</p>
+          <p v-if="removeParticipantError" class="field-hint verify-error">{{ removeParticipantError }}</p>
 
-          <button type="button" class="btn btn--primary" @click="handleOpenResponse(meeting.meetingId)">
-            응답하기
-          </button>
+          <!-- 참석자 추가 (Host 전용) -->
+          <template v-if="isHost">
+            <button
+              v-if="!isAddParticipantFormOpen"
+              type="button"
+              class="btn btn--secondary"
+              @click="startAddParticipant"
+            >
+              참석자 추가
+            </button>
+
+            <div v-else class="edit-form">
+              <div class="field participant-field">
+                <label class="field-label" for="participant-search-input">참석자 검색</label>
+                <input
+                  id="participant-search-input"
+                  v-model="participantSearchKeyword"
+                  type="text"
+                  class="field-input"
+                  placeholder="이름 또는 사번으로 검색"
+                  @input="handleParticipantSearchInput"
+                />
+                <ul v-if="showParticipantDropdown" class="member-dropdown">
+                  <li
+                    v-for="member in memberSearchResults"
+                    :key="member.employeeId"
+                    class="member-option"
+                    @click="selectNewParticipant(member)"
+                  >
+                    <span class="member-name">{{ member.name }}</span>
+                    <span class="member-meta">{{ [member.department, member.position].filter(Boolean).join(' - ') }}</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div v-if="selectedNewParticipants.length > 0" class="chip-list">
+                <span v-for="member in selectedNewParticipants" :key="member.employeeId" class="chip">
+                  {{ member.name }}
+                  <button type="button" class="chip-remove" @click="removeNewParticipant(member.employeeId)">×</button>
+                </span>
+              </div>
+
+              <p v-if="addParticipantsError" class="field-hint verify-error">{{ addParticipantsError }}</p>
+
+              <div class="edit-actions">
+                <button
+                  type="button"
+                  class="btn btn--secondary"
+                  :disabled="isAddingParticipants"
+                  @click="cancelAddParticipant"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  class="btn btn--primary"
+                  :disabled="isAddingParticipants || selectedNewParticipants.length === 0"
+                  @click="submitAddParticipants"
+                >
+                  <span v-if="isAddingParticipants" class="spinner" />
+                  추가
+                </button>
+              </div>
+            </div>
+          </template>
+
+          <div class="host-actions">
+            <button type="button" class="btn btn--primary" @click="handleOpenResponse(meeting.meetingId)">
+              응답하기
+            </button>
+            <button
+              v-if="myParticipant && myParticipant.role !== 'HOST' && myParticipant.status !== 'DECLINED'"
+              type="button"
+              class="btn btn--secondary"
+              :disabled="isDecliningMeeting"
+              @click="handleDeclineMeeting"
+            >
+              <span v-if="isDecliningMeeting" class="spinner" />
+              참석 거절
+            </button>
+          </div>
+          <p v-if="declineMeetingError" class="field-hint verify-error">{{ declineMeetingError }}</p>
         </template>
 
         <!-- SELECTING: 참석자 응답 현황 + 후보 시간 목록 -->
@@ -653,6 +1007,10 @@ function handleOpenResponse(meetingId: string): void {
   color: #15803d;
   background: #dcfce7;
 }
+.participant-badge--declined {
+  color: var(--text-light, #9AA0BD);
+  background: var(--page-bg, #F6F7FB);
+}
 
 /* ── 후보 시간 목록 ─────────────────────────────────────────────────── */
 .candidate-list {
@@ -840,11 +1198,16 @@ function handleOpenResponse(meetingId: string): void {
   color: var(--brand-indigo, #5B52E3);
   background: var(--brand-light, #F0F2FE);
 }
+.btn--danger {
+  background: var(--danger-bg, #FBF0F0);
+  color: var(--danger-text, #D45D5D);
+}
+.btn--danger:hover:not(:disabled) {
+  background: var(--danger-text, #D45D5D);
+  color: #fff;
+}
 
 /* ── 회의 정보 수정 ─────────────────────────────────────────────────── */
-.edit-toggle-btn {
-  margin-bottom: 16px;
-}
 .edit-form {
   display: flex;
   flex-direction: column;
@@ -902,5 +1265,88 @@ function handleOpenResponse(meetingId: string): void {
 .edit-actions .btn {
   width: auto;
   flex: 1;
+}
+
+/* ── 호스트 액션 (취소 / 수동 확정 / 재조율) ────────────────────────────── */
+.host-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.host-actions .btn {
+  width: auto;
+  flex: 1;
+  min-width: 96px;
+}
+
+/* ── 참석자 추가 ────────────────────────────────────────────────────── */
+.participant-field {
+  position: relative;
+}
+.member-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 4px;
+  list-style: none;
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--card-border, #E8EAF2);
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg, 0 8px 28px rgba(27, 32, 49, 0.08));
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.member-option {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.member-option:hover {
+  background: var(--brand-light, #F0F2FE);
+}
+.member-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-body, #1B2031);
+}
+.member-meta {
+  font-size: 10px;
+  color: var(--text-light, #9AA0BD);
+}
+.chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px 4px 10px;
+  border-radius: 999px;
+  background: var(--brand-light, #F0F2FE);
+  color: var(--brand-chip-text, #4960CD);
+  font-size: 11px;
+  font-weight: 600;
+}
+.chip-remove {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.chip-remove:hover {
+  color: var(--danger-text, #D45D5D);
 }
 </style>

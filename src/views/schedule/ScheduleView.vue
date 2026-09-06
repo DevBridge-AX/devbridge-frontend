@@ -13,6 +13,8 @@ import type {
   CreatedMeetingPayload,
   MeetingReferenceRequest,
   UpdateMeetingRequest,
+  ManualConfirmRequest,
+  AddParticipantsRequest,
   TimeSlot,
 } from '@/api/scheduleApi'
 import MeetingCalendar from '@/components/domain/schedule/MeetingCalendar.vue'
@@ -68,6 +70,24 @@ const isAddingReference = ref(false)
 const addReferenceError = ref('')
 const deletingReferenceId = ref<string | null>(null)
 const deleteReferenceError = ref('')
+
+// ─── 회의 취소 / 수동 확정 / 재조율 상태 (Host 전용) ──────────────────────────
+const isCancelingMeeting = ref(false)
+const cancelMeetingError = ref('')
+const isConfirmingManually = ref(false)
+const confirmManuallyError = ref('')
+const isReopeningMeeting = ref(false)
+const reopenMeetingError = ref('')
+
+// ─── 참석자 추가/제외 상태 (Host 전용) ────────────────────────────────────────
+const isAddingParticipants = ref(false)
+const addParticipantsError = ref('')
+const removingParticipantId = ref<string | null>(null)
+const removeParticipantError = ref('')
+
+// ─── 참석 거절 상태 (참석자 본인) ─────────────────────────────────────────────
+const isDecliningMeeting = ref(false)
+const declineMeetingError = ref('')
 
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
 function formatDate(date: Date): string {
@@ -211,6 +231,12 @@ async function openMeetingDetail(meetingId: string): Promise<void> {
   addReferenceError.value = ''
   deleteReferenceError.value = ''
   updateMeetingError.value = ''
+  cancelMeetingError.value = ''
+  confirmManuallyError.value = ''
+  reopenMeetingError.value = ''
+  addParticipantsError.value = ''
+  removeParticipantError.value = ''
+  declineMeetingError.value = ''
 
   try {
     selectedMeetingDetail.value = await scheduleService.fetchMeetingDetail(meetingId)
@@ -235,16 +261,139 @@ async function handleUpdateMeeting(payload: UpdateMeetingRequest): Promise<void>
 
   try {
     const updated = await scheduleService.updateMeeting(selectedMeetingDetail.value.meetingId, payload)
-    selectedMeetingDetail.value = updated
-
-    const target = meetings.value.find((m) => m.meetingId === updated.meetingId)
-    if (target) {
-      target.title = updated.title
-    }
+    applyMeetingDetailUpdate(updated)
   } catch (e: unknown) {
     updateMeetingError.value = e instanceof Error ? e.message : '회의 정보 수정에 실패했습니다.'
   } finally {
     isUpdatingMeeting.value = false
+  }
+}
+
+// 회의 상태/확정 시간이 바뀌는 응답 공통 처리: 상세 로컬 패치 + 목록 항목 동기화.
+function applyMeetingDetailUpdate(updated: MeetingDetailResponse): void {
+  selectedMeetingDetail.value = updated
+
+  const target = meetings.value.find((m) => m.meetingId === updated.meetingId)
+  if (target) {
+    target.title = updated.title
+    target.status = updated.status
+    target.confirmedStartTime = updated.confirmedStartTime
+    target.confirmedEndTime = updated.confirmedEndTime
+  }
+}
+
+// ─── 회의 취소 ──────────────────────────────────────────────────────────────
+async function handleCancelMeeting(): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  cancelMeetingError.value = ''
+  isCancelingMeeting.value = true
+
+  try {
+    const updated = await scheduleService.cancelMeeting(selectedMeetingDetail.value.meetingId)
+    applyMeetingDetailUpdate(updated)
+    await refreshConfirmedSchedules()
+  } catch (e: unknown) {
+    cancelMeetingError.value = e instanceof Error ? e.message : '회의 취소에 실패했습니다.'
+  } finally {
+    isCancelingMeeting.value = false
+  }
+}
+
+// ─── 회의 시간 수동 확정 ────────────────────────────────────────────────────
+async function handleConfirmMeetingManually(payload: ManualConfirmRequest): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  confirmManuallyError.value = ''
+  isConfirmingManually.value = true
+
+  try {
+    const updated = await scheduleService.confirmMeetingManually(selectedMeetingDetail.value.meetingId, payload)
+    applyMeetingDetailUpdate(updated)
+    await refreshConfirmedSchedules()
+  } catch (e: unknown) {
+    confirmManuallyError.value = e instanceof Error ? e.message : '회의 시간 확정에 실패했습니다.'
+  } finally {
+    isConfirmingManually.value = false
+  }
+}
+
+// ─── 회의 재조율 ────────────────────────────────────────────────────────────
+async function handleReopenMeeting(): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  reopenMeetingError.value = ''
+  isReopeningMeeting.value = true
+
+  try {
+    const updated = await scheduleService.reopenMeeting(selectedMeetingDetail.value.meetingId)
+    applyMeetingDetailUpdate(updated)
+    await refreshConfirmedSchedules()
+  } catch (e: unknown) {
+    reopenMeetingError.value = e instanceof Error ? e.message : '회의 재조율 요청에 실패했습니다.'
+  } finally {
+    isReopeningMeeting.value = false
+  }
+}
+
+// ─── 참석자 추가/제외 ────────────────────────────────────────────────────────
+async function handleAddParticipants(payload: AddParticipantsRequest): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  addParticipantsError.value = ''
+  isAddingParticipants.value = true
+
+  try {
+    const updated = await scheduleService.addParticipants(selectedMeetingDetail.value.meetingId, payload)
+    applyMeetingDetailUpdate(updated)
+  } catch (e: unknown) {
+    addParticipantsError.value = e instanceof Error ? e.message : '참석자 추가에 실패했습니다.'
+  } finally {
+    isAddingParticipants.value = false
+  }
+}
+
+async function handleRemoveParticipant(employeeId: string): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  removeParticipantError.value = ''
+  removingParticipantId.value = employeeId
+
+  try {
+    await scheduleService.removeParticipant(selectedMeetingDetail.value.meetingId, employeeId)
+    selectedMeetingDetail.value.participants = selectedMeetingDetail.value.participants.filter(
+      (p) => p.employeeId !== employeeId,
+    )
+  } catch (e: unknown) {
+    removeParticipantError.value = e instanceof Error ? e.message : '참석자 제외에 실패했습니다.'
+  } finally {
+    removingParticipantId.value = null
+  }
+}
+
+// ─── 참석 거절 ──────────────────────────────────────────────────────────────
+async function handleDeclineMeeting(): Promise<void> {
+  if (!selectedMeetingDetail.value) return
+
+  const meetingId = selectedMeetingDetail.value.meetingId
+  declineMeetingError.value = ''
+  isDecliningMeeting.value = true
+
+  try {
+    await scheduleService.declineMeeting(meetingId)
+    selectedMeetingDetail.value = await scheduleService.fetchMeetingDetail(meetingId)
+
+    try {
+      meetings.value = await scheduleService.fetchMeetings()
+    } catch (e: unknown) {
+      meetingsError.value = e instanceof Error ? e.message : '회의 목록을 불러오지 못했습니다.'
+    }
+
+    await refreshConfirmedSchedules()
+  } catch (e: unknown) {
+    declineMeetingError.value = e instanceof Error ? e.message : '참석 거절에 실패했습니다.'
+  } finally {
+    isDecliningMeeting.value = false
   }
 }
 
@@ -420,17 +569,38 @@ async function handleSubmitAvailableTimes(times: TimeSlot[]): Promise<void> {
       :is-loading="isLoadingDetail"
       :load-error="detailLoadError"
       :is-host="isHostOfSelectedMeeting"
+      :current-employee-id="authStore.currentUser?.employeeId"
       :is-updating-meeting="isUpdatingMeeting"
       :update-meeting-error="updateMeetingError"
       :is-adding-reference="isAddingReference"
       :add-reference-error="addReferenceError"
       :deleting-reference-id="deletingReferenceId"
       :delete-reference-error="deleteReferenceError"
+      :is-canceling-meeting="isCancelingMeeting"
+      :cancel-meeting-error="cancelMeetingError"
+      :is-confirming-manually="isConfirmingManually"
+      :confirm-manually-error="confirmManuallyError"
+      :is-reopening-meeting="isReopeningMeeting"
+      :reopen-meeting-error="reopenMeetingError"
+      :member-search-results="memberSearchResults"
+      :is-adding-participants="isAddingParticipants"
+      :add-participants-error="addParticipantsError"
+      :removing-participant-id="removingParticipantId"
+      :remove-participant-error="removeParticipantError"
+      :is-declining-meeting="isDecliningMeeting"
+      :decline-meeting-error="declineMeetingError"
       @close="detailModalOpen = false"
       @open-response="handleDetailOpenResponse"
       @update-meeting="handleUpdateMeeting"
       @add-reference="handleAddReference"
       @delete-reference="handleDeleteReference"
+      @cancel-meeting="handleCancelMeeting"
+      @confirm-meeting-manually="handleConfirmMeetingManually"
+      @reopen-meeting="handleReopenMeeting"
+      @search-participants="handleSearchMembers"
+      @add-participants="handleAddParticipants"
+      @remove-participant="handleRemoveParticipant"
+      @decline-meeting="handleDeclineMeeting"
     />
     </div>
   </AppLayout>
