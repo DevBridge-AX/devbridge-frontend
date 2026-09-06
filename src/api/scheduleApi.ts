@@ -6,7 +6,7 @@ export type MeetingStatus = 'GATHERING' | 'SELECTING' | 'CONFIRMED' | 'CANCELED'
 
 export type ParticipantRole = 'HOST' | 'ATTENDEE'
 
-export type ParticipantStatus = 'PENDING' | 'RESPONDED'
+export type ParticipantStatus = 'PENDING' | 'RESPONDED' | 'DECLINED'
 
 export interface TimeSlot {
   startTime: string
@@ -50,6 +50,16 @@ export interface UpdateMeetingRequest {
   purpose?: string | null
   agenda?: string | null
   location?: string | null
+  meetingLink?: string | null
+}
+
+export interface ManualConfirmRequest {
+  confirmedStartTime: string
+  confirmedEndTime: string
+}
+
+export interface AddParticipantsRequest {
+  employeeIds: string[]
 }
 
 export interface SubmitAvailableTimesRequest {
@@ -95,6 +105,7 @@ export interface MeetingDetailResponse {
   purpose?: string | null
   agenda?: string | null
   location?: string | null
+  meetingLink?: string | null
   durationMinutes: number
   status: MeetingStatus
   confirmedStartTime: string | null
@@ -212,5 +223,65 @@ export const scheduleApi = {
     return axiosClient
       .delete<void>(`/api/meetings/${meetingId}/references/${referenceId}`)
       .then(() => undefined)
+  },
+
+  /**
+   * 회의를 취소합니다. 주최자(HOST)만 가능합니다.
+   */
+  cancelMeeting(meetingId: string): Promise<MeetingDetailResponse> {
+    return axiosClient
+      .patch<MeetingDetailResponse>(`/api/meetings/${meetingId}/cancel`)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의 시간을 주최자가 직접 지정해 확정합니다. 주최자(HOST)만 가능합니다.
+   */
+  confirmMeetingManually(
+    meetingId: string,
+    payload: ManualConfirmRequest,
+  ): Promise<MeetingDetailResponse> {
+    return axiosClient
+      .post<MeetingDetailResponse>(`/api/meetings/${meetingId}/confirm`, payload)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의를 재조율 요청합니다(SELECTING → GATHERING). 주최자(HOST)만 가능합니다.
+   */
+  reopenMeeting(meetingId: string): Promise<MeetingDetailResponse> {
+    return axiosClient
+      .post<MeetingDetailResponse>(`/api/meetings/${meetingId}/reopen`)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의에 참석자를 추가합니다. 주최자(HOST)만 가능합니다.
+   */
+  addParticipants(
+    meetingId: string,
+    payload: AddParticipantsRequest,
+  ): Promise<MeetingDetailResponse> {
+    return axiosClient
+      .post<MeetingDetailResponse>(`/api/meetings/${meetingId}/participants`, payload)
+      .then((res) => res.data)
+  },
+
+  /**
+   * 회의에서 참석자를 제외합니다. 주최자(HOST)만 가능합니다.
+   */
+  removeParticipant(meetingId: string, employeeId: string): Promise<void> {
+    return axiosClient
+      .delete<void>(`/api/meetings/${meetingId}/participants/${employeeId}`)
+      .then(() => undefined)
+  },
+
+  /**
+   * 로그인한 참석자가 회의 참석을 명시적으로 거절합니다. 주최자는 거절할 수 없습니다.
+   */
+  declineMeeting(meetingId: string): Promise<SubmitAvailableTimesResponse> {
+    return axiosClient
+      .post<SubmitAvailableTimesResponse>(`/api/meetings/${meetingId}/participants/me/decline`)
+      .then((res) => res.data)
   },
 }
