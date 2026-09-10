@@ -156,7 +156,7 @@ function getSelectedTimesForDate(dateKey: string): Set<string> {
     const endIdx = TIME_SLOTS.indexOf(range.endTime)
     if (startIdx === -1 || endIdx === -1) continue
     for (let i = startIdx; i <= endIdx; i++) {
-      times.add(TIME_SLOTS[i])
+      times.add(TIME_SLOTS[i]!)
     }
   }
   return times
@@ -198,8 +198,8 @@ function toggleSlot(time: string): void {
 
   const anchorIdx = TIME_SLOTS.indexOf(rangeAnchor.value)
   const clickIdx = TIME_SLOTS.indexOf(time)
-  const startTime = TIME_SLOTS[Math.min(anchorIdx, clickIdx)]
-  const endTime = TIME_SLOTS[Math.max(anchorIdx, clickIdx)]
+  const startTime = TIME_SLOTS[Math.min(anchorIdx, clickIdx)]!
+  const endTime = TIME_SLOTS[Math.max(anchorIdx, clickIdx)]!
 
   const lastRange = selectedRanges.value[selectedRanges.value.length - 1]
   if (lastRange && lastRange.dateKey === dateKey && lastRange.startTime === rangeAnchor.value && lastRange.endTime === rangeAnchor.value) {

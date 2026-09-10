@@ -57,7 +57,7 @@ interface KpiItem {
 function generateSparkline(base: number): number[] {
   const points = [base]
   for (let i = 0; i < 11; i++) {
-    const prev = points[points.length - 1]
+    const prev = points[points.length - 1]!
     const delta = Math.round((Math.random() - 0.3) * Math.max(3, Math.round(prev * 0.3)))
     points.push(Math.max(0, prev + delta))
   }
@@ -200,7 +200,7 @@ const teamMembers = computed<MemberInfo[]>(() => {
   if (members.length === 0 && memberCount.value > 0) {
     const fallbacks = ['김', '이', '박', '최', '정', '강', '조', '윤']
     for (let i = 0; i < Math.min(memberCount.value, 8); i++) {
-      members.push({ name: fallbacks[i], initial: fallbacks[i] })
+      members.push({ name: fallbacks[i]!, initial: fallbacks[i]! })
     }
   }
   return members
@@ -223,7 +223,7 @@ function getStatusClass(status: string) {
 }
 
 function getAssigneeColor(index: number): string {
-  return avatarColors[index % avatarColors.length]
+  return avatarColors[index % avatarColors.length]!
 }
 
 const branchColors: Record<string, string> = {
@@ -239,7 +239,7 @@ const branchColors: Record<string, string> = {
 function getBranchColor(branch?: string): string {
   if (!branch) return '#5B52E3'
   const key = Object.keys(branchColors).find(k => branch.startsWith(k))
-  return key ? branchColors[key] : '#5B52E3'
+  return key ? branchColors[key]! : '#5B52E3'
 }
 
 function formatDate(value: string | null) {
@@ -311,7 +311,7 @@ const activityLabels = computed(() => {
   for (let i = 0; i < days; i++) {
     const idx = Math.floor(i * (data.length - 1) / (days - 1))
     const x = (idx * xStep).toFixed(1)
-    const y = (h - (data[idx] / max) * (h - 20) - 14).toFixed(1)
+    const y = (h - ((data[idx] ?? 0) / max) * (h - 20) - 14).toFixed(1)
     labels.push(`<text x="${x}" y="${y}" class="activity-label">${data[idx]}</text>`)
   }
   return labels.join('')
