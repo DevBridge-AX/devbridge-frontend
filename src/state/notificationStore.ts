@@ -4,7 +4,10 @@ import { computed, ref } from 'vue'
 export type NotificationType =
   | 'MEETING_INVITED'
   | 'MEETING_UPDATED'
-  | 'MEETING_CANCELLED'
+  | 'MEETING_CANCELED'
+  | 'MEETING_CONFIRMED'
+  | 'MEETING_REOPENED'
+  | 'MEETING_REMINDER'
   | 'OWNER_CONFIRMATION'
   | 'OWNER_ANSWER_RECEIVED'
 

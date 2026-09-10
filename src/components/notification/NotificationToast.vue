@@ -15,7 +15,10 @@ const timerMap = new Map<string, ReturnType<typeof setTimeout>>()
 const ICON_MAP: Record<string, string> = {
   MEETING_INVITED: '📅',
   MEETING_UPDATED: '🔄',
-  MEETING_CANCELLED: '❌',
+  MEETING_CANCELED: '❌',
+  MEETING_CONFIRMED: '✅',
+  MEETING_REOPENED: '↩️',
+  MEETING_REMINDER: '⏰',
   OWNER_CONFIRMATION: '📋',
   OWNER_ANSWER_RECEIVED: '✅',
 }
@@ -23,7 +26,10 @@ const ICON_MAP: Record<string, string> = {
 const LABEL_MAP: Record<string, string> = {
   MEETING_INVITED: '회의 초대',
   MEETING_UPDATED: '회의 변경',
-  MEETING_CANCELLED: '회의 취소',
+  MEETING_CANCELED: '회의 취소',
+  MEETING_CONFIRMED: '회의 확정',
+  MEETING_REOPENED: '회의 재조율',
+  MEETING_REMINDER: '회의 임박 알림',
   OWNER_CONFIRMATION: '담당자 확인 요청',
   OWNER_ANSWER_RECEIVED: '담당자 답변',
 }
@@ -71,7 +77,8 @@ function getLabel(type: string): string {
 }
 
 function getAccentClass(type: string): string {
-  if (type === 'MEETING_CANCELLED') return 'accent-danger'
+  if (type === 'MEETING_CANCELED') return 'accent-danger'
+  if (type === 'MEETING_CONFIRMED') return 'accent-success'
   if (type === 'OWNER_CONFIRMATION' || type === 'OWNER_ANSWER_RECEIVED') return 'accent-question'
   return 'accent-meeting'
 }
@@ -159,6 +166,10 @@ onUnmounted(() => {
 
 .notification-toast.accent-question {
   border-left-color: #f59e0b;
+}
+
+.notification-toast.accent-success {
+  border-left-color: #15803d;
 }
 
 .notification-toast-header {

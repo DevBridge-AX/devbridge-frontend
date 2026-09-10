@@ -50,7 +50,10 @@ const STATUS_LABEL: Record<string, string> = {
 const ICON_MAP: Record<string, string> = {
   MEETING_INVITED: '📅',
   MEETING_UPDATED: '🔄',
-  MEETING_CANCELLED: '❌',
+  MEETING_CANCELED: '❌',
+  MEETING_CONFIRMED: '✅',
+  MEETING_REOPENED: '↩️',
+  MEETING_REMINDER: '⏰',
   OWNER_CONFIRMATION: '📋',
   OWNER_ANSWER_RECEIVED: '✅',
 }
@@ -149,8 +152,11 @@ function buildRoute(type: NotificationType, workspaceId: string, referenceId: st
     case 'MEETING_INVITED':
       return `${base}?scheduleId=${referenceId}&action=respond`
     case 'MEETING_UPDATED':
+    case 'MEETING_CONFIRMED':
+    case 'MEETING_REOPENED':
+    case 'MEETING_REMINDER':
       return `${base}?scheduleId=${referenceId}`
-    case 'MEETING_CANCELLED':
+    case 'MEETING_CANCELED':
       return base
     default:
       return null
