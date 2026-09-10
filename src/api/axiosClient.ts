@@ -27,16 +27,6 @@ axiosClient.interceptors.request.use(
       config.headers['X-Workspace-Id'] = workspaceId
     }
 
-    console.log(
-      `[Axios Interceptor] ${config.method?.toUpperCase()} ${config.baseURL ?? ''}${config.url ?? ''}`,
-    )
-    console.log(
-      '[Axios Interceptor] token:',
-      token ? `${token.slice(0, 20)}...` : 'none',
-    )
-    console.log('[Axios Interceptor] workspaceId:', workspaceId ?? 'none')
-    console.log('[Axios Interceptor] headers:', config.headers)
-
     return config
   },
   (error: unknown) => Promise.reject(error),
