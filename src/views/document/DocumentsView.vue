@@ -45,6 +45,9 @@ const fileInputRef = ref<HTMLInputElement | null>(null)
 const selectedUploadFile = ref<File | null>(null)
 const selectedDocumentType = ref('REPORT')
 
+// 백엔드 상한값 확정 전까지의 임시 클라이언트 측 상한(10MB). 확정되면 이 값을 교체한다.
+const MAX_UPLOAD_FILE_SIZE_BYTES = 10 * 1024 * 1024
+
 const documentTypeOptions = [
   { value: 'REPORT', label: '보고서' },
   { value: 'MEETING_NOTE', label: '회의록' },
@@ -233,6 +236,17 @@ function openFilePicker() {
 function handleUploadFileChange(event: Event) {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0] ?? null
+
+  if (file && file.size > MAX_UPLOAD_FILE_SIZE_BYTES) {
+    selectedUploadFile.value = null
+    uploadMessage.value = `파일 크기는 ${formatFileSize(MAX_UPLOAD_FILE_SIZE_BYTES)} 이하만 업로드할 수 있습니다. (선택한 파일: ${formatFileSize(file.size)})`
+
+    if (fileInputRef.value) {
+      fileInputRef.value.value = ''
+    }
+
+    return
+  }
 
   selectedUploadFile.value = file
 
