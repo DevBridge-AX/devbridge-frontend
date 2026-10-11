@@ -1,7 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 
-export const WORKSPACE_ID_KEY = 'currentWorkspaceId'
+import { WORKSPACE_ID_KEY } from '@/api/storageKeys'
+
+export { WORKSPACE_ID_KEY }
 
 // ─── Layer 2: Global Workspace State (Pinia) ──────────────────────────────
 // 현재 선택된 workspaceId만 관리합니다.
