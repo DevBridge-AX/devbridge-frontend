@@ -1,3 +1,4 @@
+import type { Router } from 'vue-router'
 import { authApi } from '@/api/authApi'
 import { useAuthStore } from '@/state/authStore'
 
@@ -110,6 +111,23 @@ async function executeLogout(): Promise<void> {
   }
 }
 
+/**
+ * 세션 만료 처리: authStore를 로그아웃하고 로그인 화면으로 이동합니다.
+ * 이미 로그인 화면이면 이동하지 않으며, 복귀를 위해 현재 경로를 redirect 쿼리로 전달합니다.
+ * router는 순환 참조를 피하기 위해 호출부에서 주입받습니다.
+ */
+async function handleSessionExpired(router: Router): Promise<void> {
+  const authStore = useAuthStore()
+  authStore.logout()
+
+  if (router.currentRoute.value.name !== 'login') {
+    await router.push({
+      name: 'login',
+      query: { redirect: router.currentRoute.value.fullPath },
+    })
+  }
+}
+
 export const authService = {
   verifyEmployee,
   sendAuthEmail,
@@ -118,4 +136,5 @@ export const authService = {
   executeLogin,
   executeLogout,
   fetchCurrentUser,
+  handleSessionExpired,
 }

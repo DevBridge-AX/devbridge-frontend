@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { WORKSPACE_ID_KEY } from '@/state/workspaceStore'
+import { SESSION_EXPIRED_EVENT, toApiError } from '@/api/apiError'
 
 const axiosClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL as string,
@@ -37,19 +38,11 @@ axiosClient.interceptors.response.use(
   (error: unknown) => {
     if (axios.isAxiosError(error) && error.response?.status === 401) {
       localStorage.removeItem('accessToken')
+      window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
 
-      import('@/state/authStore')
-        .then(({ useAuthStore }) => {
-          useAuthStore().logout()
-        })
-        .catch(() => {
-          // Ignore store loading failure and continue redirect.
-        })
-
-      if (!window.location.pathname.startsWith('/login')) {
-        alert('세션이 만료되었습니다. 다시 로그인해 주세요.')
-        window.location.href = '/login'
-      }
+      return Promise.reject(
+        toApiError(error, '세션이 만료되었습니다. 다시 로그인해 주세요.'),
+      )
     }
 
     return Promise.reject(error)
