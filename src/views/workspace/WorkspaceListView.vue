@@ -75,8 +75,7 @@ const isSystemAdmin = computed(() => {
 const loadCurrentUser = async () => {
   try {
     currentUser.value = await workspaceService.getCurrentUser()
-  } catch (error) {
-    console.error(error)
+  } catch {
     currentUser.value = null
   }
 }
@@ -106,8 +105,6 @@ const loadReceivedInvitations = async () => {
   try {
     receivedInvitations.value = await workspaceService.getReceivedInvitations()
   } catch (error: unknown) {
-    console.error(error)
-
     if (error instanceof Error) {
       invitationErrorMessage.value = error.message
       return
@@ -204,7 +201,6 @@ const submitCreateWorkspace = async () => {
     isCreateModalOpen.value = false
     await refreshAll()
   } catch (error: unknown) {
-    console.error(error)
     alert(
       error instanceof Error
         ? error.message
@@ -257,7 +253,6 @@ const submitInviteMember = async () => {
     selectedWorkspace.value = null
     await loadReceivedInvitations()
   } catch (error: unknown) {
-    console.error(error)
     alert(
       error instanceof Error
         ? error.message
@@ -277,7 +272,6 @@ const acceptWorkspaceInvitation = async (invitationId: string) => {
 
     await refreshAll()
   } catch (error: unknown) {
-    console.error(error)
     alert(
       error instanceof Error
         ? error.message
