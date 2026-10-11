@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useToast } from '@/composables/useToast'
 import { workspaceService } from '@/services/workspaceService'
 import { useWorkspaceStore } from '@/state/workspaceStore'
 import type {
@@ -12,6 +13,7 @@ import type {
 } from '@/api/workspaceApi'
 
 const router = useRouter()
+const toast = useToast()
 const workspaceStore = useWorkspaceStore()
 
 const isLoading = ref(false)
@@ -176,7 +178,7 @@ const buildWorkspaceDescription = () => {
 
 const submitCreateWorkspace = async () => {
   if (!createForm.value.name.trim()) {
-    alert('Workspace 이름을 입력해 주세요.')
+    toast.error('Workspace 이름을 입력해 주세요.')
     return
   }
 
@@ -197,11 +199,11 @@ const submitCreateWorkspace = async () => {
       })
     }
 
-    alert('Workspace를 생성했습니다.')
+    toast.success('Workspace를 생성했습니다.')
     isCreateModalOpen.value = false
     await refreshAll()
   } catch (error: unknown) {
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : 'Workspace를 생성하지 못했습니다.',
@@ -231,12 +233,12 @@ const closeInviteModal = () => {
 
 const submitInviteMember = async () => {
   if (!selectedWorkspace.value) {
-    alert('초대할 Workspace를 선택하지 못했습니다.')
+    toast.error('초대할 Workspace를 선택하지 못했습니다.')
     return
   }
 
   if (!inviteForm.value.email.trim()) {
-    alert('초대할 이메일을 입력해 주세요.')
+    toast.error('초대할 이메일을 입력해 주세요.')
     return
   }
 
@@ -248,12 +250,12 @@ const submitInviteMember = async () => {
       role: inviteForm.value.role,
     })
 
-    alert('멤버 초대를 생성했습니다.')
+    toast.success('멤버 초대를 생성했습니다.')
     isInviteModalOpen.value = false
     selectedWorkspace.value = null
     await loadReceivedInvitations()
   } catch (error: unknown) {
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : '멤버 초대를 생성하지 못했습니다.',
@@ -268,11 +270,11 @@ const acceptWorkspaceInvitation = async (invitationId: string) => {
 
   try {
     await workspaceService.acceptInvitation(invitationId)
-    alert('워크스페이스 초대를 수락했습니다.')
+    toast.success('워크스페이스 초대를 수락했습니다.')
 
     await refreshAll()
   } catch (error: unknown) {
-    alert(
+    toast.error(
       error instanceof Error
         ? error.message
         : '워크스페이스 초대를 수락하지 못했습니다.',

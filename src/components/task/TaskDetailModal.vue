@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
+import { useToast } from '@/composables/useToast'
 import { taskService } from '@/services/taskService'
 import { gitService } from '@/services/gitService'
 import { documentService } from '@/services/documentService'
@@ -17,6 +18,7 @@ const emit = defineEmits<{
 }>()
 
 const authStore = useAuthStore()
+const toast = useToast()
 
 const activeTab = ref<
   'overview' | 'documents' | 'changes' | 'deliverables' | 'activity'
@@ -161,7 +163,7 @@ async function submitTaskDocumentUpload() {
       file: uploadFile.value,
     })
 
-    alert('업무 문서를 업로드했습니다.')
+    toast.success('업무 문서를 업로드했습니다.')
     resetUploadForm()
     activeTab.value = 'documents'
     await fetchTaskDetail()

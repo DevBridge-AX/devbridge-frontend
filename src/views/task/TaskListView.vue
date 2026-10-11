@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useConfirm } from '@/composables/useConfirm'
 import { taskService } from '@/services/taskService'
 import { useAuthStore } from '@/state/authStore'
 import type { CreateTaskRequest, Task, UpdateTaskRequest } from '@/api/taskApi'
@@ -18,6 +19,7 @@ type TaskFormState = {
 }
 
 const route = useRoute()
+const { confirm } = useConfirm()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -288,9 +290,12 @@ async function changeTaskStatus(task: Task, status: string) {
 }
 
 async function removeTask(task: Task) {
-  const confirmed = window.confirm(
-    `"${task.title}" 업무를 삭제할까요?\n삭제된 업무는 목록에서 제외됩니다.`,
-  )
+  const confirmed = await confirm({
+    title: '업무 삭제',
+    message: `"${task.title}" 업무를 삭제할까요?\n삭제된 업무는 목록에서 제외됩니다.`,
+    confirmText: '삭제',
+    danger: true,
+  })
 
   if (!confirmed) {
     return
