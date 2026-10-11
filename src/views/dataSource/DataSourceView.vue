@@ -43,8 +43,8 @@ async function fetchSources() {
   }
   try {
     sources.value = await dataSourceService.fetchDataSources(workspaceId.value)
-  } catch (err) {
-    console.error('Failed to load data sources:', err)
+  } catch {
+    // 목록 조회 실패 시 기존 목록 유지
   }
 }
 
