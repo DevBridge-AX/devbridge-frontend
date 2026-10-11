@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { toApiError } from '@/api/apiError'
 import { documentApi } from '@/api/documentApi'
 import type { DocumentItem, UpdateDocumentRequest } from '@/api/documentApi'
 import { dataSourceApi } from '@/api/dataSourceApi'
@@ -31,23 +31,11 @@ async function getDocumentsByWorkspace(
   try {
     return await documentApi.fetchDocumentsByWorkspace(workspaceId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 목록을 조회할 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('해당 워크스페이스의 문서 목록을 찾을 수 없습니다.')
-      }
-    }
-
-    throw new Error('문서 목록을 불러오지 못했습니다.')
+    throw toApiError(error, '문서 목록을 불러오지 못했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 목록을 조회할 권한이 없습니다.',
+      404: '해당 워크스페이스의 문서 목록을 찾을 수 없습니다.',
+    })
   }
 }
 
@@ -59,23 +47,11 @@ async function getDocumentDetail(documentId: string): Promise<DocumentItem> {
   try {
     return await documentApi.fetchDocumentDetail(documentId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 상세 정보를 조회할 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('해당 문서를 찾을 수 없습니다.')
-      }
-    }
-
-    throw new Error('문서 상세 정보를 불러오지 못했습니다.')
+    throw toApiError(error, '문서 상세 정보를 불러오지 못했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 상세 정보를 조회할 권한이 없습니다.',
+      404: '해당 문서를 찾을 수 없습니다.',
+    })
   }
 }
 
@@ -131,29 +107,12 @@ async function uploadWorkspaceDocument(
       file: request.file,
     })
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 업로드 권한이 없습니다.')
-      }
-
-      if (status === 413) {
-        throw new Error('업로드 파일 크기가 너무 큽니다.')
-      }
-
-      if (status === 404) {
-        throw new Error(
-          '문서 업로드에 필요한 워크스페이스, Task 또는 데이터소스를 찾을 수 없습니다.',
-        )
-      }
-    }
-
-    throw new Error('문서 업로드에 실패했습니다.')
+    throw toApiError(error, '문서 업로드에 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 업로드 권한이 없습니다.',
+      413: '업로드 파일 크기가 너무 큽니다.',
+      404: '문서 업로드에 필요한 워크스페이스, Task 또는 데이터소스를 찾을 수 없습니다.',
+    })
   }
 }
 
@@ -172,11 +131,9 @@ async function getDocumentPreviewObjectUrl(
       contentType: blob.type || null,
     }
   } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === 403) {
-      throw new Error('문서 미리보기 권한이 없습니다.')
-    }
-
-    throw new Error('문서 미리보기를 불러오지 못했습니다.')
+    throw toApiError(error, '문서 미리보기를 불러오지 못했습니다.', {
+      403: '문서 미리보기 권한이 없습니다.',
+    })
   }
 }
 
@@ -195,11 +152,9 @@ async function getDocumentDownloadObjectUrl(
       contentType: blob.type || null,
     }
   } catch (error: unknown) {
-    if (axios.isAxiosError(error) && error.response?.status === 403) {
-      throw new Error('문서 다운로드 권한이 없습니다.')
-    }
-
-    throw new Error('문서 다운로드 파일을 불러오지 못했습니다.')
+    throw toApiError(error, '문서 다운로드 파일을 불러오지 못했습니다.', {
+      403: '문서 다운로드 권한이 없습니다.',
+    })
   }
 }
 
@@ -226,23 +181,11 @@ async function updateDocument(
       description: request.description?.trim() ?? '',
     })
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 수정 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('수정할 문서를 찾을 수 없습니다.')
-      }
-    }
-
-    throw new Error('문서 수정에 실패했습니다.')
+    throw toApiError(error, '문서 수정에 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 수정 권한이 없습니다.',
+      404: '수정할 문서를 찾을 수 없습니다.',
+    })
   }
 }
 
@@ -254,23 +197,11 @@ async function deleteDocument(documentId: string): Promise<void> {
   try {
     await documentApi.deleteDocument(documentId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 삭제 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('삭제할 문서를 찾을 수 없습니다.')
-      }
-    }
-
-    throw new Error('문서 삭제에 실패했습니다.')
+    throw toApiError(error, '문서 삭제에 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 삭제 권한이 없습니다.',
+      404: '삭제할 문서를 찾을 수 없습니다.',
+    })
   }
 }
 
@@ -282,27 +213,12 @@ async function analyzeDocument(documentId: string): Promise<DocumentItem> {
   try {
     return await documentApi.analyzeDocument(documentId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('문서 AI 분석 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('분석할 문서를 찾을 수 없습니다.')
-      }
-
-      if (status === 500) {
-        throw new Error('AI Engine 분석 중 서버 오류가 발생했습니다.')
-      }
-    }
-
-    throw new Error('문서 AI 분석에 실패했습니다.')
+    throw toApiError(error, '문서 AI 분석에 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '문서 AI 분석 권한이 없습니다.',
+      404: '분석할 문서를 찾을 수 없습니다.',
+      500: 'AI Engine 분석 중 서버 오류가 발생했습니다.',
+    })
   }
 }
 
