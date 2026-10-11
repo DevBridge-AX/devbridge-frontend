@@ -1,4 +1,4 @@
-import axios from 'axios'
+import { toApiError } from '@/api/apiError'
 import { dataSourceApi } from '@/api/dataSourceApi'
 import type { ConnectDataSourceRequest, DataSourceItem } from '@/api/dataSourceApi'
 
@@ -55,11 +55,7 @@ async function connectDataSource(
   try {
     return await dataSourceApi.connectDataSource(request)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const msg = error.response?.data?.message
-      throw new Error(msg || '데이터 소스 연동에 실패했습니다.')
-    }
-    throw new Error('데이터 소스 연동에 실패했습니다.')
+    throw toApiError(error, '데이터 소스 연동에 실패했습니다.')
   }
 }
 
@@ -82,23 +78,11 @@ async function deleteDataSource(
   try {
     await dataSourceApi.deleteDataSource(dataSourceId)
   } catch (error: unknown) {
-    if (axios.isAxiosError(error)) {
-      const status = error.response?.status
-
-      if (status === 401) {
-        throw new Error('로그인이 필요하거나 세션이 만료되었습니다.')
-      }
-
-      if (status === 403) {
-        throw new Error('데이터 소스 삭제 권한이 없습니다.')
-      }
-
-      if (status === 404) {
-        throw new Error('삭제할 데이터 소스를 찾을 수 없습니다.')
-      }
-    }
-
-    throw new Error('데이터 소스 삭제에 실패했습니다.')
+    throw toApiError(error, '데이터 소스 삭제에 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+      403: '데이터 소스 삭제 권한이 없습니다.',
+      404: '삭제할 데이터 소스를 찾을 수 없습니다.',
+    })
   }
 }
 
