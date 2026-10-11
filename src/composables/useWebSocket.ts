@@ -1,24 +1,32 @@
-import { ref, onUnmounted } from 'vue'
+import { ref, shallowRef, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { SESSION_EXPIRED_EVENT } from '@/api/apiError'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import { notificationService } from '@/services/notificationService'
 import { ownerConfirmationService } from '@/services/ownerConfirmationService'
+import { isWsServerMessage } from '@/types/ws'
+import type { WsMock } from '@/mocks/wsMock'
+
+const MAX_RETRIES = 5
+const AUTH_FAILURE_CODES = [1002, 1008, 4401]
+const AUTH_EXPIRED_MESSAGE = '인증이 만료되었습니다. 다시 로그인해주세요.'
 
 export function useWebSocket(sessionId: string | (() => string)) {
   const route = useRoute()
   const authStore = useAuthStore()
   const chatStore = useChatStore()
   const notificationStore = useNotificationStore()
-  const socket = ref<WebSocket | null>(null)
+  const socket = shallowRef<WebSocket | null>(null)
   const isConnected = ref(false)
   const error = ref<string | null>(null)
-  
+
   let retryCount = 0
-  const maxRetries = 3
   let reconnectTimeout: ReturnType<typeof setTimeout> | null = null
-  let mockTimerIds: ReturnType<typeof setTimeout>[] = []
+  // 사용자가 연결 유지를 원하는 상태인지 여부 (connect 호출 시 true, disconnect/인증 실패 시 false)
+  let shouldStayConnected = false
+  let mock: WsMock | null = null
 
   const isMock = import.meta.env.VITE_WS_MOCK === 'true'
   const wsUrl = import.meta.env.VITE_WS_URL
@@ -32,109 +40,158 @@ export function useWebSocket(sessionId: string | (() => string)) {
     notificationService
       .syncUnreadCount(employeeId)
       .catch(() => {
-        console.warn('[WS] Failed to sync unread notification count.')
+        // 알림 개수 동기화 실패는 다음 동기화 때 복구되므로 무시합니다.
       })
   }
 
+  function clearReconnectTimer() {
+    if (reconnectTimeout !== null) {
+      clearTimeout(reconnectTimeout)
+      reconnectTimeout = null
+    }
+  }
+
+  /** 네트워크 복구·탭 복귀 시 대기 중인 재연결을 즉시 수행하거나 끊긴 연결을 다시 맺습니다. */
+  function tryRecover() {
+    if (!shouldStayConnected || socket.value) return
+
+    clearReconnectTimer()
+    retryCount = 0
+    connect()
+  }
+
+  function handleOnline() {
+    tryRecover()
+  }
+
+  function handleVisibilityChange() {
+    if (document.visibilityState === 'visible') {
+      tryRecover()
+    }
+  }
+
+  function addRecoveryListeners() {
+    window.addEventListener('online', handleOnline)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
+
+  function removeRecoveryListeners() {
+    window.removeEventListener('online', handleOnline)
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+
   function connect() {
-    if (isConnected.value || socket.value) return
+    if (isConnected.value || socket.value || reconnectTimeout !== null) return
+
+    if (!shouldStayConnected) {
+      shouldStayConnected = true
+      addRecoveryListeners()
+    }
 
     if (isMock) {
-      console.log('[Mock WS] Connecting to mock WebSocket...')
       isConnected.value = true
       error.value = null
+      if (!mock) {
+        void import('@/mocks/wsMock').then(({ createWsMock }) => {
+          if (!mock) {
+            mock = createWsMock(handleServerMessage)
+          }
+        })
+      }
       return
     }
 
     const token = authStore.accessToken
     if (!token) {
-      error.value = '인증이 만료되었습니다. 다시 로그인해주세요.'
+      error.value = AUTH_EXPIRED_MESSAGE
       return
     }
 
     const urlWithToken = `${wsUrl}?token=${encodeURIComponent(token)}`
 
     try {
-      socket.value = new WebSocket(urlWithToken)
+      const ws = new WebSocket(urlWithToken)
+      socket.value = ws
 
-      socket.value.onopen = () => {
-        console.log('[WS] Connection established.')
+      ws.onopen = () => {
         isConnected.value = true
         error.value = null
-        retryCount = 0 // Reset retry count on successful connection
+        retryCount = 0 // 연결 성공 시 재시도 횟수 초기화
         syncUnreadCount()
       }
 
-      socket.value.onmessage = (event) => {
+      ws.onmessage = (event) => {
+        let data: unknown
         try {
-          const data = JSON.parse(event.data)
-          handleServerMessage(data)
-        } catch (err) {
-          console.error('[WS] Failed to parse message:', err)
+          data = JSON.parse(event.data)
+        } catch {
+          // 파싱할 수 없는 메시지는 무시합니다.
+          return
         }
+        handleServerMessage(data)
       }
 
-      socket.value.onerror = (err) => {
-        console.error('[WS] Error:', err)
+      ws.onerror = () => {
         error.value = 'WebSocket connection error'
       }
 
-      socket.value.onclose = (event) => {
+      ws.onclose = (event) => {
+        // disconnect()로 이미 정리된 소켓의 close 이벤트는 무시합니다.
+        if (socket.value !== ws) return
+
         isConnected.value = false
         socket.value = null
 
-        if (event.code === 1002 || event.code === 1008 || event.code === 4401) {
-          error.value = '인증이 만료되었습니다. 다시 로그인해주세요.'
-          chatStore.setError('error-ws-auth', '인증이 만료되었습니다. 다시 로그인해주세요.')
+        if (AUTH_FAILURE_CODES.includes(event.code)) {
+          shouldStayConnected = false
+          removeRecoveryListeners()
+          error.value = AUTH_EXPIRED_MESSAGE
+          window.dispatchEvent(new CustomEvent(SESSION_EXPIRED_EVENT))
           return
         }
 
-        if (event.code !== 1000 && retryCount < maxRetries) {
-          const delay = Math.pow(2, retryCount) * 1000
-          console.log(`[WS] Attempting reconnect in ${delay}ms... (Attempt ${retryCount + 1}/${maxRetries})`)
-          
+        if (event.code === 1000 || !shouldStayConnected) return
+
+        if (retryCount < MAX_RETRIES) {
+          const delay = Math.min(2 ** retryCount, 16) * 1000 + Math.floor(Math.random() * 500)
+
           reconnectTimeout = setTimeout(() => {
+            reconnectTimeout = null
             retryCount++
             connect()
           }, delay)
-        } else if (retryCount >= maxRetries) {
+        } else {
           error.value = '연결이 끊어졌습니다. 재연결 시도 횟수를 초과했습니다.'
           chatStore.setError('error-ws', '서버와의 WebSocket 연결이 해제되었습니다. 페이지를 새로고침하거나 나중에 다시 시도해 주세요.')
         }
       }
-    } catch (err) {
-      console.error('[WS] Exception during connection:', err)
+    } catch {
+      socket.value = null
       error.value = 'WebSocket connection initialization failed'
     }
   }
 
   function disconnect() {
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout)
-      reconnectTimeout = null
-    }
-
-    mockTimerIds.forEach(clearTimeout)
-    mockTimerIds = []
+    shouldStayConnected = false
+    removeRecoveryListeners()
+    clearReconnectTimer()
 
     if (isMock) {
-      console.log('[Mock WS] Disconnected.')
+      mock?.dispose()
       isConnected.value = false
       return
     }
 
     if (socket.value) {
-      socket.value.close(1000, 'Normal Closure')
+      const ws = socket.value
       socket.value = null
       isConnected.value = false
+      ws.close(1000, 'Normal Closure')
     }
   }
 
   function sendMessage(content: string) {
-    if (!isConnected.value) {
-      console.warn('[WS] Cannot send message, not connected.')
-      return
-    }
+    if (!isConnected.value) return
 
     // Add user message to state
     const userMsgId = `user-${Date.now()}`
@@ -146,7 +203,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
     chatStore.setGenerating(true)
 
     if (isMock) {
-      runMockScenario(content)
+      mock?.runChatScenario(content)
       return
     }
 
@@ -164,17 +221,7 @@ export function useWebSocket(sessionId: string | (() => string)) {
   function sendOwnerConfirmation(messageId: string, ownerId: string) {
     if (isMock) {
       const workspaceId = (route.params.workspaceId as string) || 'unknown-workspace'
-      const timer = setTimeout(() => {
-        handleServerMessage({
-          type: 'owner_answer_received',
-          original_message_id: messageId,
-          confirmation_id: `mock-oc-${Date.now()}`,
-          content: '네, 김개발입니다. 해당 매입 처리 규격 API의 경우 기존 레거시 시스템과의 동기화 문제로 인해 매 정각 배치 작업으로 처리되고 있습니다. 자세한 배치 스케줄은 내부 배치 시스템 문서를 참조해 주세요.',
-          owner_name: '김개발',
-          workspace_id: workspaceId,
-        })
-      }, 2500)
-      mockTimerIds.push(timer)
+      mock?.runOwnerAnswer(messageId, workspaceId)
       return
     }
 
@@ -185,7 +232,9 @@ export function useWebSocket(sessionId: string | (() => string)) {
       })
   }
 
-  function handleServerMessage(data: any) {
+  function handleServerMessage(data: unknown) {
+    if (!isWsServerMessage(data)) return
+
     switch (data.type) {
       case 'searching':
         chatStore.setSearching(true)
@@ -234,80 +283,6 @@ export function useWebSocket(sessionId: string | (() => string)) {
           new CustomEvent('notification-received', { detail: data })
         )
         break
-      default:
-        console.warn('[WS] Unknown message type:', data.type)
-    }
-  }
-
-  function runMockScenario(content: string) {
-    mockTimerIds.forEach(clearTimeout)
-    mockTimerIds = []
-
-    const isOwnerScenario = content.includes('담당자') || content.toLowerCase().includes('owner') || content.toLowerCase().includes('help')
-
-    if (isOwnerScenario) {
-      const messageId = `mock-owner-${Date.now()}`
-      // Scenarios for owner suggestion
-      const scenario = [
-        { delay: 300, data: { type: 'searching' } },
-        { delay: 1000, data: { type: 'token', message_id: messageId, text: '해당 결제 모듈의 상세 매입 처리 규격에 대한 근거가 문서에 부족합니다. ' } },
-        { delay: 1800, data: { type: 'token', message_id: messageId, text: '따라서 정확한 안내를 위해 담당자 확인이 필요할 수 있습니다.' } },
-        {
-          delay: 2400,
-          data: {
-            type: 'owner_confirmation_suggested',
-            message_id: messageId,
-            suggested_owner_id: 'owner-uuid-99',
-            suggested_owner_name: '김개발',
-          },
-        },
-        {
-          delay: 3000,
-          data: {
-            type: 'done',
-            message_id: messageId,
-            citations: [],
-            needs_owner_confirmation: true,
-          },
-        },
-      ]
-
-      scenario.forEach((step) => {
-        const timer = setTimeout(() => {
-          handleServerMessage(step.data)
-        }, step.delay)
-        mockTimerIds.push(timer)
-      })
-    } else {
-      const messageId = `mock-normal-${Date.now()}`
-      // Normal scenario
-      const scenario = [
-        { delay: 300, data: { type: 'searching' } },
-        { delay: 1200, data: { type: 'token', message_id: messageId, text: '결제 모듈은 ' } },
-        { delay: 1800, data: { type: 'token', message_id: messageId, text: '세 가지 단계로 구성됩니다. ' } },
-        { delay: 2400, data: { type: 'token', message_id: messageId, text: '1단계는 인증(Auth), 2단계는 승인(Approve), 3단계는 매입(Capture) 처리입니다. ' } },
-        { delay: 2900, data: { type: 'token', message_id: messageId, text: '각 단계별 세부 API 호출은 결제 API 가이드 문서를 참조하세요.' } },
-        {
-          delay: 3500,
-          data: {
-            type: 'done',
-            message_id: messageId,
-            citations: [
-              { source_type: 'document', source_id: 1, title: '결제 API 문서', similarity_score: 0.82 },
-              { source_type: 'git_commit', source_id: 5, title: 'feat: 결제 모듈 리팩토링', similarity_score: 0.71 },
-              { source_type: 'db_schema', source_id: 12, title: 'payment_transaction_table_schema', similarity_score: 0.64 },
-            ],
-            needs_owner_confirmation: false,
-          },
-        },
-      ]
-
-      scenario.forEach((step) => {
-        const timer = setTimeout(() => {
-          handleServerMessage(step.data)
-        }, step.delay)
-        mockTimerIds.push(timer)
-      })
     }
   }
 
