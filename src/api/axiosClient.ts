@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { WORKSPACE_ID_KEY } from '@/state/workspaceStore'
+import { WORKSPACE_ID_KEY } from '@/api/storageKeys'
 import { SESSION_EXPIRED_EVENT, toApiError } from '@/api/apiError'
 
 const axiosClient = axios.create({

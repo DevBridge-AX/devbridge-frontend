@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient'
-import type { NotificationType } from '@/state/notificationStore'
+import type { NotificationType } from '@/types/notification'
 
 // ─── Request / Response 타입 정의 (Co-location) ───────────────────────────
 

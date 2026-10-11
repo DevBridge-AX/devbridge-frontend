@@ -3,8 +3,8 @@ import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/state/authStore'
 import { useChatStore } from '@/state/chatStore'
 import { useNotificationStore } from '@/state/notificationStore'
-import { notificationApi } from '@/api/notificationApi'
-import axiosClient from '@/api/axiosClient'
+import { notificationService } from '@/services/notificationService'
+import { ownerConfirmationService } from '@/services/ownerConfirmationService'
 
 export function useWebSocket(sessionId: string | (() => string)) {
   const route = useRoute()
@@ -29,11 +29,8 @@ export function useWebSocket(sessionId: string | (() => string)) {
     const employeeId = authStore.currentUser?.employeeId
     if (!employeeId) return
 
-    notificationApi
-      .getNotifications(employeeId, { isRead: false, page: 0, size: 1 })
-      .then((res) => {
-        notificationStore.setNotifications([], res.totalElements)
-      })
+    notificationService
+      .syncUnreadCount(employeeId)
       .catch(() => {
         console.warn('[WS] Failed to sync unread notification count.')
       })
@@ -181,10 +178,8 @@ export function useWebSocket(sessionId: string | (() => string)) {
       return
     }
 
-    axiosClient
-      .post(`/api/chats/messages/${encodeURIComponent(messageId)}/owner-confirmation`, {
-        assignedOwnerId: ownerId,
-      })
+    ownerConfirmationService
+      .requestOwnerConfirmation(messageId, ownerId)
       .catch(() => {
         chatStore.setError(`err-oc-${Date.now()}`, '담당자 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.')
       })

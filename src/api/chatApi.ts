@@ -1,5 +1,5 @@
 import axiosClient from './axiosClient'
-import type { ChatMessage } from '@/state/chatStore'
+import type { ChatMessage } from '@/types/chat'
 
 // ─── Layer 1: Chat API ─────────────────────────────────────────────────
 // VITE_WS_MOCK=true: LocalStorage Mock

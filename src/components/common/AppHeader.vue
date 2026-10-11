@@ -6,7 +6,7 @@ import type { Workspace } from '@/api/workspaceApi'
 import { useAuthStore } from '@/state/authStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import { authService } from '@/services/authService'
-import { notificationApi } from '@/api/notificationApi'
+import { notificationService } from '@/services/notificationService'
 import NotificationDrawer from '@/components/notification/NotificationDrawer.vue'
 
 defineEmits<{
@@ -69,12 +69,7 @@ async function loadUnreadCount() {
   if (!employeeId) return
 
   try {
-    const page = await notificationApi.getNotifications(employeeId, {
-      isRead: false,
-      page: 0,
-      size: 1,
-    })
-    notificationStore.setNotifications([], page.totalElements)
+    await notificationService.syncUnreadCount(employeeId)
   } catch {
     // 알림 개수 로드 실패는 무시하고 0으로 유지
   }
