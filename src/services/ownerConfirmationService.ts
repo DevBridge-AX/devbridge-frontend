@@ -1,5 +1,10 @@
 import { ownerConfirmationApi } from '@/api/ownerConfirmationApi'
-import type { OwnerConfirmationResponse } from '@/api/ownerConfirmationApi'
+import type {
+  DirectQuestionRequest,
+  OwnerConfirmationListParams,
+  OwnerConfirmationPageResponse,
+  OwnerConfirmationResponse,
+} from '@/api/ownerConfirmationApi'
 import { toApiError } from '@/api/apiError'
 
 // ─── Layer 3: 비즈니스 로직 (Service) ─────────────────────────────────────
@@ -31,7 +36,39 @@ async function submitAnswer(
   }
 }
 
+async function requestOwnerConfirmation(
+  messageId: string,
+  assignedOwnerId: string,
+): Promise<void> {
+  try {
+    await ownerConfirmationApi.requestOwnerConfirmation(messageId, assignedOwnerId)
+  } catch (error: unknown) {
+    throw toApiError(error, '담당자 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.')
+  }
+}
+
+async function sendDirectQuestion(payload: DirectQuestionRequest): Promise<void> {
+  try {
+    await ownerConfirmationApi.sendDirectQuestion(payload)
+  } catch (error: unknown) {
+    throw toApiError(error, '전송에 실패했습니다.')
+  }
+}
+
+async function getRequestedList(
+  params: OwnerConfirmationListParams,
+): Promise<OwnerConfirmationPageResponse> {
+  try {
+    return await ownerConfirmationApi.getRequestedList(params)
+  } catch (error: unknown) {
+    throw toApiError(error, '요청한 확인 목록을 불러오지 못했습니다.')
+  }
+}
+
 export const ownerConfirmationService = {
   fetchConfirmation,
   submitAnswer,
+  requestOwnerConfirmation,
+  sendDirectQuestion,
+  getRequestedList,
 }

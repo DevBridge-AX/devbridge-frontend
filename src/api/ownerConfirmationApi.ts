@@ -71,6 +71,14 @@ export const ownerConfirmationApi = {
       .then(() => undefined)
   },
 
+  requestOwnerConfirmation(messageId: string, assignedOwnerId: string): Promise<void> {
+    return axiosClient
+      .post(`/api/chats/messages/${encodeURIComponent(messageId)}/owner-confirmation`, {
+        assignedOwnerId,
+      })
+      .then(() => undefined)
+  },
+
   getRequestedList(params: OwnerConfirmationListParams): Promise<OwnerConfirmationPageResponse> {
     return axiosClient
       .get<OwnerConfirmationPageResponse>('/api/owner-confirmations/requested', { params })
