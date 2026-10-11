@@ -116,9 +116,8 @@ export const useChatStore = defineStore('chat', () => {
     isSearching.value = false
     isGenerating.value = false
 
-    const hasStreamedText =
-      streamingMessage.value &&
-      streamingMessage.value.id === doneEvent.messageId
+    const streaming = streamingMessage.value
+    const hasStreamedText = streaming && streaming.id === doneEvent.messageId
 
     if (hasStreamedText) {
       const citations: MessageCitation[] = doneEvent.citations.map((c) => ({
@@ -128,8 +127,8 @@ export const useChatStore = defineStore('chat', () => {
         similarityScore: c.similarity_score,
       }))
 
-      const finalId = streamingMessage.value!.id
-      const finalText = streamingMessage.value!.text
+      const finalId = streaming.id
+      const finalText = streaming.text
 
       streamingMessage.value = null
 
