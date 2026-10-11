@@ -5,9 +5,9 @@ import { useAuthStore } from '@/state/authStore'
 import { useWorkspaceStore } from '@/state/workspaceStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import type { Notification, NotificationType } from '@/state/notificationStore'
-import { notificationApi } from '@/api/notificationApi'
+import { notificationService } from '@/services/notificationService'
 import type { NotificationResponse } from '@/api/notificationApi'
-import { ownerConfirmationApi } from '@/api/ownerConfirmationApi'
+import { ownerConfirmationService } from '@/services/ownerConfirmationService'
 import type { OwnerConfirmationResponse } from '@/api/ownerConfirmationApi'
 
 const props = defineProps<{
@@ -81,7 +81,7 @@ async function loadPage(page: number, append: boolean) {
   }
 
   try {
-    const res = await notificationApi.getNotifications(
+    const res = await notificationService.getNotifications(
       employeeId,
       params as { page: number; size: number; isRead?: boolean },
     )
@@ -114,7 +114,7 @@ async function loadMore() {
 
 async function loadRequestPage(page: number, append: boolean) {
   try {
-    const res = await ownerConfirmationApi.getRequestedList({ page, size: PAGE_SIZE })
+    const res = await ownerConfirmationService.getRequestedList({ page, size: PAGE_SIZE })
     if (append) {
       requestItems.value.push(...res.content)
     } else {
@@ -141,7 +141,7 @@ async function loadMoreRequests() {
 }
 
 function handleRequestItemClick(item: OwnerConfirmationResponse) {
-  notificationStore.openAnswerModal(item.id, true)
+  notificationService.openAnswerModal(item.id, true)
   emit('close')
 }
 
@@ -166,8 +166,7 @@ function buildRoute(type: NotificationType, workspaceId: string, referenceId: st
 async function handleItemClick(item: Notification) {
   if (!item.isRead) {
     try {
-      await notificationApi.markAsRead(item.id)
-      notificationStore.markAsRead(item.id)
+      await notificationService.markAsRead(item.id)
       const target = items.value.find((n) => n.id === item.id)
       if (target) {
         target.isRead = true
@@ -182,7 +181,7 @@ async function handleItemClick(item: Notification) {
     item.notificationType === 'OWNER_ANSWER_RECEIVED'
   ) {
     const readOnly = item.notificationType === 'OWNER_ANSWER_RECEIVED'
-    notificationStore.openAnswerModal(item.referenceId, readOnly)
+    notificationService.openAnswerModal(item.referenceId, readOnly)
     emit('close')
     return
   }
