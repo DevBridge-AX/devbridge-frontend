@@ -26,7 +26,7 @@ const error = computed(() => ws?.error.value ?? null)
 
 const inputText = computed({
   get: () => chatStore.inputText,
-  set: (val: string) => { chatStore.setInputText(val) },
+  set: (val: string) => { chatService.setInputText(val) },
 })
 
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
@@ -76,7 +76,7 @@ async function handleSend() {
   }
 
   ws.sendMessage(text)
-  chatStore.setInputText('')
+  chatService.setInputText('')
 
   const el = textareaRef.value
   if (el) { el.style.height = 'auto' }
@@ -85,7 +85,7 @@ async function handleSend() {
 }
 
 function handleSuggestionClick(text: string) {
-  chatStore.setInputText(text)
+  chatService.setInputText(text)
   nextTick(() => {
     textareaRef.value?.focus()
     resizeTextarea()
@@ -96,12 +96,12 @@ function handleOwnerConfirm() {
   const pending = chatStore.pendingOwnerConfirmation
   if (pending && ws) {
     ws.sendOwnerConfirmation(pending.messageId, pending.ownerId)
-    chatStore.clearPendingOwnerConfirmation()
+    chatService.clearPendingOwnerConfirmation()
   }
 }
 
 function handleOwnerCancel() {
-  chatStore.clearPendingOwnerConfirmation()
+  chatService.clearPendingOwnerConfirmation()
 }
 
 onMounted(async () => {
@@ -118,9 +118,7 @@ watch(() => route.query.session, async (newSessionId) => {
   if (newSessionId) {
     await chatService.loadSessionMessages(newSessionId as string)
   } else {
-    chatStore.cacheCurrentSession()
-    chatStore.setActiveSessionId(null)
-    chatStore.resetChat()
+    chatService.startNewChat()
   }
 })
 

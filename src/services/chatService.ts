@@ -82,6 +82,29 @@ export const chatService = {
     isLoadingSession = false
   },
 
+  setInputText(text: string) {
+    useChatStore().setInputText(text)
+  },
+
+  clearPendingOwnerConfirmation() {
+    useChatStore().clearPendingOwnerConfirmation()
+  },
+
+  // 현재 세션을 캐시한 뒤 활성 세션 없이 새 대화 상태로 초기화
+  startNewChat() {
+    const chatStore = useChatStore()
+    chatStore.cacheCurrentSession()
+    chatStore.setActiveSessionId(null)
+    chatStore.resetChat()
+  },
+
+  // 캐시 없이 활성 세션을 해제하고 대화 상태를 초기화
+  resetActiveSession() {
+    const chatStore = useChatStore()
+    chatStore.setActiveSessionId(null)
+    chatStore.resetChat()
+  },
+
   async saveCurrentSessionMessages() {
     const chatStore = useChatStore()
     const sessionId = chatStore.activeSessionId

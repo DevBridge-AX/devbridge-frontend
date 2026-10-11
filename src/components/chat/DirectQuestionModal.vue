@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { searchMembers, type WorkspaceMemberResponse } from '@/api/workspaceApi'
-import { ownerConfirmationApi } from '@/api/ownerConfirmationApi'
+import type { WorkspaceMemberResponse } from '@/api/workspaceApi'
+import { workspaceService } from '@/services/workspaceService'
+import { ownerConfirmationService } from '@/services/ownerConfirmationService'
 import { useRoute } from 'vue-router'
 
 const props = defineProps<{ isOpen: boolean }>()
@@ -30,7 +31,7 @@ watch(keyword, (val) => {
   }
   debounceTimer = setTimeout(async () => {
     try {
-      members.value = await searchMembers(workspaceId(), val.trim())
+      members.value = await workspaceService.searchMembers(workspaceId(), val.trim())
     } catch {
       members.value = []
     }
@@ -62,7 +63,7 @@ async function handleSend() {
   isSending.value = true
   error.value = ''
   try {
-    await ownerConfirmationApi.sendDirectQuestion({
+    await ownerConfirmationService.sendDirectQuestion({
       assignedOwnerId: selectedMember.value.userId,
       questionContent: questionText.value.trim(),
     })

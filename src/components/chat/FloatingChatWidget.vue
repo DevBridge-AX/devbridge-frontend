@@ -87,12 +87,12 @@ function handleOwnerConfirm() {
   const pending = chatStore.pendingOwnerConfirmation
   if (pending && ws) {
     ws.sendOwnerConfirmation(pending.messageId, pending.ownerId)
-    chatStore.clearPendingOwnerConfirmation()
+    chatService.clearPendingOwnerConfirmation()
   }
 }
 
 function handleOwnerCancel() {
-  chatStore.clearPendingOwnerConfirmation()
+  chatService.clearPendingOwnerConfirmation()
 }
 
 function goToFullChat() {
@@ -112,8 +112,7 @@ async function handleSidebarSelectSession(sessionId: string) {
   if (sessionId) {
     await chatService.loadSessionMessages(sessionId)
   } else {
-    chatStore.setActiveSessionId(null)
-    chatStore.resetChat()
+    chatService.resetActiveSession()
   }
 }
 
