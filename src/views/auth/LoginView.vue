@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { authService } from '@/services/authService'
+import { toSafeRedirect } from '@/router/redirect'
 import BrandLogo from '@/components/common/BrandLogo.vue'
 
 const router = useRouter()
+const route = useRoute()
 
 const employeeId = ref('')
 const password = ref('')
@@ -22,9 +24,15 @@ async function handleLogin(): Promise<void> {
     employeeId.value.trim(), password.value,
   )
   if (loginResult.success) {
-    await router.push(loginResult.lastWorkspaceId
-      ? `/workspaces/${loginResult.lastWorkspaceId}/dashboard`
-      : '/workspace')
+    // 가드가 넘긴 redirect가 안전하면 우선 사용
+    const redirect = toSafeRedirect(route.query.redirect)
+    if (redirect) {
+      await router.push(redirect)
+    } else {
+      await router.push(loginResult.lastWorkspaceId
+        ? `/workspaces/${loginResult.lastWorkspaceId}/dashboard`
+        : '/workspace')
+    }
   } else {
     loginStatus.value = 'error'
     errorMessage.value = '사번 또는 비밀번호가 일치하지 않습니다.'
