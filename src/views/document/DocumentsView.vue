@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { documentService } from '@/services/documentService'
 import { gitService } from '@/services/gitService'
 import { useAuthStore } from '@/state/authStore'
@@ -10,6 +11,7 @@ import type { GitCommitItem } from '@/api/gitApi'
 import '@/assets/styles/documents.css'
 
 const route = useRoute()
+const { confirm } = useConfirm()
 const router = useRouter()
 const authStore = useAuthStore()
 
@@ -507,9 +509,12 @@ async function deleteSelectedDocument() {
     return
   }
 
-  const confirmed = window.confirm(
-    `"${selectedDocument.value.title}" 문서를 삭제하시겠습니까?`,
-  )
+  const confirmed = await confirm({
+    title: '문서 삭제',
+    message: `"${selectedDocument.value.title}" 문서를 삭제하시겠습니까?`,
+    confirmText: '삭제',
+    danger: true,
+  })
 
   if (!confirmed) {
     return

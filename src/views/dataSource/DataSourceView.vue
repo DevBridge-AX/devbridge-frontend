@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import AppLayout from '@/layouts/AppLayout.vue'
+import { useConfirm } from '@/composables/useConfirm'
 import { dataSourceService } from '@/services/dataSourceService'
 import { documentService } from '@/services/documentService'
 import { useAuthStore } from '@/state/authStore'
@@ -9,6 +10,7 @@ import type { DataSourceItem } from '@/api/dataSourceApi'
 import '@/assets/styles/dataSource.css'
 
 const route = useRoute()
+const { confirm } = useConfirm()
 const authStore = useAuthStore()
 
 // State
@@ -185,9 +187,12 @@ function clearFeedback() {
 async function handleDeleteSource(source: DataSourceItem) {
   if (deletingSourceId.value) return
 
-  const confirmed = window.confirm(
-    `"${source.sourceName}" 데이터 소스를 삭제하시겠습니까?`,
-  )
+  const confirmed = await confirm({
+    title: '데이터 소스 삭제',
+    message: `"${source.sourceName}" 데이터 소스를 삭제하시겠습니까?`,
+    confirmText: '삭제',
+    danger: true,
+  })
   if (!confirmed) return
 
   deletingSourceId.value = source.id

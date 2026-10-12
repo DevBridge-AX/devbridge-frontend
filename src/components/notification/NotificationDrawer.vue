@@ -5,6 +5,7 @@ import { useAuthStore } from '@/state/authStore'
 import { useWorkspaceStore } from '@/state/workspaceStore'
 import { useNotificationStore } from '@/state/notificationStore'
 import type { Notification, NotificationType } from '@/state/notificationStore'
+import { useConfirm } from '@/composables/useConfirm'
 import { notificationService } from '@/services/notificationService'
 import type { NotificationResponse } from '@/api/notificationApi'
 import { ownerConfirmationService } from '@/services/ownerConfirmationService'
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>()
 
 const router = useRouter()
+const { confirm } = useConfirm()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const notificationStore = useNotificationStore()
@@ -189,9 +191,11 @@ async function handleItemClick(item: Notification) {
   if (!item.workspaceId) return
 
   if (item.workspaceId !== workspaceStore.currentWorkspaceId) {
-    const confirmed = window.confirm(
-      '다른 워크스페이스의 알림입니다. 해당 워크스페이스로 전환하시겠습니까?',
-    )
+    const confirmed = await confirm({
+      title: '워크스페이스 전환',
+      message: '다른 워크스페이스의 알림입니다. 해당 워크스페이스로 전환하시겠습니까?',
+      confirmText: '확인',
+    })
     if (!confirmed) return
   }
 
