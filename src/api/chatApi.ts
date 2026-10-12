@@ -34,8 +34,8 @@ export const chatApi = {
       const sessions = JSON.parse(data) as ChatSession[]
       // 최신순 정렬
       return sessions.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    } catch (e) {
-      console.error('Failed to parse sessions', e)
+    } catch {
+      // 손상된 저장 데이터는 빈 목록으로 처리합니다.
       return []
     }
   },
@@ -96,8 +96,8 @@ export const chatApi = {
     if (!data) return []
     try {
       return JSON.parse(data) as ChatMessage[]
-    } catch (e) {
-      console.error('Failed to parse messages', e)
+    } catch {
+      // 손상된 저장 데이터는 빈 목록으로 처리합니다.
       return []
     }
   },
