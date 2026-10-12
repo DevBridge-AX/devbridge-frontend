@@ -45,8 +45,10 @@ async function fetchSources() {
   }
   try {
     sources.value = await dataSourceService.fetchDataSources(workspaceId.value)
-  } catch {
-    // 목록 조회 실패 시 기존 목록 유지
+  } catch (err: unknown) {
+    // 목록 조회 실패 시 기존 목록은 유지하고 오류만 안내
+    const msg = err instanceof Error ? err.message : '데이터 소스 목록을 불러오는데 실패했습니다.'
+    showFeedback('error', msg)
   }
 }
 

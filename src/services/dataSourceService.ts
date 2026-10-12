@@ -86,6 +86,10 @@ async function deleteDataSource(
   }
 }
 
+/**
+ * 워크스페이스의 데이터 소스 목록을 조회합니다.
+ * @throws ApiError - View에서 catch하여 사용자에게 표시할 메시지
+ */
 async function fetchDataSources(workspaceId: string): Promise<DataSourceItem[]> {
   const isMock = import.meta.env.VITE_WS_MOCK === 'true'
 
@@ -96,8 +100,9 @@ async function fetchDataSources(workspaceId: string): Promise<DataSourceItem[]> 
   try {
     return await dataSourceApi.fetchDataSources(workspaceId)
   } catch (error: unknown) {
-    console.warn('Backend DataSource API failed, falling back to mock data.', error)
-    return getMockSources(workspaceId)
+    throw toApiError(error, '데이터 소스 목록을 불러오는데 실패했습니다.', {
+      401: '로그인이 필요하거나 세션이 만료되었습니다.',
+    })
   }
 }
 

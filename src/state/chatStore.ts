@@ -125,7 +125,6 @@ export const useChatStore = defineStore('chat', () => {
         citations,
       })
     } else if (doneEvent.needs_owner_confirmation) {
-      console.log(doneEvent)
       addMessage({
         id: doneEvent.messageId,
         role: 'assistant',
