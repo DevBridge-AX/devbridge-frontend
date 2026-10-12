@@ -8,11 +8,13 @@ import ChatHistorySidebar from '@/components/chat/ChatHistorySidebar.vue'
 import DirectQuestionModal from '@/components/chat/DirectQuestionModal.vue'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
+import { useToast } from '@/composables/useToast'
 import '@/assets/styles/chat.css'
 
 const route = useRoute()
 const router = useRouter()
 const chatStore = useChatStore()
+const toast = useToast()
 
 const ws = inject<{
   isConnected: { value: boolean }
@@ -71,8 +73,13 @@ async function handleSend() {
   if (!text || !ws) return
 
   if (!chatStore.activeSessionId) {
-    const newSession = await chatService.createSession()
-    router.replace({ query: { ...route.query, session: newSession.id } })
+    try {
+      const newSession = await chatService.createSession(text)
+      router.replace({ query: { ...route.query, session: newSession.id } })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '대화를 시작하지 못했습니다.')
+      return
+    }
   }
 
   ws.sendMessage(text)
@@ -105,18 +112,26 @@ function handleOwnerCancel() {
 }
 
 onMounted(async () => {
-  await chatService.loadSessions()
-  chatService.initAutoSave()
-  if (route.query.session) {
-    await chatService.loadSessionMessages(route.query.session as string)
-  } else if (chatStore.activeSessionId) {
-    router.replace({ query: { ...route.query, session: chatStore.activeSessionId } })
+  try {
+    await chatService.loadSessions()
+    chatService.initAutoSave()
+    if (route.query.session) {
+      await chatService.loadSessionMessages(route.query.session as string)
+    } else if (chatStore.activeSessionId) {
+      router.replace({ query: { ...route.query, session: chatStore.activeSessionId } })
+    }
+  } catch (err) {
+    toast.error(err instanceof Error ? err.message : '대화 목록을 불러오지 못했습니다.')
   }
 })
 
 watch(() => route.query.session, async (newSessionId) => {
   if (newSessionId) {
-    await chatService.loadSessionMessages(newSessionId as string)
+    try {
+      await chatService.loadSessionMessages(newSessionId as string)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '대화 내용을 불러오지 못했습니다.')
+    }
   } else {
     chatService.startNewChat()
   }
