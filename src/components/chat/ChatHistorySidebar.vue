@@ -62,6 +62,8 @@ function showDeleteErrorToast() {
 }
 
 function formatSessionDate(dateString: string) {
+  // 메시지가 없는 세션은 서버가 최근 메시지 시간을 주지 않음
+  if (!dateString) return ''
   const date = new Date(dateString)
   const today = new Date()
 

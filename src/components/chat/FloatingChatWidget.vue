@@ -3,6 +3,7 @@ import { ref, computed, inject, nextTick, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
+import { useToast } from '@/composables/useToast'
 import MessageList from './MessageList.vue'
 import OwnerConfirmationCard from './OwnerConfirmationCard.vue'
 import OwnerAnswerToast from './OwnerAnswerToast.vue'
@@ -12,6 +13,7 @@ import '@/assets/styles/chat.css'
 const route = useRoute()
 const router = useRouter()
 const chatStore = useChatStore()
+const toast = useToast()
 
 // State
 const isOpen = ref(false)
@@ -71,11 +73,17 @@ function resizeTextarea() {
 }
 
 async function handleSend() {
-  if (!inputText.value.trim() || !ws) return
+  const text = inputText.value.trim()
+  if (!text || !ws) return
   if (!chatStore.activeSessionId) {
-    await chatService.createSession()
+    try {
+      await chatService.createSession(text)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '대화를 시작하지 못했습니다.')
+      return
+    }
   }
-  ws.sendMessage(inputText.value.trim())
+  ws.sendMessage(text)
   inputText.value = ''
   nextTick(() => {
     resizeTextarea()
@@ -110,7 +118,11 @@ function handleAnswerReceived() {
 
 async function handleSidebarSelectSession(sessionId: string) {
   if (sessionId) {
-    await chatService.loadSessionMessages(sessionId)
+    try {
+      await chatService.loadSessionMessages(sessionId)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : '대화 내용을 불러오지 못했습니다.')
+    }
   } else {
     chatService.resetActiveSession()
   }
