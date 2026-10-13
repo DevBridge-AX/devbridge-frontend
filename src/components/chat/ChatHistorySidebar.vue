@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useChatStore } from '@/state/chatStore'
 import { chatService } from '@/services/chatService'
+import { formatDate, formatTime, isSameDay } from '@/utils/date'
 
 const chatStore = useChatStore()
 
@@ -64,15 +65,10 @@ function showDeleteErrorToast() {
 function formatSessionDate(dateString: string) {
   // 메시지가 없는 세션은 서버가 최근 메시지 시간을 주지 않음
   if (!dateString) return ''
-  const date = new Date(dateString)
-  const today = new Date()
-
-  const isToday = date.getDate() === today.getDate() && date.getMonth() === today.getMonth() && date.getFullYear() === today.getFullYear()
-
-  if (isToday) {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  if (isSameDay(new Date(dateString), new Date())) {
+    return formatTime(dateString)
   }
-  return date.toLocaleDateString()
+  return formatDate(dateString)
 }
 </script>
 

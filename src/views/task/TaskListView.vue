@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getTaskStatusLabel } from '@/constants/labels'
+import { formatDate } from '@/utils/date'
 import { useConfirm } from '@/composables/useConfirm'
 import { taskService } from '@/services/taskService'
 import { useAuthStore } from '@/state/authStore'
@@ -342,31 +344,6 @@ function applyStatusQuery() {
   selectedStatus.value = status === 'COMPLETED' ? 'DONE' : status
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return '미정'
-  }
-
-  return new Date(value).toLocaleDateString('ko-KR', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
-
-function getStatusLabel(status: string) {
-  const statusMap: Record<string, string> = {
-    ASSIGNED: '배정',
-    IN_PROGRESS: '진행 중',
-    REVIEW: '검토',
-    DONE: '완료',
-    COMPLETED: '완료',
-    CANCELLED: '취소',
-  }
-
-  return statusMap[status] ?? status
-}
-
 function getStatusClass(status: string) {
   const statusClassMap: Record<string, string> = {
     ASSIGNED: 'assigned',
@@ -524,7 +501,7 @@ watch(
                 </div>
               </div>
               <div class="tl-row-right">
-                <span class="chip" :class="task.status === 'IN_PROGRESS' ? 'go' : task.status === 'DONE' || task.status === 'COMPLETED' ? 'done' : isOverdue(task) ? 'delay' : 'wait'">{{ getStatusLabel(task.status) }}</span>
+                <span class="chip" :class="task.status === 'IN_PROGRESS' ? 'go' : task.status === 'DONE' || task.status === 'COMPLETED' ? 'done' : isOverdue(task) ? 'delay' : 'wait'">{{ getTaskStatusLabel(task.status) }}</span>
                 <div class="tl-row-status" @click.stop>
                   <button v-if="task.status !== 'ASSIGNED'" class="status-btn" @click="changeTaskStatus(task, 'ASSIGNED')" title="배정">배정</button>
                   <button v-if="task.status !== 'IN_PROGRESS'" class="status-btn" @click="changeTaskStatus(task, 'IN_PROGRESS')" title="진행">진행</button>

@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getAnalysisStatusLabel, getDocumentTypeLabel } from '@/constants/labels'
+import { formatDateTime } from '@/utils/date'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { useConfirm } from '@/composables/useConfirm'
 import { documentService } from '@/services/documentService'
@@ -293,14 +295,6 @@ async function uploadSelectedDocument() {
   }
 }
 
-function formatDate(value: string | null) {
-  if (!value) {
-    return '미정'
-  }
-
-  return value.replace('T', ' ').slice(0, 16)
-}
-
 function formatFileSize(value: number | null) {
   if (value === null || value === undefined) {
     return '미정'
@@ -315,70 +309,6 @@ function formatFileSize(value: number | null) {
   }
 
   return `${(value / 1024 / 1024).toFixed(1)} MB`
-}
-
-function getDocumentTypeLabel(type: string | null) {
-  if (type === 'REPORT') {
-    return '보고서'
-  }
-
-  if (type === 'MEETING_NOTE') {
-    return '회의록'
-  }
-
-  if (type === 'GUIDE') {
-    return '지침'
-  }
-
-  if (type === 'REFERENCE') {
-    return '참고자료'
-  }
-
-  if (type === 'TECH') {
-    return '기술 문서'
-  }
-
-  if (type === 'PLANNING') {
-    return '기획 문서'
-  }
-
-  if (type === 'DESIGN') {
-    return '디자인 문서'
-  }
-
-  if (type === 'MEETING') {
-    return '회의록'
-  }
-
-  if (type === 'GIT') {
-    return 'Git 문서'
-  }
-
-  if (type === 'ETC') {
-    return '기타'
-  }
-
-  return '미분류'
-}
-
-function getAnalysisStatusLabel(status: string | null) {
-  if (status === 'COMPLETED') {
-    return '분석 완료'
-  }
-
-  if (status === 'PROCESSING') {
-    return '분석 중'
-  }
-
-  if (status === 'PENDING') {
-    return '분석 대기'
-  }
-
-  if (status === 'FAILED') {
-    return '분석 실패'
-  }
-
-  return '분석 미연결'
 }
 
 function buildSummaryText(document: DocumentItem) {
@@ -843,7 +773,7 @@ watch(
                   </div>
                   <div>
                     <span class="lbl">Created</span
-                    ><span class="val">{{ formatDate(d.createdAt) }}</span>
+                    ><span class="val">{{ formatDateTime(d.createdAt) }}</span>
                   </div>
                   <div>
                     <span class="lbl">Analysis</span
@@ -1125,9 +1055,9 @@ watch(
                 {l:'Source Type',v:selectedDocument.sourceType},
                 {l:'Source Status',v:selectedDocument.sourceStatus},
                 {l:'Analysis Status',v:getAnalysisStatusLabel(selectedDocument.analysisStatus)},
-                {l:'Analyzed At',v:formatDate(selectedDocument.analyzedAt)},
+                {l:'Analyzed At',v:formatDateTime(selectedDocument.analyzedAt)},
                 {l:'Vector ID',v:selectedDocument.vectorId||'미연결'},
-                {l:'Updated',v:formatDate(selectedDocument.updatedAt)},
+                {l:'Updated',v:formatDateTime(selectedDocument.updatedAt)},
               ]" :key="item.l" class="doc-detail-item">
                 <div class="lbl">{{ item.l }}</div>
                 <div class="val">{{ item.v }}</div>

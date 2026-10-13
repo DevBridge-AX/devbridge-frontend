@@ -1,6 +1,8 @@
 ﻿<script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { getTaskStatusLabel } from '@/constants/labels'
+import { formatDate } from '@/utils/date'
 import AppLayout from '@/layouts/AppLayout.vue'
 import TaskDetailModal from '@/components/task/TaskDetailModal.vue'
 import { dashboardService } from '@/services/dashboardService'
@@ -208,14 +210,6 @@ const teamMembers = computed<MemberInfo[]>(() => {
   return members
 })
 
-function getStatusLabel(status: string) {
-  const map: Record<string, string> = {
-    ASSIGNED: '대기', IN_PROGRESS: '진행중', DONE: '완료',
-    DELAYED: '지연', OVERDUE: '지연', REVIEW: '검토',
-  }
-  return map[status] ?? status
-}
-
 function getStatusClass(status: string) {
   const map: Record<string, string> = {
     ASSIGNED: 'wait', IN_PROGRESS: 'go', DONE: 'done',
@@ -242,11 +236,6 @@ function getBranchColor(branch?: string): string {
   if (!branch) return '#5B52E3'
   const key = Object.keys(branchColors).find(k => branch.startsWith(k))
   return key ? (branchColors[key] ?? '#5B52E3') : '#5B52E3'
-}
-
-function formatDate(value: string | null) {
-  if (!value) return '미정'
-  return value.replace('T', ' ').slice(0, 10)
 }
 
 function getDocTag(document: DashboardDocumentItem): string {
@@ -534,7 +523,7 @@ watch(() => workspaceId.value, () => { void fetchDashboardData() })
                 <div v-for="(t,idx) in recentTasks.slice(0,5)" :key="t.taskId" class="task-r" @click="openTaskDetail(t.taskId)">
                   <span class="task-av" :style="{ background: getAssigneeColor(idx) }">{{ (t.assigneeName||'?').slice(0,1).toUpperCase() }}</span>
                   <div class="task-i"><strong>{{ t.title }}</strong><span>{{ t.assigneeName||'미지정' }} · {{ formatDate(t.dueDate) }}</span></div>
-                  <span class="chip" :class="getStatusClass(t.status)">{{ getStatusLabel(t.status) }}</span>
+                  <span class="chip" :class="getStatusClass(t.status)">{{ getTaskStatusLabel(t.status) }}</span>
                 </div>
               </div>
             </div>

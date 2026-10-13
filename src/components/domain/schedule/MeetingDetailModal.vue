@@ -13,6 +13,7 @@ import type {
   WorkspaceMemberResponse,
 } from '@/api/scheduleApi'
 import { documentService } from '@/services/documentService'
+import { formatDateTime } from '@/utils/date'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
@@ -143,13 +144,6 @@ function formatTimeRange(slot: TimeSlot): string {
   const startTime = start.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   const endTime = end.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
   return `${datePart} ${startTime} ~ ${endTime}`
-}
-
-function formatCreatedAt(iso: string): string {
-  const date = new Date(iso)
-  const datePart = date.toLocaleDateString('ko-KR', { month: '2-digit', day: '2-digit' })
-  const timePart = date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
-  return `${datePart} ${timePart}`
 }
 
 function isMeetingLinkUrl(value: string): boolean {
@@ -776,7 +770,7 @@ function handleOpenResponse(meetingId: string): void {
               {{ reference.title }}
             </a>
             <span v-else class="reference-title">{{ reference.title }}</span>
-            <span class="reference-date">{{ formatCreatedAt(reference.createdAt) }}</span>
+            <span class="reference-date">{{ formatDateTime(reference.createdAt) }}</span>
             <button
               type="button"
               class="reference-remove"

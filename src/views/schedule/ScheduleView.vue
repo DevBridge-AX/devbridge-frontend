@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { toDateKey } from '@/utils/date'
 import { scheduleService } from '@/services/scheduleService'
 import { workspaceService } from '@/services/workspaceService'
 import { useAuthStore } from '@/state/authStore'
@@ -90,18 +91,11 @@ const isDecliningMeeting = ref(false)
 const declineMeetingError = ref('')
 
 // ─── 이번 달 범위 계산 ───────────────────────────────────────────────────────
-function formatDate(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 function getCurrentMonthRange(): { startDate: string; endDate: string } {
   const now = new Date()
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-  return { startDate: formatDate(firstDay), endDate: formatDate(lastDay) }
+  return { startDate: toDateKey(firstDay), endDate: toDateKey(lastDay) }
 }
 
 // ─── 확정 일정 새로고침 ─────────────────────────────────────────────────────

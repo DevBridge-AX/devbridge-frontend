@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
 import type { TimeSlot } from '@/api/scheduleApi'
+import { toDateKey } from '@/utils/date'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
@@ -32,12 +33,6 @@ const TIME_SLOTS = (() => {
 
 // ─── 날짜 유틸 ─────────────────────────────────────────────────────────────
 
-function formatDateKey(date: Date): string {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
 
 function getSlotEndTime(time: string): string {
   const hour = Number(time.slice(0, 2))
@@ -57,7 +52,7 @@ function formatSelectedDateLabel(dateKey: string): string {
 }
 
 const today = new Date()
-const todayKey = formatDateKey(today)
+const todayKey = toDateKey(today)
 
 // ─── 표시 중인 연/월 상태 ───────────────────────────────────────────────────
 
@@ -89,7 +84,7 @@ const calendarCells = computed<CalendarCell[]>(() => {
   const cells: CalendarCell[] = []
   for (let i = 0; i < totalCells; i += 1) {
     const date = new Date(viewYear.value, viewMonth.value, 1 - startWeekday + i)
-    const dateKey = formatDateKey(date)
+    const dateKey = toDateKey(date)
     cells.push({
       date,
       dateKey,
