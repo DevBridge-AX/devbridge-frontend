@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import AppLayout from '@/layouts/AppLayout.vue'
 import { settingService } from '@/services/settingService'
+import { JOB_ROLE_OPTIONS, getJobRoleLabel } from '@/constants/labels'
 import type { UserProfile } from '@/api/settingApi'
 
 // ─── 프로필 데이터 ─────────────────────────────────────────────────────────
@@ -17,20 +18,6 @@ const verifyInputPassword = ref('')
 const isVerifying = ref(false)
 const verifyError = ref('')
 const verifiedCurrentPassword = ref('') // 임시 보관용 현재 비밀번호
-
-// ─── 직무 옵션 ────────────────────────────────────────────────────────────
-const JOB_ROLE_OPTIONS = [
-  { value: 'PLANNER', label: '기획자' },
-  { value: 'DEVELOPER', label: '개발자' },
-  { value: 'QA', label: 'QA' },
-  { value: 'DESIGNER', label: '디자이너' },
-  { value: 'OPERATOR', label: '운영자' },
-  { value: 'NEWCOMER', label: '신규투입자' },
-] as const
-
-function getJobRoleLabel(value: string): string {
-  return JOB_ROLE_OPTIONS.find((opt) => opt.value === value)?.label ?? '—'
-}
 
 // ─── 편집 폼 필드 ──────────────────────────────────────────────────────────
 const editName = ref('')

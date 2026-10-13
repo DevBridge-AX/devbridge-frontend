@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue'
 import { ownerConfirmationService } from '@/services/ownerConfirmationService'
 import type { OwnerConfirmationResponse } from '@/api/ownerConfirmationApi'
+import { formatDateTime } from '@/utils/date'
 
 const props = defineProps<{
   isOpen: boolean
@@ -68,16 +69,6 @@ function handleOverlayClick(event: MouseEvent) {
   if (event.target === event.currentTarget) {
     handleClose()
   }
-}
-
-function formatDateTime(dateString: string): string {
-  const date = new Date(dateString)
-  const y = date.getFullYear()
-  const m = String(date.getMonth() + 1).padStart(2, '0')
-  const d = String(date.getDate()).padStart(2, '0')
-  const h = String(date.getHours()).padStart(2, '0')
-  const min = String(date.getMinutes()).padStart(2, '0')
-  return `${y}-${m}-${d} ${h}:${min}`
 }
 
 watch(

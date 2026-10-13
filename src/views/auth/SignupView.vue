@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { isAxiosError } from 'axios'
 import { authService } from '@/services/authService'
 import BrandLogo from '@/components/common/BrandLogo.vue'
+import { JOB_ROLE_OPTIONS } from '@/constants/labels'
 
 const router = useRouter()
 
@@ -15,15 +16,6 @@ const authCode = ref('')
 const password = ref('')
 const passwordConfirm = ref('')
 const jobRole = ref('')
-
-const JOB_ROLE_OPTIONS = [
-  { value: 'PLANNER', label: '기획자' },
-  { value: 'DEVELOPER', label: '개발자' },
-  { value: 'QA', label: 'QA' },
-  { value: 'DESIGNER', label: '디자이너' },
-  { value: 'OPERATOR', label: '운영자' },
-  { value: 'NEWCOMER', label: '신규투입자' },
-] as const
 
 // ─── 단계별 상태 ──────────────────────────────────────────────────────────
 const isHrVerified = ref(false)

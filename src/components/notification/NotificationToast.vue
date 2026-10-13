@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import type { NotificationPayload } from '@/state/notificationStore'
+import { getNotificationTypeLabel } from '@/constants/labels'
 
 interface ToastItem {
   id: string
@@ -21,17 +22,6 @@ const ICON_MAP: Record<string, string> = {
   MEETING_REMINDER: '⏰',
   OWNER_CONFIRMATION: '📋',
   OWNER_ANSWER_RECEIVED: '✅',
-}
-
-const LABEL_MAP: Record<string, string> = {
-  MEETING_INVITED: '회의 초대',
-  MEETING_UPDATED: '회의 변경',
-  MEETING_CANCELED: '회의 취소',
-  MEETING_CONFIRMED: '회의 확정',
-  MEETING_REOPENED: '회의 재조율',
-  MEETING_REMINDER: '회의 임박 알림',
-  OWNER_CONFIRMATION: '담당자 확인 요청',
-  OWNER_ANSWER_RECEIVED: '담당자 답변',
 }
 
 function handleNotification(e: Event) {
@@ -72,10 +62,6 @@ function getIcon(type: string): string {
   return ICON_MAP[type] ?? '🔔'
 }
 
-function getLabel(type: string): string {
-  return LABEL_MAP[type] ?? '알림'
-}
-
 function getAccentClass(type: string): string {
   if (type === 'MEETING_CANCELED') return 'accent-danger'
   if (type === 'MEETING_CONFIRMED') return 'accent-success'
@@ -108,7 +94,7 @@ onUnmounted(() => {
         <div class="notification-toast-header">
           <span class="notification-toast-badge">
             <span class="notification-toast-icon">{{ getIcon(toast.notificationType) }}</span>
-            {{ getLabel(toast.notificationType) }}
+            {{ getNotificationTypeLabel(toast.notificationType) }}
           </span>
           <button
             type="button"

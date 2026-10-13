@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { getTaskRiskLabel, getTaskStatusLabel } from '@/constants/labels'
 import { taskService } from '@/services/taskService'
 import { gitService } from '@/services/gitService'
 import { documentService } from '@/services/documentService'
@@ -42,28 +43,9 @@ const uploadDescription = ref('')
 
 const analyzingDocumentId = ref<string | null>(null)
 
-const statusLabel = computed(() => {
-  const status = taskDetail.value?.status
+const statusLabel = computed(() => getTaskStatusLabel(taskDetail.value?.status))
 
-  if (status === 'DONE' || status === 'COMPLETED') return '완료'
-  if (status === 'IN_PROGRESS') return '진행 중'
-  if (status === 'REVIEW') return '검토'
-  if (status === 'OVERDUE') return '지연'
-  if (status === 'ASSIGNED') return '배정'
-  if (status === 'CANCELLED') return '취소'
-
-  return status || '상태 없음'
-})
-
-const riskLabel = computed(() => {
-  const riskLevel = taskDetail.value?.riskLevel
-
-  if (riskLevel === 'HIGH') return '높음'
-  if (riskLevel === 'MEDIUM') return '보통'
-  if (riskLevel === 'LOW') return '낮음'
-
-  return '미정'
-})
+const riskLabel = computed(() => getTaskRiskLabel(taskDetail.value?.riskLevel))
 
 const assigneeLabel = computed(() => {
   return taskDetail.value?.assigneeName || '미지정'
