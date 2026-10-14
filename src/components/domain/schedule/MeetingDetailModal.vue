@@ -6,14 +6,17 @@ import type {
   MeetingDetailResponse,
   MeetingReferenceRequest,
   MeetingStatus,
-  ParticipantRole,
-  ParticipantStatus,
   TimeSlot,
   UpdateMeetingRequest,
   WorkspaceMemberResponse,
 } from '@/api/scheduleApi'
 import { documentService } from '@/services/documentService'
-import { formatDateTime } from '@/utils/date'
+import MeetingDetailEditForm from '@/components/domain/schedule/MeetingDetailEditForm.vue'
+import MeetingDetailHostActions from '@/components/domain/schedule/MeetingDetailHostActions.vue'
+import MeetingDetailManualConfirmForm from '@/components/domain/schedule/MeetingDetailManualConfirmForm.vue'
+import MeetingDetailParticipants from '@/components/domain/schedule/MeetingDetailParticipants.vue'
+import MeetingDetailReferences from '@/components/domain/schedule/MeetingDetailReferences.vue'
+import '@/assets/styles/meeting-detail.css'
 
 // ─── Props / Emits ─────────────────────────────────────────────────────────
 
@@ -65,17 +68,12 @@ const emit = defineEmits<{
 const isUploadingFile = ref(false)
 const uploadError = ref('')
 
-async function handleFileSelect(event: Event): Promise<void> {
-  const input = event.target as HTMLInputElement
-  const files = input.files
-
-  if (!files || files.length === 0) return
-
+async function handleSelectFiles(files: File[]): Promise<void> {
   uploadError.value = ''
   isUploadingFile.value = true
 
   try {
-    for (const file of Array.from(files)) {
+    for (const file of files) {
       const { fileUrl } = await documentService.uploadDocument(file)
       emit('add-reference', {
         referenceType: 'DIRECT_FILE',
@@ -87,7 +85,6 @@ async function handleFileSelect(event: Event): Promise<void> {
     uploadError.value = error instanceof Error ? error.message : '파일 업로드에 실패했습니다.'
   } finally {
     isUploadingFile.value = false
-    input.value = ''
   }
 }
 
@@ -109,23 +106,6 @@ const STATUS_BADGE_CLASSES: Record<MeetingStatus, string> = {
   SELECTING: 'status-badge--selecting',
   CONFIRMED: 'status-badge--confirmed',
   CANCELED: 'status-badge--canceled',
-}
-
-const PARTICIPANT_ROLE_LABELS: Record<ParticipantRole, string> = {
-  HOST: '주최자',
-  ATTENDEE: '참석자',
-}
-
-const PARTICIPANT_STATUS_LABELS: Record<ParticipantStatus, string> = {
-  PENDING: '응답 대기',
-  RESPONDED: '응답 완료',
-  DECLINED: '불참',
-}
-
-const PARTICIPANT_STATUS_BADGE_CLASSES: Record<ParticipantStatus, string> = {
-  PENDING: 'participant-badge--pending',
-  RESPONDED: 'participant-badge--responded',
-  DECLINED: 'participant-badge--declined',
 }
 
 // ─── 일시 포맷 ──────────────────────────────────────────────────────────────
@@ -170,12 +150,6 @@ function formatConfirmedRange(meeting: MeetingDetailResponse): string {
 // ─── 회의 정보 수정 (Host 전용) ──────────────────────────────────────────────
 
 const isEditing = ref(false)
-const editTitle = ref('')
-const editPurpose = ref('')
-const editAgenda = ref('')
-const editLocation = ref('')
-const editMeetingLink = ref('')
-const editFormError = ref('')
 
 // 모달에 표시되는 회의가 바뀌면 수정 모드를 초기화한다.
 watch(
@@ -196,14 +170,6 @@ watch(
 )
 
 function startEdit(): void {
-  if (!props.meeting) return
-
-  editTitle.value = props.meeting.title
-  editPurpose.value = props.meeting.purpose ?? ''
-  editAgenda.value = props.meeting.agenda ?? ''
-  editLocation.value = props.meeting.location ?? ''
-  editMeetingLink.value = props.meeting.meetingLink ?? ''
-  editFormError.value = ''
   isEditing.value = true
 }
 
@@ -211,21 +177,8 @@ function cancelEdit(): void {
   isEditing.value = false
 }
 
-function submitEdit(): void {
-  editFormError.value = ''
-
-  if (!editTitle.value.trim()) {
-    editFormError.value = '회의명을 입력해 주세요.'
-    return
-  }
-
-  emit('update-meeting', {
-    title: editTitle.value.trim(),
-    purpose: editPurpose.value.trim(),
-    agenda: editAgenda.value.trim(),
-    location: editLocation.value.trim(),
-    meetingLink: editMeetingLink.value.trim(),
-  })
+function handleUpdateMeeting(payload: UpdateMeetingRequest): void {
+  emit('update-meeting', payload)
 }
 
 // ─── 회의 취소 (Host 전용) ───────────────────────────────────────────────────
@@ -237,9 +190,6 @@ function handleCancelMeeting(): void {
 // ─── 회의 시간 수동 확정 (Host 전용) ─────────────────────────────────────────
 
 const isManualConfirmFormOpen = ref(false)
-const manualConfirmStart = ref('')
-const manualConfirmEnd = ref('')
-const manualConfirmFormError = ref('')
 
 watch(
   () => props.meeting?.meetingId,
@@ -258,9 +208,6 @@ watch(
 )
 
 function startManualConfirm(): void {
-  manualConfirmStart.value = ''
-  manualConfirmEnd.value = ''
-  manualConfirmFormError.value = ''
   isManualConfirmFormOpen.value = true
 }
 
@@ -268,26 +215,8 @@ function cancelManualConfirm(): void {
   isManualConfirmFormOpen.value = false
 }
 
-function submitManualConfirm(): void {
-  manualConfirmFormError.value = ''
-
-  if (!manualConfirmStart.value || !manualConfirmEnd.value) {
-    manualConfirmFormError.value = '시작 시간과 종료 시간을 모두 입력해 주세요.'
-    return
-  }
-
-  const start = new Date(manualConfirmStart.value)
-  const end = new Date(manualConfirmEnd.value)
-
-  if (end.getTime() <= start.getTime()) {
-    manualConfirmFormError.value = '종료 시간은 시작 시간보다 이후여야 합니다.'
-    return
-  }
-
-  emit('confirm-meeting-manually', {
-    confirmedStartTime: start.toISOString(),
-    confirmedEndTime: end.toISOString(),
-  })
+function handleConfirmMeetingManually(payload: ManualConfirmRequest): void {
+  emit('confirm-meeting-manually', payload)
 }
 
 // ─── 회의 재조율 (Host 전용) ─────────────────────────────────────────────────
@@ -299,13 +228,6 @@ function handleReopenMeeting(): void {
 // ─── 참석자 추가 (Host 전용) ─────────────────────────────────────────────────
 
 const isAddParticipantFormOpen = ref(false)
-const participantSearchKeyword = ref('')
-const selectedNewParticipants = ref<WorkspaceMemberResponse[]>([])
-let participantSearchTimer: ReturnType<typeof setTimeout> | null = null
-
-const showParticipantDropdown = computed(
-  () => participantSearchKeyword.value.trim().length > 0 && (props.memberSearchResults?.length ?? 0) > 0,
-)
 
 watch(
   () => props.meeting?.meetingId,
@@ -324,8 +246,6 @@ watch(
 )
 
 function startAddParticipant(): void {
-  participantSearchKeyword.value = ''
-  selectedNewParticipants.value = []
   isAddParticipantFormOpen.value = true
 }
 
@@ -333,29 +253,12 @@ function cancelAddParticipant(): void {
   isAddParticipantFormOpen.value = false
 }
 
-function handleParticipantSearchInput(): void {
-  if (participantSearchTimer) clearTimeout(participantSearchTimer)
-  participantSearchTimer = setTimeout(() => {
-    emit('search-participants', participantSearchKeyword.value.trim())
-  }, 300)
+function handleSearchParticipants(keyword: string): void {
+  emit('search-participants', keyword)
 }
 
-function selectNewParticipant(member: WorkspaceMemberResponse): void {
-  if (selectedNewParticipants.value.some((m) => m.employeeId === member.employeeId)) return
-  selectedNewParticipants.value.push(member)
-  participantSearchKeyword.value = ''
-}
-
-function removeNewParticipant(employeeId: string): void {
-  selectedNewParticipants.value = selectedNewParticipants.value.filter((m) => m.employeeId !== employeeId)
-}
-
-function submitAddParticipants(): void {
-  if (selectedNewParticipants.value.length === 0) return
-
-  emit('add-participants', {
-    employeeIds: selectedNewParticipants.value.map((m) => m.employeeId),
-  })
+function handleAddParticipants(payload: AddParticipantsRequest): void {
+  emit('add-participants', payload)
 }
 
 function handleRemoveParticipant(employeeId: string): void {
@@ -385,7 +288,7 @@ function handleOpenResponse(meetingId: string): void {
 </script>
 
 <template>
-  <div v-if="isOpen" class="modal-overlay" role="dialog" aria-modal="true">
+  <div v-if="isOpen" class="modal-overlay meeting-detail-modal" role="dialog" aria-modal="true">
     <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">{{ meeting?.title ?? '회의 상세' }}</h3>
@@ -410,153 +313,37 @@ function handleOpenResponse(meetingId: string): void {
         </span>
 
         <!-- 호스트 전용 액션 (정보 수정 / 취소 / 수동 확정 / 재조율) -->
-        <div v-if="isHost && !isEditing && !isManualConfirmFormOpen" class="host-actions">
-          <button type="button" class="btn btn--secondary" @click="startEdit">
-            회의 정보 수정
-          </button>
-          <button
-            v-if="meeting.status === 'GATHERING' || meeting.status === 'SELECTING'"
-            type="button"
-            class="btn btn--secondary"
-            @click="startManualConfirm"
-          >
-            시간 수동 확정
-          </button>
-          <button
-            v-if="meeting.status === 'SELECTING'"
-            type="button"
-            class="btn btn--secondary"
-            :disabled="isReopeningMeeting"
-            @click="handleReopenMeeting"
-          >
-            <span v-if="isReopeningMeeting" class="spinner" />
-            재조율 요청
-          </button>
-          <button
-            v-if="meeting.status !== 'CANCELED'"
-            type="button"
-            class="btn btn--danger"
-            :disabled="isCancelingMeeting"
-            @click="handleCancelMeeting"
-          >
-            <span v-if="isCancelingMeeting" class="spinner" />
-            회의 취소
-          </button>
-        </div>
+        <MeetingDetailHostActions
+          v-if="isHost && !isEditing && !isManualConfirmFormOpen"
+          :status="meeting.status"
+          :is-reopening-meeting="isReopeningMeeting"
+          :is-canceling-meeting="isCancelingMeeting"
+          @start-edit="startEdit"
+          @start-manual-confirm="startManualConfirm"
+          @reopen-meeting="handleReopenMeeting"
+          @cancel-meeting="handleCancelMeeting"
+        />
         <p v-if="cancelMeetingError" class="field-hint verify-error">{{ cancelMeetingError }}</p>
         <p v-if="reopenMeetingError" class="field-hint verify-error">{{ reopenMeetingError }}</p>
 
         <!-- 시간 수동 확정 폼 (Host 전용) -->
-        <form v-if="isManualConfirmFormOpen" class="edit-form" @submit.prevent="submitManualConfirm">
-          <div class="field">
-            <label class="field-label" for="manual-confirm-start">시작 시간</label>
-            <input
-              id="manual-confirm-start"
-              v-model="manualConfirmStart"
-              type="datetime-local"
-              class="field-input"
-            />
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="manual-confirm-end">종료 시간</label>
-            <input
-              id="manual-confirm-end"
-              v-model="manualConfirmEnd"
-              type="datetime-local"
-              class="field-input"
-            />
-          </div>
-
-          <p v-if="manualConfirmFormError" class="field-hint verify-error">{{ manualConfirmFormError }}</p>
-          <p v-if="confirmManuallyError" class="field-hint verify-error">{{ confirmManuallyError }}</p>
-
-          <div class="edit-actions">
-            <button
-              type="button"
-              class="btn btn--secondary"
-              :disabled="isConfirmingManually"
-              @click="cancelManualConfirm"
-            >
-              취소
-            </button>
-            <button type="submit" class="btn btn--primary" :disabled="isConfirmingManually">
-              <span v-if="isConfirmingManually" class="spinner" />
-              확정
-            </button>
-          </div>
-        </form>
+        <MeetingDetailManualConfirmForm
+          v-if="isManualConfirmFormOpen"
+          :is-confirming-manually="isConfirmingManually"
+          :confirm-manually-error="confirmManuallyError"
+          @submit="handleConfirmMeetingManually"
+          @cancel="cancelManualConfirm"
+        />
 
         <!-- 회의 정보 수정 폼 -->
-        <form v-if="isEditing" class="edit-form" @submit.prevent="submitEdit">
-          <div class="field">
-            <label class="field-label" for="edit-meeting-title">회의명</label>
-            <input
-              id="edit-meeting-title"
-              v-model="editTitle"
-              type="text"
-              class="field-input"
-              placeholder="회의명을 입력하세요"
-            />
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="edit-meeting-purpose">목적</label>
-            <input
-              id="edit-meeting-purpose"
-              v-model="editPurpose"
-              type="text"
-              class="field-input"
-              placeholder="회의 목적 (선택)"
-            />
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="edit-meeting-agenda">아젠다</label>
-            <textarea
-              id="edit-meeting-agenda"
-              v-model="editAgenda"
-              class="field-textarea"
-              placeholder="회의 아젠다 (선택)"
-              rows="3"
-            />
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="edit-meeting-location">장소</label>
-            <input
-              id="edit-meeting-location"
-              v-model="editLocation"
-              type="text"
-              class="field-input"
-              placeholder="회의실 또는 화상회의 링크 (선택)"
-            />
-          </div>
-
-          <div class="field">
-            <label class="field-label" for="edit-meeting-link">화상회의 링크</label>
-            <input
-              id="edit-meeting-link"
-              v-model="editMeetingLink"
-              type="text"
-              class="field-input"
-              placeholder="Zoom/Meet 등 링크 (선택)"
-            />
-          </div>
-
-          <p v-if="editFormError" class="field-hint verify-error">{{ editFormError }}</p>
-          <p v-if="updateMeetingError" class="field-hint verify-error">{{ updateMeetingError }}</p>
-
-          <div class="edit-actions">
-            <button type="button" class="btn btn--secondary" :disabled="isUpdatingMeeting" @click="cancelEdit">
-              취소
-            </button>
-            <button type="submit" class="btn btn--primary" :disabled="isUpdatingMeeting">
-              <span v-if="isUpdatingMeeting" class="spinner" />
-              저장
-            </button>
-          </div>
-        </form>
+        <MeetingDetailEditForm
+          v-if="isEditing"
+          :meeting="meeting"
+          :is-updating-meeting="isUpdatingMeeting"
+          :update-meeting-error="updateMeetingError"
+          @submit="handleUpdateMeeting"
+          @cancel="cancelEdit"
+        />
 
         <!-- 목적 / 아젠다 / 장소 (수정 모드가 아닐 때 표시) -->
         <template v-if="!isEditing">
@@ -604,93 +391,23 @@ function handleOpenResponse(meetingId: string): void {
         <!-- GATHERING: 참석자 목록 + 응답 현황 -->
         <template v-if="meeting.status === 'GATHERING'">
           <h4 class="section-title">참석자 응답 현황</h4>
-          <ul v-if="meeting.participants.length > 0" class="participant-list">
-            <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
-              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
-              <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
-              <span class="participant-badge" :class="PARTICIPANT_STATUS_BADGE_CLASSES[p.status]">
-                {{ PARTICIPANT_STATUS_LABELS[p.status] }}
-              </span>
-              <button
-                v-if="isHost && p.role !== 'HOST'"
-                type="button"
-                class="reference-remove"
-                :disabled="removingParticipantId === p.employeeId"
-                @click="handleRemoveParticipant(p.employeeId)"
-              >
-                <span v-if="removingParticipantId === p.employeeId" class="spinner" />
-                <span v-else>×</span>
-              </button>
-            </li>
-          </ul>
-          <p v-else class="empty-state">참석자가 없습니다.</p>
-          <p v-if="removeParticipantError" class="field-hint verify-error">{{ removeParticipantError }}</p>
-
-          <!-- 참석자 추가 (Host 전용) -->
-          <template v-if="isHost">
-            <button
-              v-if="!isAddParticipantFormOpen"
-              type="button"
-              class="btn btn--secondary"
-              @click="startAddParticipant"
-            >
-              참석자 추가
-            </button>
-
-            <div v-else class="edit-form">
-              <div class="field participant-field">
-                <label class="field-label" for="participant-search-input">참석자 검색</label>
-                <input
-                  id="participant-search-input"
-                  v-model="participantSearchKeyword"
-                  type="text"
-                  class="field-input"
-                  placeholder="이름 또는 사번으로 검색"
-                  @input="handleParticipantSearchInput"
-                />
-                <ul v-if="showParticipantDropdown" class="member-dropdown">
-                  <li
-                    v-for="member in memberSearchResults"
-                    :key="member.employeeId"
-                    class="member-option"
-                    @click="selectNewParticipant(member)"
-                  >
-                    <span class="member-name">{{ member.name }}</span>
-                    <span class="member-meta">{{ [member.department, member.position].filter(Boolean).join(' - ') }}</span>
-                  </li>
-                </ul>
-              </div>
-
-              <div v-if="selectedNewParticipants.length > 0" class="chip-list">
-                <span v-for="member in selectedNewParticipants" :key="member.employeeId" class="chip">
-                  {{ member.name }}
-                  <button type="button" class="chip-remove" @click="removeNewParticipant(member.employeeId)">×</button>
-                </span>
-              </div>
-
-              <p v-if="addParticipantsError" class="field-hint verify-error">{{ addParticipantsError }}</p>
-
-              <div class="edit-actions">
-                <button
-                  type="button"
-                  class="btn btn--secondary"
-                  :disabled="isAddingParticipants"
-                  @click="cancelAddParticipant"
-                >
-                  취소
-                </button>
-                <button
-                  type="button"
-                  class="btn btn--primary"
-                  :disabled="isAddingParticipants || selectedNewParticipants.length === 0"
-                  @click="submitAddParticipants"
-                >
-                  <span v-if="isAddingParticipants" class="spinner" />
-                  추가
-                </button>
-              </div>
-            </div>
-          </template>
+          <MeetingDetailParticipants
+            :participants="meeting.participants"
+            :show-status="true"
+            :can-remove="isHost ?? false"
+            :removing-participant-id="removingParticipantId"
+            :remove-participant-error="removeParticipantError"
+            :can-add="isHost ?? false"
+            :is-add-form-open="isAddParticipantFormOpen"
+            :member-search-results="memberSearchResults"
+            :is-adding-participants="isAddingParticipants"
+            :add-participants-error="addParticipantsError"
+            @remove-participant="handleRemoveParticipant"
+            @search-participants="handleSearchParticipants"
+            @add-participants="handleAddParticipants"
+            @open-add-form="startAddParticipant"
+            @close-add-form="cancelAddParticipant"
+          />
 
           <div class="host-actions">
             <button type="button" class="btn btn--primary" @click="handleOpenResponse(meeting.meetingId)">
@@ -713,16 +430,13 @@ function handleOpenResponse(meetingId: string): void {
         <!-- SELECTING: 참석자 응답 현황 + 후보 시간 목록 -->
         <template v-else-if="meeting.status === 'SELECTING'">
           <h4 class="section-title">참석자 응답 현황</h4>
-          <ul v-if="meeting.participants.length > 0" class="participant-list">
-            <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
-              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
-              <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
-              <span class="participant-badge" :class="PARTICIPANT_STATUS_BADGE_CLASSES[p.status]">
-                {{ PARTICIPANT_STATUS_LABELS[p.status] }}
-              </span>
-            </li>
-          </ul>
-          <p v-else class="empty-state">참석자가 없습니다.</p>
+          <MeetingDetailParticipants
+            :participants="meeting.participants"
+            :show-status="true"
+            :can-remove="false"
+            :can-add="false"
+            :is-add-form-open="false"
+          />
 
           <h4 class="section-title section-title--spaced">후보 시간</h4>
           <ul v-if="meeting.topCandidateTimes.length > 0" class="candidate-list">
@@ -742,13 +456,13 @@ function handleOpenResponse(meetingId: string): void {
           </div>
 
           <h4 class="section-title section-title--spaced">참석자 목록</h4>
-          <ul v-if="meeting.participants.length > 0" class="participant-list">
-            <li v-for="p in meeting.participants" :key="p.employeeId" class="participant-item">
-              <span class="participant-id">{{ p.name ?? p.employeeId }} <template v-if="p.department || p.position">/ {{ [p.department, p.position].filter(Boolean).join(' - ') }}</template></span>
-              <span class="participant-role">{{ PARTICIPANT_ROLE_LABELS[p.role] }}</span>
-            </li>
-          </ul>
-          <p v-else class="empty-state">참석자가 없습니다.</p>
+          <MeetingDetailParticipants
+            :participants="meeting.participants"
+            :show-status="false"
+            :can-remove="false"
+            :can-add="false"
+            :is-add-form-open="false"
+          />
         </template>
 
         <!-- CANCELED -->
@@ -758,589 +472,17 @@ function handleOpenResponse(meetingId: string): void {
 
         <!-- 첨부파일 -->
         <h4 class="section-title section-title--spaced">첨부파일</h4>
-        <ul v-if="meeting.references.length > 0" class="reference-list">
-          <li v-for="reference in meeting.references" :key="reference.id" class="reference-item">
-            <a
-              v-if="reference.fileUrl"
-              class="reference-title reference-link"
-              :href="reference.fileUrl"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {{ reference.title }}
-            </a>
-            <span v-else class="reference-title">{{ reference.title }}</span>
-            <span class="reference-date">{{ formatDateTime(reference.createdAt) }}</span>
-            <button
-              type="button"
-              class="reference-remove"
-              :disabled="deletingReferenceId === reference.id"
-              @click="handleDeleteReference(reference.id)"
-            >
-              <span v-if="deletingReferenceId === reference.id" class="spinner" />
-              <span v-else>×</span>
-            </button>
-          </li>
-        </ul>
-        <p v-else class="empty-state">첨부된 파일이 없습니다.</p>
-
-        <label
-          for="reference-file-input"
-          class="file-select-btn"
-          :class="{ 'file-select-btn--disabled': isUploadingFile || isAddingReference }"
-        >
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-          </svg>
-          파일 추가
-        </label>
-        <input
-          id="reference-file-input"
-          type="file"
-          class="file-input"
-          multiple
-          :disabled="isUploadingFile || isAddingReference"
-          @change="handleFileSelect"
+        <MeetingDetailReferences
+          :references="meeting.references"
+          :deleting-reference-id="deletingReferenceId"
+          :is-busy="isUploadingFile || (isAddingReference ?? false)"
+          :upload-error="uploadError"
+          :add-reference-error="addReferenceError"
+          :delete-reference-error="deleteReferenceError"
+          @select-files="handleSelectFiles"
+          @delete-reference="handleDeleteReference"
         />
-        <p v-if="isUploadingFile || isAddingReference" class="field-hint">첨부파일을 추가하는 중...</p>
-        <p v-if="uploadError" class="field-hint verify-error">{{ uploadError }}</p>
-        <p v-if="addReferenceError" class="field-hint verify-error">{{ addReferenceError }}</p>
-        <p v-if="deleteReferenceError" class="field-hint verify-error">{{ deleteReferenceError }}</p>
       </template>
     </div>
   </div>
 </template>
-
-<style scoped>
-/* ══ Modal (Dashboard Unified — Light) ══ */
-.modal-overlay {
-  position: fixed; inset: 0; z-index: 1000;
-  background: rgba(15,18,32,.48); backdrop-filter: blur(8px);
-  display: flex; align-items: center; justify-content: center; padding: 32px;
-}
-.modal-content {
-  width: min(520px, calc(100vw - 48px)); max-height: calc(100vh - 64px);
-  display: flex; flex-direction: column;
-  background: var(--card-bg, #fff); border: 1px solid var(--card-border, #E8EAF2);
-  border-radius: 20px; box-shadow: 0 24px 80px rgba(20,24,48,.18);
-  overflow-y: auto; padding: 24px 28px;
-}
-.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.modal-title { font-size: 18px; font-weight: 700; color: var(--text-body, #1B2031); margin: 0; }
-.modal-close-btn { width: 32px; height: 32px; border: 0; border-radius: 8px; background: var(--page-bg, #F6F7FB); color: var(--text-light, #9AA0BD); cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
-.modal-close-btn:hover { background: var(--card-border, #E8EAF2); color: var(--text-body, #1B2031); }
-
-/* ── 로딩 상태 ─────────────────────────────────────────────────────── */
-.loading-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 48px 20px;
-  font-size: 13px;
-  color: var(--text-secondary, #6B7191);
-}
-.spinner--lg {
-  width: 28px;
-  height: 28px;
-  border: 2px solid var(--card-border, #E8EAF2);
-  border-top-color: var(--brand-indigo, #5B52E3);
-  border-radius: 50%;
-  animation: spin 0.65s linear infinite;
-}
-.spinner {
-  display: inline-block;
-  width: 12px;
-  height: 12px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: #fff;
-  border-radius: 50%;
-  animation: spin 0.65s linear infinite;
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── 상태 배지 ──────────────────────────────────────────────────────── */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  margin-bottom: 16px;
-}
-.status-badge--gathering {
-  color: #b45309;
-  background: #fef9c3;
-}
-.status-badge--selecting {
-  color: #c2410c;
-  background: #ffedd5;
-}
-.status-badge--confirmed {
-  color: #1d4ed8;
-  background: #dbeafe;
-}
-.status-badge--canceled {
-  color: var(--text-light, #9AA0BD);
-  background: var(--page-bg, #F6F7FB);
-}
-
-/* ── 섹션 ──────────────────────────────────────────────────────────── */
-.section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary, #6B7191);
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
-  margin: 0 0 10px;
-}
-.section-title--spaced {
-  margin-top: 20px;
-}
-.field-hint {
-  font-size: 11px;
-  color: var(--text-light, #9AA0BD);
-  margin: 8px 0 0;
-  padding: 0 2px;
-}
-.verify-error {
-  color: var(--danger-text, #D45D5D) !important;
-}
-.status-message {
-  font-size: 13px;
-  color: var(--text-secondary, #6B7191);
-  margin: 0 0 16px;
-}
-.status-message--error {
-  color: var(--danger-text, #D45D5D);
-}
-.empty-state {
-  font-size: 13px;
-  color: var(--text-light, #9AA0BD);
-  margin: 0 0 16px;
-}
-
-/* ── 요약/아젠다, 장소/링크 ─────────────────────────────────────────── */
-.info-box {
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--page-bg, #F6F7FB);
-  border: 1px solid var(--card-border, #E8EAF2);
-  margin: 0 0 12px;
-}
-.info-label {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--text-secondary, #6B7191);
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin: 0 0 6px;
-}
-.info-text {
-  font-size: 13px;
-  color: var(--text-body, #1B2031);
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.info-link {
-  display: block;
-  color: var(--brand-indigo, #5B52E3);
-  text-decoration: none;
-}
-.info-link:hover {
-  text-decoration: underline;
-}
-
-/* ── 참석자 목록 ────────────────────────────────────────────────────── */
-.participant-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 0 20px;
-  padding: 0;
-}
-.participant-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--page-bg, #F6F7FB);
-  border: 1px solid var(--card-border, #E8EAF2);
-}
-.participant-id {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-body, #1B2031);
-}
-.participant-role {
-  font-size: 12px;
-  color: var(--text-secondary, #6B7191);
-}
-.participant-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 9px;
-  border-radius: 999px;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.participant-badge--pending {
-  color: #c2410c;
-  background: #ffedd5;
-}
-.participant-badge--responded {
-  color: #15803d;
-  background: #dcfce7;
-}
-.participant-badge--declined {
-  color: var(--text-light, #9AA0BD);
-  background: var(--page-bg, #F6F7FB);
-}
-
-/* ── 후보 시간 목록 ─────────────────────────────────────────────────── */
-.candidate-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-}
-.candidate-item {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--page-bg, #F6F7FB);
-  border: 1px solid var(--card-border, #E8EAF2);
-  font-size: 13px;
-  color: var(--text-body, #1B2031);
-  font-weight: 500;
-}
-
-/* ── 확정 일시 ──────────────────────────────────────────────────────── */
-.confirmed-box {
-  text-align: center;
-  padding: 28px 16px;
-  border-radius: 12px;
-  background: var(--brand-light, #F0F2FE);
-  border: 1px solid rgba(91, 82, 227, 0.15);
-}
-.confirmed-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--brand-indigo, #5B52E3);
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
-  margin: 0 0 8px;
-}
-.confirmed-time {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-body, #1B2031);
-  margin: 0 0 8px;
-}
-.confirmed-duration {
-  font-size: 13px;
-  color: var(--text-secondary, #6B7191);
-  margin: 0;
-}
-
-/* ── 첨부파일 목록 ──────────────────────────────────────────────────── */
-.reference-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin: 0 0 12px;
-  padding: 0;
-}
-.reference-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--page-bg, #F6F7FB);
-  border: 1px solid var(--card-border, #E8EAF2);
-}
-.reference-title {
-  flex: 1;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-body, #1B2031);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.reference-link {
-  color: var(--brand-indigo, #5B52E3);
-  text-decoration: none;
-}
-.reference-link:hover {
-  text-decoration: underline;
-}
-.reference-date {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-light, #9AA0BD);
-}
-.reference-remove {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 22px;
-  height: 22px;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: var(--text-light, #9AA0BD);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-}
-.reference-remove:hover:not(:disabled) {
-  background: var(--danger-bg, #FBF0F0);
-  color: var(--danger-text, #D45D5D);
-}
-.reference-remove:disabled {
-  cursor: not-allowed;
-}
-
-/* ── 파일 입력 ──────────────────────────────────────────────────────── */
-.file-input {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  opacity: 0;
-  overflow: hidden;
-  pointer-events: none;
-}
-.file-select-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  width: fit-content;
-  height: 36px;
-  padding: 0 14px;
-  border-radius: 8px;
-  border: 1px dashed var(--card-border, #E8EAF2);
-  background: transparent;
-  color: var(--brand-indigo, #5B52E3);
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.2s, border-color 0.2s;
-}
-.file-select-btn:hover {
-  background: var(--brand-light, #F0F2FE);
-  border-color: var(--brand-indigo, #5B52E3);
-}
-.file-select-btn--disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* ── 버튼 ──────────────────────────────────────────────────────────── */
-.btn {
-  width: 100%;
-  height: 44px;
-  padding: 0 24px;
-  border-radius: 10px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: none;
-  font-family: inherit;
-}
-.btn:active {
-  transform: translateY(1px);
-}
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.btn--primary {
-  background: var(--brand-indigo, #5B52E3);
-  color: #fff;
-}
-.btn--primary:hover:not(:disabled) {
-  opacity: 0.9;
-  transform: translateY(-1px);
-}
-.btn--secondary {
-  background: var(--page-bg, #F6F7FB);
-  border: 1px solid var(--card-border, #E8EAF2);
-  color: var(--text-secondary, #6B7191);
-}
-.btn--secondary:hover:not(:disabled) {
-  border-color: var(--brand-indigo, #5B52E3);
-  color: var(--brand-indigo, #5B52E3);
-  background: var(--brand-light, #F0F2FE);
-}
-.btn--danger {
-  background: var(--danger-bg, #FBF0F0);
-  color: var(--danger-text, #D45D5D);
-}
-.btn--danger:hover:not(:disabled) {
-  background: var(--danger-text, #D45D5D);
-  color: #fff;
-}
-
-/* ── 회의 정보 수정 ─────────────────────────────────────────────────── */
-.edit-form {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  margin-bottom: 16px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-.field-label {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-secondary, #6B7191);
-  letter-spacing: 0.2px;
-  text-transform: uppercase;
-}
-.field-input,
-.field-textarea {
-  padding: 0 14px;
-  border-radius: 10px;
-  border: 1px solid var(--card-border, #E8EAF2);
-  background: var(--card-bg, #fff);
-  color: var(--text-body, #1B2031);
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-  box-sizing: border-box;
-  font-family: inherit;
-  width: 100%;
-}
-.field-input {
-  height: 44px;
-}
-.field-textarea {
-  padding: 10px 14px;
-  resize: vertical;
-  min-height: 72px;
-}
-.field-input::placeholder,
-.field-textarea::placeholder {
-  color: var(--text-light, #9AA0BD);
-}
-.field-input:focus,
-.field-textarea:focus {
-  border-color: var(--brand-indigo, #5B52E3);
-  box-shadow: 0 0 0 3px rgba(91, 82, 227, 0.1);
-}
-.edit-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 4px;
-}
-.edit-actions .btn {
-  width: auto;
-  flex: 1;
-}
-
-/* ── 호스트 액션 (취소 / 수동 확정 / 재조율) ────────────────────────────── */
-.host-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-.host-actions .btn {
-  width: auto;
-  flex: 1;
-  min-width: 96px;
-}
-
-/* ── 참석자 추가 ────────────────────────────────────────────────────── */
-.participant-field {
-  position: relative;
-}
-.member-dropdown {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin: 2px 0 0;
-  padding: 4px;
-  list-style: none;
-  background: var(--card-bg, #fff);
-  border: 1px solid var(--card-border, #E8EAF2);
-  border-radius: 10px;
-  box-shadow: var(--shadow-lg, 0 8px 28px rgba(27, 32, 49, 0.08));
-  max-height: 180px;
-  overflow-y: auto;
-  z-index: 10;
-}
-.member-option {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-.member-option:hover {
-  background: var(--brand-light, #F0F2FE);
-}
-.member-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-body, #1B2031);
-}
-.member-meta {
-  font-size: 10px;
-  color: var(--text-light, #9AA0BD);
-}
-.chip-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 8px 4px 10px;
-  border-radius: 999px;
-  background: var(--brand-light, #F0F2FE);
-  color: var(--brand-chip-text, #4960CD);
-  font-size: 11px;
-  font-weight: 600;
-}
-.chip-remove {
-  background: transparent;
-  border: 0;
-  color: inherit;
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0 2px;
-}
-.chip-remove:hover {
-  color: var(--danger-text, #D45D5D);
-}
-</style>
