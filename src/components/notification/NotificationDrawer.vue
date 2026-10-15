@@ -10,7 +10,11 @@ import { notificationService } from '@/services/notificationService'
 import type { NotificationResponse } from '@/api/notificationApi'
 import { ownerConfirmationService } from '@/services/ownerConfirmationService'
 import type { OwnerConfirmationResponse } from '@/api/ownerConfirmationApi'
-import { formatRelativeTime } from '@/utils/date'
+import type { NotificationDrawerTab } from '@/types/notification'
+import NotificationDrawerTabs from '@/components/notification/NotificationDrawerTabs.vue'
+import NotificationDrawerList from '@/components/notification/NotificationDrawerList.vue'
+import NotificationDrawerRequestList from '@/components/notification/NotificationDrawerRequestList.vue'
+import '@/assets/styles/notification-drawer.css'
 
 const props = defineProps<{
   open: boolean
@@ -26,8 +30,7 @@ const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
 const notificationStore = useNotificationStore()
 
-type TabKey = 'all' | 'unread' | 'requests'
-const activeTab = ref<TabKey>('all')
+const activeTab = ref<NotificationDrawerTab>('all')
 const items = ref<Notification[]>([])
 const isLoading = ref(false)
 const isLoadingMore = ref(false)
@@ -44,22 +47,6 @@ const requestPage = ref(0)
 const requestTotal = ref(0)
 
 const hasMoreRequests = computed(() => requestItems.value.length < requestTotal.value)
-
-const STATUS_LABEL: Record<string, string> = {
-  PENDING: '대기 중',
-  ANSWERED: '답변 완료',
-}
-
-const ICON_MAP: Record<string, string> = {
-  MEETING_INVITED: '📅',
-  MEETING_UPDATED: '🔄',
-  MEETING_CANCELED: '❌',
-  MEETING_CONFIRMED: '✅',
-  MEETING_REOPENED: '↩️',
-  MEETING_REMINDER: '⏰',
-  OWNER_CONFIRMATION: '📋',
-  OWNER_ANSWER_RECEIVED: '✅',
-}
 
 function mapResponse(r: NotificationResponse): Notification {
   return {
@@ -207,7 +194,7 @@ async function handleItemClick(item: Notification) {
   router.push(path)
 }
 
-function switchTab(tab: TabKey) {
+function switchTab(tab: NotificationDrawerTab) {
   if (activeTab.value === tab) return
   activeTab.value = tab
   if (tab === 'requests') {
@@ -234,7 +221,7 @@ watch(
 
 <template>
   <Teleport to="body">
-    <Transition name="drawer-overlay">
+    <Transition name="notification-drawer-overlay">
       <div
         v-if="props.open"
         class="notification-drawer-overlay"
@@ -242,7 +229,7 @@ watch(
       ></div>
     </Transition>
 
-    <Transition name="drawer-slide">
+    <Transition name="notification-drawer-slide">
       <aside
         v-if="props.open"
         class="notification-drawer"
@@ -265,573 +252,14 @@ watch(
         </div>
 
         <!-- Tabs -->
-        <div class="drawer-tabs">
-          <button
-            type="button"
-            class="drawer-tab"
-            :class="{ active: activeTab === 'all' }"
-            @click="switchTab('all')"
-          >전체</button>
-          <button
-            type="button"
-            class="drawer-tab"
-            :class="{ active: activeTab === 'unread' }"
-            @click="switchTab('unread')"
-          >
-            안읽음
-            <span v-if="notificationStore.unreadCount > 0" class="tab-count">
-              {{ notificationStore.unreadCount > 99 ? '99+' : notificationStore.unreadCount }}
-            </span>
-          </button>
-          <button
-            type="button"
-            class="drawer-tab"
-            :class="{ active: activeTab === 'requests' }"
-            @click="switchTab('requests')"
-          >내 요청</button>
-        </div>
+        <NotificationDrawerTabs :active-tab="activeTab" :unread-count="notificationStore.unreadCount" @change="switchTab" />
 
         <!-- Content: Notifications (all / unread) -->
-        <div v-if="activeTab !== 'requests'" class="drawer-content">
-          <div v-if="isLoading" class="drawer-empty">
-            <div class="drawer-spinner"></div>
-            <span>알림을 불러오는 중...</span>
-          </div>
-
-          <div v-else-if="items.length === 0" class="drawer-empty">
-            <div class="drawer-empty-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-            </div>
-            <span class="drawer-empty-text">알림이 없습니다</span>
-          </div>
-
-          <template v-else>
-            <div
-              v-for="item in items"
-              :key="item.id"
-              class="notification-item"
-              :class="{ unread: !item.isRead }"
-              @click="handleItemClick(item)"
-            >
-              <div class="notification-item-icon">
-                {{ ICON_MAP[item.notificationType] ?? '🔔' }}
-              </div>
-              <div class="notification-item-body">
-                <div class="notification-item-title">{{ item.title }}</div>
-                <div class="notification-item-message">{{ item.message }}</div>
-                <div class="notification-item-time">{{ formatRelativeTime(item.createdAt) }}</div>
-              </div>
-              <div v-if="!item.isRead" class="notification-item-dot"></div>
-            </div>
-
-            <button
-              v-if="hasMore"
-              type="button"
-              class="drawer-load-more"
-              :disabled="isLoadingMore"
-              @click="loadMore"
-            >
-              {{ isLoadingMore ? '불러오는 중...' : '더 보기' }}
-            </button>
-          </template>
-        </div>
+        <NotificationDrawerList v-if="activeTab !== 'requests'" :items="items" :is-loading="isLoading" :is-loading-more="isLoadingMore" :has-more="hasMore" @select="handleItemClick" @load-more="loadMore" />
 
         <!-- Content: My Requests -->
-        <div v-else class="drawer-content">
-          <div v-if="requestLoading" class="drawer-empty">
-            <div class="drawer-spinner"></div>
-            <span>요청 목록을 불러오는 중...</span>
-          </div>
-
-          <div v-else-if="requestItems.length === 0" class="drawer-empty">
-            <div class="drawer-empty-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-              </svg>
-            </div>
-            <span class="drawer-empty-text">요청한 확인 건이 없습니다</span>
-          </div>
-
-          <template v-else>
-            <div
-              v-for="req in requestItems"
-              :key="req.id"
-              class="notification-item"
-              @click="handleRequestItemClick(req)"
-            >
-              <div class="notification-item-icon">
-                {{ req.status === 'ANSWERED' ? '✅' : '⏳' }}
-              </div>
-              <div class="notification-item-body">
-                <div class="notification-item-title">
-                  <span>{{ req.assignedOwnerName }}</span>
-                  <span class="request-status-badge" :class="req.status.toLowerCase()">
-                    {{ STATUS_LABEL[req.status] ?? req.status }}
-                  </span>
-                </div>
-                <div class="notification-item-message">{{ req.questionContent }}</div>
-                <div class="notification-item-time">{{ formatRelativeTime(req.createdAt) }}</div>
-              </div>
-            </div>
-
-            <button
-              v-if="hasMoreRequests"
-              type="button"
-              class="drawer-load-more"
-              :disabled="requestLoadingMore"
-              @click="loadMoreRequests"
-            >
-              {{ requestLoadingMore ? '불러오는 중...' : '더 보기' }}
-            </button>
-          </template>
-        </div>
+        <NotificationDrawerRequestList v-else :items="requestItems" :is-loading="requestLoading" :is-loading-more="requestLoadingMore" :has-more="hasMoreRequests" @select="handleRequestItemClick" @load-more="loadMoreRequests" />
       </aside>
     </Transition>
   </Teleport>
 </template>
-
-<style scoped>
-/* ── Overlay ──────────────────────────────────────────────────── */
-.notification-drawer-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.2);
-  backdrop-filter: blur(2px);
-  z-index: 200;
-}
-
-/* ── Drawer Panel ─────────────────────────────────────────────── */
-.notification-drawer {
-  position: fixed;
-  top: 0;
-  right: 0;
-  width: 400px;
-  max-width: 100vw;
-  height: 100vh;
-  background: #ffffff;
-  border-left: 1px solid #e2e8f0;
-  box-shadow: -8px 0 32px rgba(15, 23, 42, 0.1);
-  z-index: 210;
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── Header ───────────────────────────────────────────────────── */
-.drawer-header {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 20px 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.drawer-title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #1e293b;
-  margin: 0;
-}
-
-.drawer-close-btn {
-  width: 32px;
-  height: 32px;
-  border: none;
-  border-radius: 8px;
-  background: transparent;
-  color: #64748b;
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: all 0.15s ease;
-}
-
-.drawer-close-btn:hover {
-  background: #f1f5f9;
-  color: #1e293b;
-}
-
-/* ── Tabs ─────────────────────────────────────────────────────── */
-.drawer-tabs {
-  flex-shrink: 0;
-  display: flex;
-  gap: 4px;
-  padding: 12px 20px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.drawer-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  border: 1px solid #e2e8f0;
-  border-radius: 999px;
-  background: transparent;
-  color: #64748b;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-
-.drawer-tab:hover {
-  background: #f8fafc;
-  color: #334155;
-}
-
-.drawer-tab.active {
-  background: #1e293b;
-  color: #ffffff;
-  border-color: #1e293b;
-}
-
-.tab-count {
-  font-size: 11px;
-  font-weight: 800;
-  background: #ef4444;
-  color: #ffffff;
-  padding: 0 5px;
-  border-radius: 999px;
-  min-width: 18px;
-  height: 18px;
-  line-height: 18px;
-  text-align: center;
-}
-
-.drawer-tab.active .tab-count {
-  background: #ffffff;
-  color: #1e293b;
-}
-
-/* ── Content ──────────────────────────────────────────────────── */
-.drawer-content {
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-}
-
-.drawer-content::-webkit-scrollbar {
-  width: 5px;
-}
-
-.drawer-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.drawer-content::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.3);
-  border-radius: 3px;
-}
-
-.drawer-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.5);
-}
-
-/* ── Empty / Loading ──────────────────────────────────────────── */
-.drawer-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 60px 20px;
-  color: #94a3b8;
-  font-size: 14px;
-}
-
-.drawer-empty-icon {
-  width: 56px;
-  height: 56px;
-  background: #f1f5f9;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  color: #94a3b8;
-  margin-bottom: 4px;
-}
-
-.drawer-empty-text {
-  font-weight: 600;
-}
-
-.drawer-spinner {
-  width: 24px;
-  height: 24px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #3b82f6;
-  border-radius: 50%;
-  animation: drawer-spin 0.6s linear infinite;
-}
-
-@keyframes drawer-spin {
-  to { transform: rotate(360deg); }
-}
-
-/* ── Notification Item ────────────────────────────────────────── */
-.notification-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 14px 20px;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
-  border-bottom: 1px solid #f1f5f9;
-}
-
-.notification-item:hover {
-  background: #f8fafc;
-}
-
-.notification-item.unread {
-  background: #eff6ff;
-}
-
-.notification-item.unread:hover {
-  background: #dbeafe;
-}
-
-.notification-item-icon {
-  flex-shrink: 0;
-  width: 36px;
-  height: 36px;
-  background: #f1f5f9;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  font-size: 16px;
-}
-
-.notification-item.unread .notification-item-icon {
-  background: #dbeafe;
-}
-
-.notification-item-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.notification-item-title {
-  font-size: 13px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 2px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.notification-item-message {
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.notification-item-time {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 4px;
-}
-
-.notification-item-dot {
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  background: #3b82f6;
-  border-radius: 50%;
-  margin-top: 4px;
-}
-
-/* ── Request Status Badge ─────────────────────────────────────── */
-.request-status-badge {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 1px 6px;
-  border-radius: 999px;
-  margin-left: 6px;
-  vertical-align: middle;
-}
-
-.request-status-badge.pending {
-  background: #fef3c7;
-  color: #92400e;
-}
-
-.request-status-badge.answered {
-  background: #d1fae5;
-  color: #065f46;
-}
-
-/* ── Load More ────────────────────────────────────────────────── */
-.drawer-load-more {
-  display: block;
-  width: 100%;
-  padding: 14px;
-  border: none;
-  background: transparent;
-  color: #3b82f6;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  font-family: inherit;
-}
-
-.drawer-load-more:hover:not(:disabled) {
-  background: #f8fafc;
-  color: #2563eb;
-}
-
-.drawer-load-more:disabled {
-  color: #94a3b8;
-  cursor: not-allowed;
-}
-
-/* ── Transitions ──────────────────────────────────────────────── */
-.drawer-overlay-enter-active,
-.drawer-overlay-leave-active {
-  transition: opacity 0.25s ease;
-}
-
-.drawer-overlay-enter-from,
-.drawer-overlay-leave-to {
-  opacity: 0;
-}
-
-.drawer-slide-enter-active {
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.drawer-slide-leave-active {
-  transition: transform 0.2s cubic-bezier(0.4, 0, 1, 1);
-}
-
-.drawer-slide-enter-from,
-.drawer-slide-leave-to {
-  transform: translateX(100%);
-}
-
-/* ── Dark Theme ───────────────────────────────────────────────── */
-:global(.dark-theme) .notification-drawer-overlay {
-  background: rgba(0, 0, 0, 0.4);
-}
-
-:global(.dark-theme) .notification-drawer {
-  background: #0f172a;
-  border-left-color: #1e293b;
-  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.35);
-}
-
-:global(.dark-theme) .drawer-header {
-  border-bottom-color: #1e293b;
-}
-
-:global(.dark-theme) .drawer-title {
-  color: #f1f5f9;
-}
-
-:global(.dark-theme) .drawer-close-btn {
-  color: #94a3b8;
-}
-
-:global(.dark-theme) .drawer-close-btn:hover {
-  background: #1e293b;
-  color: #f1f5f9;
-}
-
-:global(.dark-theme) .drawer-tabs {
-  border-bottom-color: #1e293b;
-}
-
-:global(.dark-theme) .drawer-tab {
-  border-color: #334155;
-  color: #94a3b8;
-}
-
-:global(.dark-theme) .drawer-tab:hover {
-  background: #1e293b;
-  color: #e2e8f0;
-}
-
-:global(.dark-theme) .drawer-tab.active {
-  background: #e2e8f0;
-  color: #0f172a;
-  border-color: #e2e8f0;
-}
-
-:global(.dark-theme) .drawer-tab.active .tab-count {
-  background: #0f172a;
-  color: #e2e8f0;
-}
-
-:global(.dark-theme) .drawer-empty-icon {
-  background: #1e293b;
-  color: #64748b;
-}
-
-:global(.dark-theme) .notification-item {
-  border-bottom-color: #1e293b;
-}
-
-:global(.dark-theme) .notification-item:hover {
-  background: #1e293b;
-}
-
-:global(.dark-theme) .notification-item.unread {
-  background: #172554;
-}
-
-:global(.dark-theme) .notification-item.unread:hover {
-  background: #1e3a5f;
-}
-
-:global(.dark-theme) .notification-item-icon {
-  background: #1e293b;
-}
-
-:global(.dark-theme) .notification-item.unread .notification-item-icon {
-  background: #1e3a8a;
-}
-
-:global(.dark-theme) .notification-item-title {
-  color: #f1f5f9;
-}
-
-:global(.dark-theme) .notification-item-message {
-  color: #94a3b8;
-}
-
-:global(.dark-theme) .notification-item-time {
-  color: #64748b;
-}
-
-:global(.dark-theme) .drawer-load-more {
-  color: #60a5fa;
-}
-
-:global(.dark-theme) .drawer-load-more:hover:not(:disabled) {
-  background: #1e293b;
-}
-
-:global(.dark-theme) .request-status-badge.pending {
-  background: #422006;
-  color: #fbbf24;
-}
-
-:global(.dark-theme) .request-status-badge.answered {
-  background: #064e3b;
-  color: #34d399;
-}
-</style>
