@@ -39,6 +39,7 @@
 - [Tech Stack](#tech-stack)
 - [Project Structure](#project-structure)
 - [Routes](#routes)
+- [CI](#ci)
 
 ---
 
@@ -306,6 +307,18 @@ devbridge-frontend/
 | `/workspaces/:workspaceId/datasources` | 데이터소스 관리 |
 | `/workspaces/:workspaceId/schedule` | 일정 관리 |
 | `/settings/profile` | 사용자 프로필 설정 |
+
+---
+
+<a id="ci"></a>
+## ✅ CI
+
+PR을 올리면 CI(`.github/workflows/ci.yml`)가 lint·type-check·test·build를 실행합니다.
+로컬에서 같은 순서로 먼저 돌려 본 뒤 PR을 올립니다.
+
+```bash
+npm ci && npm run lint:check && npm run type-check && npm run test && npm run build-only
+```
 
 ---
 
