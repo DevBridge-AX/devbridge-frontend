@@ -7,3 +7,5 @@ export type NotificationType =
   | 'MEETING_REMINDER'
   | 'OWNER_CONFIRMATION'
   | 'OWNER_ANSWER_RECEIVED'
+
+export type NotificationDrawerTab = 'all' | 'unread' | 'requests'
